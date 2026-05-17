@@ -5079,24 +5079,18 @@ function _primeStampAudio() {
   }
 
   // ---- HTMLAudioElement path (fallback) ----
-  // Run in parallel with the Web Audio prime. If Web Audio works, we'll
-  // never use this; if it doesn't, this is the next best thing.
+  // Pre-construct and preload the element so it's ready when playStampSound()
+  // is called, but do NOT call .play() here — that would cause the stamp
+  // sound to fire on the first user gesture (e.g. tapping the Beers tab).
+  // Web Audio (above) handles the actual "unlock AudioContext" gesture work.
+  // HTMLAudio is only used as a last resort inside playStampSound().
   try {
     if (typeof Audio !== 'undefined') {
       const a = new Audio(STAMP_AUDIO_URI);
-      a.volume = 0;
+      a.volume = 0.85;
       a.preload = 'auto';
-      const p = a.play();
-      if (p && typeof p.then === 'function') {
-        p.then(() => {
-          try { a.pause(); a.currentTime = 0; a.volume = 0.85; } catch (_) {}
-          _stampAudioPrimed = a;
-        }).catch(() => { /* HTMLAudio prime blocked — Web Audio will cover it */ });
-      } else {
-        // Older browsers without a Promise return value
-        try { a.pause(); a.currentTime = 0; a.volume = 0.85; } catch (_) {}
-        _stampAudioPrimed = a;
-      }
+      // Do not call a.play() — just hold the reference for later use.
+      _stampAudioPrimed = a;
     }
   } catch (e) {
     logWarn('HTMLAudio prime skipped:', e);
