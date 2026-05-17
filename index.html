@@ -101,16 +101,28 @@
   --gold-glow: 0 0 24px rgba(200, 144, 16, 0.25);
   --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  /* v4.1.5 — shared shell geometry so every shell piece resolves to the
+     exact same pixel values from the exact same calculation. */
+  --app-shell-width: min(100vw, 500px);
+  --app-shell-left: max(0px, calc((100vw - 500px) / 2));
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body {
+html {
+  width: 100%;
+  min-height: 100%;
+  background: var(--coal);
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+body {
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
   background: var(--coal);
   color: var(--parchment);
   font-family: 'Source Code Pro', monospace;
   overflow-x: hidden;
-  min-height: 100vh;
-  max-width: 500px;
-  margin: 0 auto;
   position: relative;
   user-select: none;
 }
@@ -127,6 +139,18 @@ body::before {
 }
 
 /* APP BAR */
+/* v4.1.2 — width cap moved off body onto individual shell pieces so html/body
+   stay full viewport width and don't trigger iframe layout recalculations. */
+.app-bar,
+.page {
+  width: var(--app-shell-width);
+  max-width: 500px;
+  margin-left: 0;
+  margin-right: 0;
+  position: relative;
+  left: var(--app-shell-left);
+}
+
 .app-bar {
   position: sticky; top: 0; z-index: 100;
   background: rgba(12,10,7,0.96);
@@ -187,7 +211,7 @@ body::before {
 .profile-btn:hover { border-color: var(--ember); }
 
 /* PAGES */
-.page { display: none; min-height: 100vh; padding-bottom: 6rem; }
+.page { display: none; min-height: 100dvh; padding-bottom: 6rem; }
 .page.active {
   display: block;
   animation: pageEnter 0.4s var(--ease-out-quart);
@@ -201,6 +225,19 @@ body::before {
     opacity: 1;
     transform: translateY(0);
   }
+}
+/* v4.1.1 — suppress entrance animation during direct tab navigation so
+   Safari doesn't paint the translateY(12px) start frame on tab switches. */
+body.is-navigating .page.active {
+  animation: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+/* v4.1.3 — prevent nav button press transform from causing perceived jitter
+   during the two-rAF window while is-navigating is active. */
+body.is-navigating .nav-btn,
+body.is-navigating .nav-btn:active {
+  transform: none !important;
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1306,7 +1343,7 @@ body::before {
 #page-scan {
   display: none;
   flex-direction: column; align-items: center; justify-content: flex-start;
-  padding: 3rem 1.25rem 7rem; text-align: center; min-height: 100vh;
+  padding: 3rem 1.25rem 7rem; text-align: center; min-height: 100dvh;
   overflow-y: auto;
   background: radial-gradient(ellipse at 50% 35%, rgba(192,78,24,0.15), transparent 70%);
 }
@@ -2304,11 +2341,13 @@ body::before {
 
 /* ============ MINI GAME MODAL ============ */
 #game-overlay {
-  position: fixed; inset: 0; z-index: 400;
+  position: fixed; top: 0; bottom: 0; z-index: 400;
+  left: var(--app-shell-left); right: auto;
+  width: var(--app-shell-width); max-width: 500px;
+  margin-left: 0; margin-right: 0;
   background: var(--coal);
   display: none;
   flex-direction: column;
-  max-width: 500px; margin: 0 auto;
 }
 #game-overlay.active { display: flex; }
 .game-header {
@@ -3983,13 +4022,24 @@ body::before {
 
 /* BOTTOM NAV */
 .bottom-nav {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 500px;
-  background: rgba(12,10,7,0.97); border-top: 1px solid rgba(160,120,8,0.2);
+  position: fixed;
+  bottom: 0;
+  left: var(--app-shell-left);
+  right: auto;
+  transform: none;
+  width: var(--app-shell-width);
+  max-width: 500px;
+  margin-left: 0;
+  margin-right: 0;
+  background: rgba(12,10,7,0.97);
+  border-top: 1px solid rgba(160,120,8,0.2);
   backdrop-filter: blur(15px);
-  display: flex; justify-content: space-around;
+  -webkit-backdrop-filter: blur(15px);
+  display: flex;
+  justify-content: space-around;
   padding: 0.5rem 0 max(0.5rem, env(safe-area-inset-bottom));
   z-index: 50;
+  will-change: auto;
 }
 .nav-btn {
   background: transparent; border: none; color: var(--aged);
@@ -4000,7 +4050,7 @@ body::before {
   cursor: pointer; transition: color 0.2s;
 }
 .nav-btn.active { color: var(--gold); }
-.nav-btn:active { transform: scale(0.92); opacity: 0.8; }
+.nav-btn:active { transform: none; opacity: 0.85; }
 .nav-btn-icon { font-size: 1.1rem; }
 .nav-btn.scan .nav-btn-icon { color: var(--ember); }
 
@@ -4033,7 +4083,8 @@ body::before {
 }
 .modal-overlay.active { display: flex; }
 .modal {
-  width: 100%; max-width: 500px; margin: 0 auto;
+  width: var(--app-shell-width); max-width: 500px;
+  margin-left: var(--app-shell-left); margin-right: 0;
   background: var(--iron); border-top: 2px solid var(--ember);
   padding: 1.5rem 1.25rem; animation: modalUp 0.3s ease;
   max-height: 90vh; overflow-y: auto;
@@ -6693,15 +6744,30 @@ function renderProfile() {
 
 // ================== ACTIONS ==================
 
+// v4.1.1 — reset scroll before Safari paints the new page to prevent the
+// one-frame offset/jump visible when switching bottom-nav tabs.
+function resetViewportTop() {
+  try {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  } catch (_) {}
+
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  } catch (_) {
+    window.scrollTo(0, 0);
+  }
+}
+
 function nav(page, opts = {}) {
-  // Alias old names → new names for backward compat
   if (page === 'menu') page = 'tales';
   if (page === 'profile') page = 'passport';
 
   state.page = page;
+
+  document.body.classList.add('is-navigating');
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
-  // Map logical page names to DOM ids
   const domId = {
     tales:       'menu',
     beers:       'beers',
@@ -6719,12 +6785,13 @@ function nav(page, opts = {}) {
   if (el) el.classList.add('active');
 
   document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+
   const navMap = { tales:'tales', beers:'beers', scan:'scan', ourstory:'ourstory', passport:'passport' };
   if (navMap[page]) {
     const nb = document.getElementById('nav-' + navMap[page]);
     if (nb) nb.classList.add('active');
   }
-  // Sub-pages that live under the STORY tab keep STORY tab highlighted
+
   if (['about','woodenmatch','tracks','howitworks'].includes(page)) {
     const nb = document.getElementById('nav-ourstory');
     if (nb) nb.classList.add('active');
@@ -6734,9 +6801,14 @@ function nav(page, opts = {}) {
     renderProfile();
     setTimeout(initPassportSwipe, 0);
   }
-  window.scrollTo(0, 0);
 
-  // Camera lifecycle
+  // Single scroll reset after the new page is active.
+  resetViewportTop();
+
+  requestAnimationFrame(() => {
+    document.body.classList.remove('is-navigating');
+  });
+
   if (page === 'scan') {
     startQrScanner();
   } else {
