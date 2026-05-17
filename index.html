@@ -5453,25 +5453,37 @@ async function supabaseFetch(table, params = '') {
 // Only the fields the app actually reads are mapped — extras are ignored.
 
 function _normalizeTale(row) {
-  // Map: tales row + joined beer row → TALES item shape
-  // The REST join uses ?select=*,beers(*) syntax — beer fields come nested.
   const beer = row.beers || {};
-  // Preserve local tales array for fields not yet in Supabase
-  // (mini-game config, intro SVGs, seal images, pins, story paragraphs).
-  // We patch the matching local tale so rich content is never lost.
-  const local = _LOCAL_TALES.find(t => t.id === row.slug) || {};
+
+  // Match remote tale rows back to rich local Tale data.
+  // This preserves person, game, intro, map pins, story content, images, etc.
+  const local =
+    _LOCAL_TALES.find(t => t.id === row.slug) ||
+    _LOCAL_TALES.find(t => t.name === beer.name) ||
+    _LOCAL_TALES.find(t => t.title === row.title) ||
+    {};
+
+  const safeName = beer.name || local.name || row.title || 'Trackside Tale';
+
   return {
-    ...local,                             // local data as base (keeps game, intro, pins, etc.)
-    id:         row.slug,
-    name:       beer.name  || local.name,
-    style:      beer.style || local.style,
-    abv:        beer.abv   ? beer.abv + '%' : local.abv,
-    ibu:        beer.ibu   ? String(beer.ibu) : local.ibu,
-    tagline:    beer.short_description || local.tagline,
-    year:       row.year   || local.year,
-    chapter:    row.chapter_label || local.chapter,
-    title:      row.title  || local.title,
-    tapStatus:  'on-tap',                 // phase 2: query venue_beers for live tap status
+    ...local,
+    id:         row.slug || local.id || safeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+    name:       safeName,
+    style:      beer.style || local.style || '',
+    abv:        beer.abv ? beer.abv + '%' : (local.abv || ''),
+    ibu:        beer.ibu ? String(beer.ibu) : (local.ibu || ''),
+    tagline:    beer.short_description || local.tagline || '',
+    year:       row.year || local.year || '',
+    chapter:    row.chapter_label || local.chapter || '',
+    title:      row.title || local.title || safeName,
+    person:     local.person || {
+      name: safeName,
+      dates: '',
+      role: 'Trackside Tale',
+      initials: safeName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'TS',
+      portrait: ''
+    },
+    tapStatus:  'on-tap',
   };
 }
 
