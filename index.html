@@ -5604,8 +5604,11 @@ async function loadAppContent() {
     if (normalized.rewards)  REWARD_TIERS_REMOTE = normalized.rewards;
     if (normalized.comingNext) COMING_NEXT_REMOTE = normalized.comingNext;
     logInfo('[trackside] Remote content loaded:', {
-      tales: TALES.length, beers: REGULARS.length + NON_ALC.length,
-      food: FOOD.length
+      tales: TALES.length,
+      beers: REGULARS.length + NON_ALC.length,
+      food: FOOD.length,
+      reward_tiers: REWARD_TIERS_REMOTE ? REWARD_TIERS_REMOTE.length : 0,
+      coming_next_tales: COMING_NEXT_REMOTE ? COMING_NEXT_REMOTE.length : 0,
     });
   } catch (err) {
     logWarn('[trackside] Remote content unavailable — using local fallback', err.message || err);
@@ -6068,11 +6071,23 @@ function renderRewards() {
   const stamps = state.scanBadges.size + state.gameBadges.size;
   const MAX_STAMPS = 12;
   const pct = Math.min(100, Math.round((stamps / MAX_STAMPS) * 100));
-  const tiers = [
+
+  // Use remote tiers if available, otherwise fall back to hardcoded local tiers.
+  // Remote tiers come from normalizeRemoteContent → REWARD_TIERS_REMOTE.
+  const LOCAL_TIERS = [
     { threshold: 3,  icon: '◈', name: 'Early Release Preview',    badge: 'PREVIEW REWARD', hint: 'Earn 3 stamps to preview this reward.' },
     { threshold: 6,  icon: '◉', name: 'Trackside Glassware Perk', badge: 'PREVIEW REWARD', hint: 'Earn 6 stamps to unlock this preview tier.' },
     { threshold: 12, icon: '✦', name: 'Founders Passport Badge',  badge: 'COMING SOON',    hint: 'Earn 12 stamps to complete the Founders Passport Badge tier.' },
   ];
+  const tiers = (REWARD_TIERS_REMOTE && REWARD_TIERS_REMOTE.length)
+    ? REWARD_TIERS_REMOTE.map(r => ({
+        threshold: r.threshold,
+        icon:      r.icon  || '◈',
+        name:      r.name,
+        badge:     r.badge || 'PREVIEW REWARD',
+        hint:      r.hint  || `Earn ${r.threshold} stamps toward this reward.`,
+      }))
+    : LOCAL_TIERS;
   const nextIdx = tiers.findIndex(t => stamps < t.threshold);
 
   // Empty state when no stamps yet
@@ -6193,6 +6208,22 @@ function closeReceiptToStory() {
 function closeReceiptToPassport() {
   document.getElementById('unlock-receipt').classList.remove('active');
   nav('passport');
+}
+
+function renderComingNextFromRemote() {
+  if (!COMING_NEXT_REMOTE || !COMING_NEXT_REMOTE.length) return;
+  const body = document.getElementById('coming-next-body');
+  if (!body) return;
+  body.innerHTML = COMING_NEXT_REMOTE.map(item => `
+    <div class="coming-next-card">
+      <div class="coming-next-lock">◈</div>
+      <div class="coming-next-info">
+        <div class="coming-next-label">FUTURE TRACKSIDE TALE</div>
+        <div class="coming-next-name">${item.name}</div>
+        <div class="coming-next-teaser">${item.teaser || 'A future Trackside Tale.'}</div>
+      </div>
+      <div class="coming-next-chip">COMING SOON</div>
+    </div>`).join('');
 }
 
 function initComingNextCollapse() {
@@ -8251,6 +8282,7 @@ try {
 (async () => {
 try {
   await loadAppContent();
+  renderComingNextFromRemote(); // overwrite static HTML if remote data loaded
   renderBeerList('tales-list', TALES, { tales: true });
   renderBeerList('tales-list-beers', TALES, { tales: true });
   renderBeerList('regular-list', REGULARS);
