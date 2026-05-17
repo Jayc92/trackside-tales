@@ -1,0 +1,19 @@
+{
+  "name": "Trackside Tales at The Wooden Match",
+  "short_name": "Trackside Tales",
+  "description": "A guest-facing taproom app concept built around beer, local rail history, passport stamps, and collectible Trackside Tales.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0a07",
+  "theme_color": "#0c0a07",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

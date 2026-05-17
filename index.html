@@ -5442,6 +5442,47 @@ async function supabaseFetch(table, params = '') {
   return res.json();
 }
 
+// ---- Remote QR code lookup ----
+// Looks up a scanned QR value in the Supabase `qr_codes` table and resolves
+// it to a tale ID. Returns { qr: row, taleId } on success, null on any failure.
+// A failure here never crashes the app — caller falls through to local logic.
+async function lookupQRCodeRemote(codeValue) {
+  if (!USE_REMOTE_CONTENT || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  if (!codeValue) return null;
+
+  try {
+    const encoded = encodeURIComponent(String(codeValue).trim());
+
+    // Join to the tales table so we can resolve slug/id in one round-trip.
+    // Fields: qr_codes.*, tales.slug, tales.id, tales.title
+    const rows = await supabaseFetch(
+      'qr_codes',
+      `select=*,tales(id,slug,title)&code=eq.${encoded}&is_active=eq.true&limit=1`
+    );
+
+    if (!rows || !rows.length) return null;
+
+    const row = rows[0];
+
+    // Resolve the tale ID defensively — different schema versions may use
+    // different field names. Try the most specific first.
+    const taleId =
+      row.tales?.slug ||     // tales.slug (if column exists)
+      row.tales?.id   ||     // tales.id   (primary key / slug)
+      row.tale_slug   ||     // qr_codes.tale_slug (denormalized)
+      row.tale_id     ||     // qr_codes.tale_id   (FK value)
+      row.slug        ||     // qr_codes.slug (unlikely but defensive)
+      null;
+
+    if (!taleId) return null;
+
+    return { qr: row, taleId };
+  } catch (err) {
+    logWarn('[trackside] QR lookup unavailable — using local fallback', err);
+    return null;
+  }
+}
+
 // ---- Normalize remote → local shape ----
 // Each function maps a Supabase row to the object shape the app expects.
 // Only the fields the app actually reads are mapped — extras are ignored.
@@ -7990,22 +8031,29 @@ function parseQrPayload(raw) {
 }
 
 function onQrSuccess(decodedText) {
-  try {
-    const now = Date.now();
-    if (now - qrState.lastHandledAt < 2000) return;
-    qrState.lastHandledAt = now;
-
-    const taleId = parseQrPayload(decodedText);
-    if (!taleId) {
-      toast('UNRECOGNIZED CODE · NOT A TRACKSIDE TALE');
-      return;
+  const now = Date.now();
+  if (now - qrState.lastHandledAt < 2000) return;
+  qrState.lastHandledAt = now;
+  stopQrScanner();
+  (async () => {
+    try {
+      const remoteMatch = await lookupQRCodeRemote(decodedText);
+      if (remoteMatch && remoteMatch.taleId) {
+        console.log('[trackside] QR code resolved from Supabase:', remoteMatch.taleId);
+        simulateScan(remoteMatch.taleId);
+        return;
+      }
+      const taleId = parseQrPayload(decodedText);
+      if (!taleId) {
+        toast('UNRECOGNIZED CODE · NOT A TRACKSIDE TALE');
+        return;
+      }
+      simulateScan(taleId);
+    } catch (e) {
+      logError('[trackside] QR success handler crashed:', e);
+      toast('SCAN ERROR · TRY AGAIN');
     }
-    stopQrScanner();
-    simulateScan(taleId);
-  } catch (e) {
-    logError('[trackside] QR success handler crashed:', e);
-    toast('SCAN ERROR · TRY AGAIN');
-  }
+  })();
 }
 
 function onQrError() {
@@ -8281,6 +8329,7 @@ try {
 // are populated (local or remote) before any list renders.
 (async () => {
 try {
+  console.log('[trackside] App version: 4.1');
   await loadAppContent();
   renderComingNextFromRemote(); // overwrite static HTML if remote data loaded
   renderBeerList('tales-list', TALES, { tales: true });
