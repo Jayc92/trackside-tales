@@ -38,6 +38,10 @@
      To upgrade to a proper PNG: add apple-touch-icon.png to your repo root and use:
      <link rel="apple-touch-icon" href="/apple-touch-icon.png"> -->
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj4KICA8cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjM2IiBmaWxsPSIjMGMwYTA3Ii8+CiAgPHRleHQgeD0iOTAiIHk9IjEyOCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICAgICAgZm9udC1zaXplPSIxMTAiIGZpbGw9IiNhMDc4MDgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGxldHRlci1zcGFjaW5nPSItMiI+VDwvdGV4dD4KICA8bGluZSB4MT0iMzAiIHkxPSIxNTAiIHgyPSIxNTAiIHkyPSIxNTAiIHN0cm9rZT0iIzZiNGUyMiIgc3Ryb2tlLXdpZHRoPSI2Ii8+CiAgPGxpbmUgeDE9IjMwIiB5MT0iMTYzIiB4Mj0iMTUwIiB5Mj0iMTYzIiBzdHJva2U9IiM2YjRlMjIiIHN0cm9rZS13aWR0aD0iNiIvPgogIDxsaW5lIHgxPSI1MiIgeTE9IjE0NiIgeDI9IjUyIiB5Mj0iMTY3IiBzdHJva2U9IiM2YjRlMjIiIHN0cm9rZS13aWR0aD0iOCIvPgogIDxsaW5lIHgxPSI5MCIgeTE9IjE0NiIgeDI9IjkwIiB5Mj0iMTY3IiBzdHJva2U9IiM2YjRlMjIiIHN0cm9rZS13aWR0aD0iOCIvPgogIDxsaW5lIHgxPSIxMjgiIHkxPSIxNDYiIHgyPSIxMjgiIHkyPSIxNjciIHN0cm9rZT0iIzZiNGUyMiIgc3Ryb2tlLXdpZHRoPSI4Ii8+Cjwvc3ZnPg==">
+<!-- Web App Manifest — upload manifest.webmanifest to repo root alongside index.html.
+     Also place assets/apple-touch-icon.png (180×180 PNG) in the assets/ folder.
+     No service worker is registered. -->
+<link rel="manifest" href="manifest.webmanifest">
 
 
 <meta name="description" content="A guest-facing taproom app concept built around beer, local rail history, passport stamps, and collectible Trackside Tales.">
@@ -1524,6 +1528,130 @@ body::before {
   padding: 0;
 }
 
+/* ============ TALE INTRO OVERLAY ============
+   Cinematic intro moment for each unlocked Tale. Shown on-demand
+   via WATCH INTRO / REPLAY INTRO button. Never during scan unlock.
+   z-index: 10000 — above stamp (9999) and transition (9998).      */
+#tale-intro-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: #060402;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  overflow: hidden;
+}
+#tale-intro-overlay.active { display: flex; }
+
+/* Skip button */
+.tale-intro-skip {
+  position: absolute; top: 1.1rem; right: 1.1rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.48rem; letter-spacing: 0.22em;
+  color: rgba(160,120,8,0.45);
+  background: transparent;
+  border: 1px solid rgba(160,120,8,0.18);
+  padding: 0.3rem 0.65rem; border-radius: 2px;
+  cursor: pointer; z-index: 2;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tale-intro-skip:hover { color: rgba(200,144,16,0.8); border-color: rgba(160,120,8,0.4); }
+
+/* Stage — where the SVG animation lives */
+.tale-intro-stage {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.tale-intro-stage svg { width: 100%; height: 100%; }
+
+/* End title card — fades in at the end of the animation */
+.tale-intro-title-card {
+  position: absolute; bottom: 3.5rem; left: 0; right: 0;
+  text-align: center;
+  opacity: 0;
+  animation: none;
+}
+.tale-intro-title-card.show {
+  animation: introTitleFadeIn 0.8s ease forwards;
+}
+@keyframes introTitleFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tale-intro-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.45rem; letter-spacing: 0.35em;
+  color: var(--ember); margin-bottom: 0.4rem;
+}
+.tale-intro-beer-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem; letter-spacing: 0.1em;
+  color: #e8d098; line-height: 1;
+}
+
+/* ── W.A. LAGER INTRO — 1762 Allentown grid ── */
+@keyframes waGridFadeIn    { from{opacity:0} to{opacity:0.18} }
+@keyframes waAxisH         { from{stroke-dashoffset:400} to{stroke-dashoffset:0} }
+@keyframes waAxisV         { from{stroke-dashoffset:300} to{stroke-dashoffset:0} }
+@keyframes waSquareGlow    { 0%{opacity:0} 60%{opacity:0} 100%{opacity:0.7} }
+@keyframes waStampFadeIn   { 0%{opacity:0} 70%{opacity:0} 100%{opacity:0.5} }
+
+/* ── PACKER PILSNER INTRO — river + rail ── */
+@keyframes pkRiverDraw  { from{stroke-dashoffset:600} to{stroke-dashoffset:0} }
+@keyframes pkRailDraw   { from{stroke-dashoffset:500} to{stroke-dashoffset:0} }
+@keyframes pkLightMove  { 0%{cx:60} 100%{cx:600} }
+@keyframes pkFadeIn     { from{opacity:0} to{opacity:1} }
+
+/* ── WOODEN MATCH AMBER INTRO — station lights ── */
+@keyframes wmStationFade { from{opacity:0} to{opacity:0.9} }
+@keyframes wmWinLight1   { 0%{opacity:0} 40%{opacity:0} 42%{opacity:0.9} 100%{opacity:0.9} }
+@keyframes wmWinLight2   { 0%{opacity:0} 52%{opacity:0} 54%{opacity:0.9} 100%{opacity:0.9} }
+@keyframes wmWinLight3   { 0%{opacity:0} 64%{opacity:0} 66%{opacity:0.9} 100%{opacity:0.9} }
+@keyframes wmWinLight4   { 0%{opacity:0} 76%{opacity:0} 78%{opacity:0.9} 100%{opacity:0.9} }
+@keyframes wmAmberFill   { 0%{opacity:0} 60%{opacity:0} 100%{opacity:0.12} }
+@keyframes wmPlatformGlow{ from{opacity:0} to{opacity:0.55} }
+
+@media (prefers-reduced-motion: reduce) {
+  .tale-intro-title-card.show { animation: none; opacity: 1; }
+  #tale-intro-overlay { transition: none; }
+}
+
+/* ============ STORY TRANSITION OVERLAY ============
+   A brief branded screen shown when entering an already-unlocked story.
+   Only used for openTale() — never during simulateScan() / stamp unlock.
+   ~600ms total. Bottom-nav taps stay instant.    */
+#story-transition {
+  position: fixed; inset: 0; z-index: 9998;
+  background: #0c0a07;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0.6rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+#story-transition.visible { opacity: 1; pointer-events: auto; }
+.story-transition-rail {
+  width: 48px; height: 2px;
+  background: linear-gradient(to right, transparent, #a07808, transparent);
+  margin-bottom: 0.5rem;
+}
+.story-transition-mark {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.2rem;
+  letter-spacing: 0.3em;
+  color: #c89010;
+  opacity: 0.9;
+}
+.story-transition-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.75rem;
+  color: rgba(192,176,128,0.5);
+  letter-spacing: 0.04em;
+}
+@media (prefers-reduced-motion: reduce) {
+  #story-transition { transition: none; }
+}
+
 /* ============ PASSPORT STAMP UNLOCK ============
    A tactile "passport stamped" moment. The page softens into a dark vignette,
    a parchment passport-page slides up, and the official stamp lands on it
@@ -1859,7 +1987,134 @@ body::before {
 .portrait-frame::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
 .portrait-frame::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
 
-/* Real can image inside the story-page portrait frame */
+/* ── STORY PAGE IMPROVEMENTS ── */
+
+/* Identity strip — beer name + status, below hero */
+.story-identity-strip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 1.25rem;
+  background: rgba(18,14,8,0.95);
+  border-bottom: 1px solid rgba(160,120,8,0.12);
+}
+.story-beer-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem; letter-spacing: 0.22em;
+  color: rgba(160,120,8,0.55);
+}
+.story-beer-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.85rem; letter-spacing: 0.08em;
+  color: var(--aged); line-height: 1;
+  margin-top: 0.15rem;
+}
+.story-unlocked-badge {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem; letter-spacing: 0.18em;
+  color: var(--gold);
+  border: 1px solid rgba(200,144,16,0.3);
+  background: rgba(200,144,16,0.06);
+  padding: 0.2rem 0.5rem; border-radius: 2px;
+  white-space: nowrap;
+}
+
+/* Action row — watch intro + share + hint */
+.story-action-row {
+  display: flex; align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0 0.2rem;
+}
+.story-action-hint {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.58rem;
+  color: rgba(160,120,8,0.32); line-height: 1.4;
+  margin-top: 0.2rem;
+}
+
+/* Locked story state */
+.story-locked-state {
+  margin: 2rem 1.25rem;
+  padding: 1.5rem 1.25rem;
+  border: 1px solid rgba(160,120,8,0.15);
+  border-left: 3px solid rgba(192,78,24,0.35);
+  background: rgba(14,11,6,0.7);
+  text-align: center;
+}
+.story-locked-icon { font-size: 1.4rem; color: rgba(160,120,8,0.2); margin-bottom: 0.75rem; }
+.story-locked-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.2rem; letter-spacing: 0.08em;
+  color: var(--aged); margin-bottom: 0.5rem;
+}
+.story-locked-copy {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.72rem;
+  color: rgba(160,120,8,0.45); line-height: 1.6; margin-bottom: 1.1rem;
+}
+.story-locked-cta {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem; letter-spacing: 0.15em;
+  color: #0c0a07; background: var(--ember);
+  border: none; padding: 0.7rem 1.5rem; border-radius: 2px; cursor: pointer;
+  transition: background 0.15s;
+}
+.story-locked-cta:hover { background: #d45a1e; }
+
+/* Mini-game improvement */
+.minigame-context {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.68rem;
+  color: rgba(160,120,8,0.45); line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+/* Next Action panel */
+.story-next-action {
+  margin: 1.5rem 0 0;
+  padding: 1rem 1.25rem 1.1rem;
+  background: linear-gradient(135deg, rgba(192,78,24,0.06), rgba(160,120,8,0.04));
+  border: 1px solid rgba(160,120,8,0.18);
+  border-top: 2px solid rgba(192,78,24,0.35);
+}
+.story-next-action.complete {
+  border-top-color: rgba(160,120,8,0.5);
+  background: linear-gradient(135deg, rgba(160,120,8,0.06), rgba(160,120,8,0.03));
+}
+.story-next-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.28em;
+  color: var(--ember); margin-bottom: 0.25rem;
+}
+.story-next-action.complete .story-next-label { color: var(--brass); }
+.story-next-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem; letter-spacing: 0.08em;
+  color: var(--steam); margin-bottom: 0.3rem;
+}
+.story-next-copy {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.68rem;
+  color: rgba(160,120,8,0.45); line-height: 1.5; margin-bottom: 0.85rem;
+}
+.story-next-btns { display: flex; flex-direction: column; gap: 0.4rem; }
+.story-next-primary {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem; letter-spacing: 0.14em;
+  color: #0c0a07; background: var(--ember);
+  border: none; padding: 0.65rem 1rem; border-radius: 2px; cursor: pointer;
+  transition: background 0.15s;
+}
+.story-next-primary:hover { background: #d45a1e; }
+.story-next-primary.gold { background: var(--gold); }
+.story-next-primary.gold:hover { background: #d4a010; }
+.story-next-secondary {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem; letter-spacing: 0.2em;
+  color: rgba(160,120,8,0.5); background: transparent;
+  border: 1px solid rgba(160,120,8,0.2); padding: 0.48rem 1rem;
+  border-radius: 2px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.story-next-secondary:hover { color: var(--gold); border-color: rgba(160,120,8,0.4); }
 .portrait-frame-img {
   position: absolute;
   inset: 5px;
@@ -2086,12 +2341,27 @@ body::before {
 .game-stat { text-align: center; }
 .game-stat-label { font-size: 0.55rem; letter-spacing: 0.3em; color: var(--aged); }
 .game-stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--gold); line-height: 1; margin-top: 0.2rem; letter-spacing: 0.05em; }
-#game-play-area {
-  width: 100%; max-width: 360px; aspect-ratio: 1;
-  background: var(--iron); border: 1px solid rgba(160,120,8,0.2);
-  position: relative; overflow: hidden;
-  touch-action: none;
+
+/* Progress bar — shows completion ratio during play */
+.game-progress-bar-wrap {
+  width: 100%; max-width: 360px;
+  height: 4px; background: rgba(160,120,8,0.1);
+  border-radius: 2px; margin-bottom: 0.75rem; overflow: hidden;
 }
+.game-progress-bar-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(to right, var(--ember), var(--gold));
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
+
+/* Timer warning pulse when low */
+@keyframes timerWarn {
+  0%,100% { color: var(--gold); }
+  50%     { color: var(--ember); }
+}
+.game-time-warn { animation: timerWarn 0.6s ease infinite; }
+
 .game-start-btn {
   background: var(--ember); color: var(--coal);
   font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 0.2em;
@@ -2101,43 +2371,100 @@ body::before {
 }
 .game-start-btn:hover { background: var(--gold); }
 
+/* Already earned state */
+.game-already-earned {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: 2rem 1.25rem;
+}
+.game-ae-icon { font-size: 2.5rem; color: var(--gold); margin-bottom: 0.75rem; opacity: 0.7; }
+.game-ae-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem;
+  letter-spacing: 0.08em; color: var(--gold); margin-bottom: 0.4rem;
+}
+.game-ae-sub {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.85rem; color: var(--steam); line-height: 1.6;
+  margin-bottom: 1.5rem; max-width: 300px;
+}
+.game-ae-btns { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.game-ae-passport-btn {
+  font-family: 'Source Code Pro', monospace; font-size: 0.5rem; letter-spacing: 0.2em;
+  color: rgba(160,120,8,0.55); background: transparent;
+  border: 1px solid rgba(160,120,8,0.2); padding: 0.45rem 1.2rem;
+  border-radius: 2px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.game-ae-passport-btn:hover { color: var(--gold); border-color: rgba(160,120,8,0.45); }
+
+/* Success state */
 .game-success {
   display: none;
   flex-direction: column; align-items: center; justify-content: center;
-  padding: 2rem 1.25rem; text-align: center;
+  padding: 1.75rem 1.25rem; text-align: center;
 }
 .game-success.active { display: flex; }
-.game-success-icon { font-size: 4rem; margin-bottom: 1rem; animation: successBounce 0.6s ease-out; }
-@keyframes successBounce {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.3); opacity: 1; }
-  100% { transform: scale(1); }
-}
-.game-success-title {
-  font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem;
-  color: var(--gold); letter-spacing: 0.05em; margin-bottom: 0.5rem;
-}
-.game-success-msg {
-  font-family: 'Playfair Display', serif; font-style: italic;
-  font-size: 0.9rem; color: var(--steam); line-height: 1.6;
-  margin-bottom: 1.5rem; max-width: 320px;
-}
 .game-success-badge {
-  width: 100px; height: 100px; border-radius: 50%;
+  width: 90px; height: 90px; border-radius: 50%;
   background: linear-gradient(135deg, #2a1a08, #1a1208);
   border: 2px solid var(--gold);
   display: flex; align-items: center; justify-content: center;
-  font-size: 2.5rem;
   color: var(--gold);
   box-shadow: 0 0 30px rgba(200,144,16,0.4);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  animation: badgeAward 0.55s var(--ease-out-quart) both;
 }
+@keyframes badgeAward {
+  0%   { transform: scale(0.3); opacity: 0; }
+  65%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.game-success-eyebrow {
+  font-family: 'Source Code Pro', monospace; font-size: 0.46rem;
+  letter-spacing: 0.3em; color: var(--ember); margin-bottom: 0.3rem;
+}
+.game-success-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem;
+  color: var(--gold); letter-spacing: 0.06em; margin-bottom: 0.5rem;
+}
+.game-success-msg {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.82rem; color: var(--steam); line-height: 1.6;
+  margin-bottom: 1.25rem; max-width: 300px;
+}
+.game-success-btns { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.game-success-story-btn {
+  font-family: 'Source Code Pro', monospace; font-size: 0.5rem; letter-spacing: 0.2em;
+  color: rgba(160,120,8,0.55); background: transparent;
+  border: 1px solid rgba(160,120,8,0.2); padding: 0.45rem 1.2rem;
+  border-radius: 2px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.game-success-story-btn:hover { color: var(--gold); border-color: rgba(160,120,8,0.45); }
+
+/* Fail state */
 .game-fail {
   display: none;
   flex-direction: column; align-items: center; text-align: center;
   padding: 2rem 1.25rem;
 }
 .game-fail.active { display: flex; }
+.game-fail-mark { font-size: 2.8rem; color: rgba(192,78,24,0.5); margin-bottom: 0.75rem; }
+.game-fail-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem;
+  color: var(--parchment); letter-spacing: 0.1em; margin-bottom: 0.4rem;
+}
+.game-fail-msg {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.85rem; color: var(--steam); margin-bottom: 1.5rem;
+  max-width: 300px; line-height: 1.6;
+}
+
+#game-play-area {
+  width: 100%; max-width: 360px; aspect-ratio: 1;
+  background: var(--iron); border: 1px solid rgba(160,120,8,0.2);
+  position: relative; overflow: hidden;
+  touch-action: none;
+}
 
 /* ============ GAME ELEMENTS — themed per Tale ============ */
 
@@ -2552,6 +2879,921 @@ body::before {
 .stat-lbl { font-size: 0.5rem; letter-spacing: 0.2em; color: var(--aged); margin-top: 0.35rem; }
 
 /* ============ PASSPORT ============ */
+/* ── 5-tab bottom nav — slightly smaller labels to fit ── */
+.bottom-nav { display: flex; gap: 0; }
+.nav-btn { flex: 1; font-size: 0.48rem; letter-spacing: 0.12em; padding: 0.55rem 0.1rem 0.5rem; }
+.nav-btn-icon { font-size: 0.95rem; }
+
+.food-helper {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  color: rgba(160,120,8,0.4);
+  line-height: 1.5;
+  padding: 0 1.25rem 0.6rem;
+}
+
+/* ── HOW IT WORKS PAGE (within STORY tab) ── */
+#page-howitworks { display: none; }
+#page-howitworks.active { display: block; }
+.hiw-hero {
+  padding: 1.1rem 1.25rem 1.25rem;
+  border-bottom: 1px solid rgba(160,120,8,0.12);
+  position: relative;
+}
+.hiw-back-btn {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem; letter-spacing: 0.2em;
+  color: rgba(160,120,8,0.5);
+  background: transparent; border: none; cursor: pointer;
+  padding: 0 0 0.75rem; display: block;
+  transition: color 0.15s;
+}
+.hiw-back-btn:hover { color: var(--gold); }
+.hiw-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.1rem; letter-spacing: 0.06em;
+  color: var(--steam); line-height: 1;
+  margin: 0.3rem 0 0.5rem;
+}
+.hiw-sub {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.52rem; letter-spacing: 0.28em;
+  color: var(--ember);
+}
+.hiw-steps {
+  padding: 1.25rem 1.25rem 0.5rem;
+  display: flex; flex-direction: column; gap: 0;
+}
+.hiw-step {
+  display: flex; gap: 1rem; align-items: flex-start;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(160,120,8,0.08);
+}
+.hiw-step:last-child { border-bottom: none; }
+.hiw-step-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem; letter-spacing: 0.06em;
+  color: rgba(192,78,24,0.25);
+  line-height: 1; flex-shrink: 0; width: 36px;
+  padding-top: 0.1rem;
+}
+.hiw-step-body { flex: 1; }
+.hiw-step-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.95rem; letter-spacing: 0.08em;
+  color: var(--aged); margin-bottom: 0.35rem; line-height: 1.1;
+}
+.hiw-step-copy {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.72rem;
+  color: rgba(160,120,8,0.5); line-height: 1.55;
+}
+.hiw-cta-row {
+  display: flex; flex-direction: column; gap: 0.6rem;
+  padding: 1.25rem 1.25rem 2.5rem;
+}
+.hiw-cta-primary {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.95rem; letter-spacing: 0.15em;
+  color: #0c0a07; background: var(--ember);
+  border: none; padding: 0.75rem 1rem;
+  border-radius: 2px; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.hiw-cta-primary:hover  { background: #d45a1e; }
+.hiw-cta-primary:active { transform: scale(0.98); }
+.hiw-cta-secondary {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.52rem; letter-spacing: 0.22em;
+  color: rgba(160,120,8,0.5); background: transparent;
+  border: 1px solid rgba(160,120,8,0.18);
+  padding: 0.6rem 1rem; border-radius: 2px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.hiw-cta-secondary:hover { color: var(--gold); border-color: rgba(160,120,8,0.4); }
+#page-beers { display: none; }
+#page-beers.active { display: block; }
+.beers-page-hero {
+  padding: 1.5rem 1.25rem 1rem;
+  border-bottom: 1px solid rgba(160,120,8,0.12);
+  background: linear-gradient(180deg, rgba(192,78,24,0.06) 0%, transparent 100%);
+}
+.beers-page-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  letter-spacing: 0.08em;
+  color: var(--steam);
+  line-height: 1;
+  margin: 0.3rem 0 0.4rem;
+}
+.beers-page-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.72rem;
+  color: rgba(160,120,8,0.5);
+  line-height: 1.5;
+}
+
+/* ── OUR STORY PAGE ── */
+#page-ourstory { display: none; }
+#page-ourstory.active { display: block; }
+.ourstory-hero {
+  padding: 1.75rem 1.25rem 1.25rem;
+  border-bottom: 1px solid rgba(160,120,8,0.12);
+}
+.ourstory-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: 0.06em;
+  color: var(--steam);
+  line-height: 1;
+  margin: 0.3rem 0 0.5rem;
+}
+.ourstory-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.75rem;
+  color: rgba(160,120,8,0.45);
+  line-height: 1.5;
+}
+.ourstory-cards { padding: 1rem 1.25rem 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.ourstory-card {
+  background: linear-gradient(135deg, #1a1208 0%, #141008 100%);
+  border: 1px solid rgba(160,120,8,0.18);
+  border-left: 3px solid rgba(192,78,24,0.45);
+  border-radius: 2px;
+  padding: 1rem 1rem 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s, filter 0.15s;
+}
+.ourstory-card:hover { border-color: rgba(160,120,8,0.35); }
+.ourstory-card:active { filter: brightness(1.07); transform: scale(0.99); }
+.ourstory-card-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem;
+  letter-spacing: 0.28em;
+  color: var(--ember);
+  margin-bottom: 0.35rem;
+}
+.ourstory-card-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.2rem;
+  letter-spacing: 0.06em;
+  color: var(--steam);
+  line-height: 1.1;
+  margin-bottom: 0.3rem;
+}
+.ourstory-card-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  color: rgba(160,120,8,0.45);
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+.ourstory-card-arrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.2em;
+  color: var(--ember);
+}
+.today-module {
+  margin: 0 1.25rem 1rem;
+  border: 1px solid rgba(160,120,8,0.18);
+  border-left: 3px solid rgba(192,78,24,0.5);
+  background: rgba(14,11,6,0.7);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.today-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.85rem 0.45rem;
+  border-bottom: 1px solid rgba(160,120,8,0.1);
+}
+.today-module-title {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem;
+  letter-spacing: 0.28em;
+  color: var(--ember);
+}
+.today-module-date {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem;
+  letter-spacing: 0.18em;
+  color: rgba(160,120,8,0.4);
+}
+.today-module-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.today-item {
+  padding: 0.5rem 0.85rem;
+  border-right: 1px solid rgba(160,120,8,0.08);
+  border-bottom: 1px solid rgba(160,120,8,0.08);
+}
+.today-item:nth-child(even) { border-right: none; }
+.today-item:nth-child(3),
+.today-item:nth-child(4) { border-bottom: none; }
+.today-item-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.38rem;
+  letter-spacing: 0.2em;
+  color: rgba(160,120,8,0.38);
+  margin-bottom: 0.2rem;
+}
+.today-item-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--aged);
+  line-height: 1.1;
+}
+
+/* ── SHARE TALE + WATCH INTRO row on story pages ── */
+.share-tale-row { padding: 0.75rem 0 0.25rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.share-tale-btn { font-family: 'Source Code Pro', monospace; font-size: 0.48rem; letter-spacing: 0.22em; color: rgba(160,120,8,0.55); background: transparent; border: 1px solid rgba(160,120,8,0.18); padding: 0.35rem 0.75rem; border-radius: 2px; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: color 0.15s, border-color 0.15s; }
+.share-tale-btn:hover { color: rgba(200,144,16,0.8); border-color: rgba(160,120,8,0.35); }
+.share-tale-btn:active { transform: scale(0.97); }
+.watch-intro-btn { font-family: 'Source Code Pro', monospace; font-size: 0.48rem; letter-spacing: 0.2em; color: var(--ember); background: transparent; border: 1px solid rgba(192,78,24,0.3); padding: 0.35rem 0.75rem; border-radius: 2px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+.watch-intro-btn:hover { color: var(--gold); border-color: rgba(192,78,24,0.6); }
+.watch-intro-btn:active { transform: scale(0.97); }
+
+/* ── PASSPORT STAMP BOOK — flip-through carousel ── */
+.stamp-book-section { padding: 1rem 1.25rem 1.25rem; }
+.stamp-book-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.15rem; }
+.stamp-book-label { font-family: 'Source Code Pro', monospace; font-size: 0.52rem; letter-spacing: 0.3em; color: var(--ember); }
+.stamp-book-sub { font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.65rem; color: rgba(160,120,8,0.38); margin-bottom: 0.85rem; line-height: 1.5; }
+
+/* Outer book frame — dark leather/coal with tactile depth */
+.passport-book-frame {
+  background: linear-gradient(160deg, #1e1610 0%, #100d08 100%);
+  border: 1.5px solid rgba(160,120,8,0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  /* Multi-layer shadow: outer depth + inner glow */
+  box-shadow:
+    0 6px 28px rgba(0,0,0,0.6),
+    0 2px 6px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(200,144,16,0.08),
+    inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+
+/* Spine — thicker with gradient for booklet feel */
+.passport-book-frame::before {
+  content: '';
+  position: absolute; top: 0; left: 0; bottom: 0; width: 5px; z-index: 3;
+  background: linear-gradient(to right,
+    rgba(0,0,0,0.4),
+    rgba(192,78,24,0.35) 40%,
+    rgba(160,120,8,0.15));
+  pointer-events: none;
+}
+/* Right-edge shadow — gives the "pages stacked" feel */
+.passport-book-frame::after {
+  content: '';
+  position: absolute; top: 0; right: 0; bottom: 0; width: 3px; z-index: 3;
+  background: linear-gradient(to left, rgba(0,0,0,0.25), transparent);
+  pointer-events: none;
+}
+
+/* Carousel viewport */
+.passport-book-carousel {
+  min-height: 340px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  touch-action: pan-y; /* allow vertical scroll, swipe handled in JS */
+}
+/* The visible page */
+.passport-book-page {
+  animation: pageSlideIn 0.22s ease;
+  width: 100%;
+  min-height: 340px;
+  display: flex;
+  flex-direction: column;
+}
+@keyframes pageSlideIn {
+  from { opacity: 0; transform: translateX(22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pageSlideInBack {
+  from { opacity: 0; transform: translateX(-22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.passport-book-page.slide-back { animation: pageSlideInBack 0.22s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .passport-book-page, .passport-book-page.slide-back { animation: none; }
+}
+
+/* Page navigation strip — larger tap targets */
+.passport-book-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid rgba(160,120,8,0.14);
+  background: rgba(10,8,4,0.55);
+}
+.pb-nav-btn {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem; letter-spacing: 0.16em;
+  color: rgba(160,120,8,0.6);
+  background: transparent;
+  border: 1px solid rgba(160,120,8,0.22);
+  /* Larger tap target */
+  padding: 0.45rem 0.85rem;
+  border-radius: 2px; cursor: pointer;
+  min-width: 70px; text-align: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.pb-nav-btn:hover:not(:disabled) {
+  color: var(--gold);
+  border-color: rgba(160,120,8,0.45);
+  background: rgba(160,120,8,0.06);
+}
+.pb-nav-btn:active:not(:disabled) { transform: scale(0.97); }
+/* Clearly disabled */
+.pb-nav-btn:disabled {
+  opacity: 0.15;
+  cursor: default;
+  border-color: rgba(160,120,8,0.08);
+}
+.pb-nav-center {
+  display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+}
+.pb-nav-indicator {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.22em;
+  color: rgba(160,120,8,0.45);
+}
+.pb-nav-hint {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.42rem;
+  color: rgba(160,120,8,0.25);
+  letter-spacing: 0.02em;
+}
+/* Page progress ticks */
+.pb-nav-ticks {
+  display: flex; gap: 3px; align-items: center;
+}
+.pb-tick {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(160,120,8,0.18);
+  transition: background 0.2s;
+}
+.pb-tick.active { background: rgba(160,120,8,0.6); }
+
+/* ── PARCHMENT PAGE base — inner shadow for depth ── */
+.pbp-parchment {
+  background: linear-gradient(155deg, #f5e8c0 0%, #e8d49a 50%, #dcc88a 100%);
+  min-height: 340px; padding: 1.1rem 1.25rem 1rem;
+  position: relative; flex: 1;
+  /* Inner shadow to simulate page depth + worn corners */
+  box-shadow:
+    inset 3px 0 8px rgba(80,55,20,0.12),
+    inset -2px 0 5px rgba(80,55,20,0.06),
+    inset 0 3px 8px rgba(80,55,20,0.08);
+}
+/* Perforation top/bottom */
+.pbp-parchment::before, .pbp-parchment::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 2px;
+  background-image: repeating-linear-gradient(to right,
+    rgba(120,90,30,0.3) 0, rgba(120,90,30,0.3) 6px,
+    transparent 6px, transparent 12px);
+}
+.pbp-parchment::before { top: 0; } .pbp-parchment::after { bottom: 0; }
+/* Faint center-fold crease */
+.pbp-parchment-crease {
+  position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(120,90,30,0.06) 30%, rgba(120,90,30,0.06) 70%, transparent);
+  pointer-events: none;
+}
+/* Worn corner marks */
+.pbp-corner {
+  position: absolute; width: 10px; height: 10px;
+  border-color: rgba(120,90,30,0.18); border-style: solid;
+  pointer-events: none;
+}
+.pbp-corner-tl { top: 6px; left: 8px; border-width: 1px 0 0 1px; }
+.pbp-corner-tr { top: 6px; right: 8px; border-width: 1px 1px 0 0; }
+.pbp-corner-bl { bottom: 6px; left: 8px; border-width: 0 0 1px 1px; }
+.pbp-corner-br { bottom: 6px; right: 8px; border-width: 0 1px 1px 0; }
+
+.pbp-page-num {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.38rem; letter-spacing: 0.2em;
+  color: rgba(80,55,20,0.4); margin-bottom: 0.55rem;
+}
+
+/* ── PAGE 1 — Cover ── */
+.pbp-cover {
+  background: linear-gradient(155deg, #1e1610 0%, #100d08 100%);
+  min-height: 340px; padding: 1.25rem 1.1rem 1rem;
+  text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0;
+  flex: 1;
+  box-shadow: inset 3px 0 10px rgba(0,0,0,0.3), inset -2px 0 6px rgba(0,0,0,0.15);
+}
+.pbp-cover-crest {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.6rem; letter-spacing: 0.3em;
+  color: var(--gold); margin-bottom: 0.5rem;
+}
+.pbp-cover-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem; letter-spacing: 0.1em;
+  color: var(--steam); line-height: 1; margin-bottom: 0.15rem;
+}
+.pbp-cover-subtitle {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem; letter-spacing: 0.25em;
+  color: rgba(160,120,8,0.4); margin-bottom: 1rem;
+}
+.pbp-cover-divider {
+  width: 60px; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(160,120,8,0.4), transparent);
+  margin: 0.5rem auto 0.85rem;
+}
+.pbp-cover-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem; color: var(--gold); margin-bottom: 0.15rem;
+}
+.pbp-cover-id {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.45rem; letter-spacing: 0.2em; color: rgba(160,120,8,0.5); margin-bottom: 0.1rem;
+}
+.pbp-cover-status {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem; letter-spacing: 0.18em; color: rgba(192,78,24,0.6); margin-bottom: 1rem;
+}
+.pbp-cover-stats {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0.5rem; width: 100%;
+}
+.pbp-cover-stat {
+  background: rgba(160,120,8,0.06); border: 1px solid rgba(160,120,8,0.12);
+  border-radius: 2px; padding: 0.45rem 0.5rem; text-align: center;
+}
+.pbp-cover-stat-num {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem;
+  color: var(--gold); line-height: 1;
+}
+.pbp-cover-stat-lbl {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.35rem; letter-spacing: 0.14em; color: rgba(160,120,8,0.4); line-height: 1.3;
+}
+
+/* ── TALE PAGES (2-4) ── */
+.pbp-tale-chapter {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem; letter-spacing: 0.28em; color: rgba(80,55,20,0.55); margin-bottom: 0.3rem;
+}
+.pbp-tale-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem; letter-spacing: 0.06em; color: #3a2808; line-height: 1; margin-bottom: 0.5rem;
+}
+.pbp-tale-seal-row {
+  display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.65rem;
+}
+.pbp-tale-seal {
+  width: 64px; height: 64px; flex-shrink: 0;
+  border: 1.5px solid rgba(120,90,30,0.4); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(120,90,30,0.06);
+}
+.pbp-tale-seal img { width: 52px; height: 52px; object-fit: contain; }
+.pbp-tale-seal-lock { font-size: 1.4rem; color: rgba(120,90,30,0.25); }
+.pbp-tale-badges { display: flex; flex-direction: column; gap: 0.3rem; }
+.pbp-tale-status {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.68rem; color: rgba(80,55,20,0.6); line-height: 1.5; margin-bottom: 0.75rem;
+}
+.pbp-tale-status.locked-status { color: rgba(80,55,20,0.45); }
+.pbp-interaction-hint {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.58rem;
+  color: rgba(80,55,20,0.4); margin-top: 0.5rem; line-height: 1.4;
+}
+.pbp-tale-cta {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.5rem; letter-spacing: 0.2em;
+  display: inline-block; padding: 0.4rem 0.8rem; border-radius: 2px; cursor: pointer;
+  border: none; transition: opacity 0.15s;
+}
+.pbp-tale-cta.primary { background: rgba(80,55,20,0.85); color: #f5e8c0; }
+.pbp-tale-cta.primary:hover { opacity: 0.85; }
+.pbp-tale-cta.scan { background: rgba(192,78,24,0.15); color: rgba(192,78,24,0.9); border: 1px solid rgba(192,78,24,0.35); }
+.pbp-tale-cta.scan:hover { background: rgba(192,78,24,0.22); }
+
+/* ── REWARDS PAGE (5) ── */
+.pbp-rewards-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.1em;
+  color: #3a2808; margin-bottom: 0.15rem;
+}
+.pbp-rewards-count {
+  font-family: 'Source Code Pro', monospace; font-size: 0.45rem; letter-spacing: 0.2em;
+  color: rgba(80,55,20,0.55); margin-bottom: 0.7rem;
+}
+.pbp-rewards-bar-track { height: 5px; background: rgba(120,90,30,0.15); border-radius: 3px; margin-bottom: 0.75rem; overflow: hidden; }
+.pbp-rewards-bar-fill  { height: 100%; background: linear-gradient(to right, rgba(192,78,24,0.8), rgba(120,90,30,0.8)); border-radius: 3px; }
+.pbp-reward-tier { display: flex; align-items: center; gap: 0.6rem; padding: 0.42rem 0; border-bottom: 1px dashed rgba(120,90,30,0.2); }
+.pbp-reward-tier:last-of-type { border-bottom: none; }
+.pbp-reward-tier-icon { font-size: 0.7rem; color: rgba(120,90,30,0.4); width: 14px; flex-shrink: 0; }
+.pbp-reward-tier.reached .pbp-reward-tier-icon { color: rgba(80,55,20,0.8); }
+.pbp-reward-tier-name { font-family: 'Bebas Neue', sans-serif; font-size: 0.75rem; letter-spacing: 0.06em; color: rgba(80,55,20,0.5); flex: 1; }
+.pbp-reward-tier.reached .pbp-reward-tier-name { color: #3a2808; }
+.pbp-reward-tier-chip { font-family: 'Source Code Pro', monospace; font-size: 0.36rem; letter-spacing: 0.12em; padding: 0.1rem 0.35rem; border-radius: 2px; border: 1px solid rgba(120,90,30,0.25); color: rgba(80,55,20,0.5); }
+.pbp-reward-tier.reached .pbp-reward-tier-chip { background: rgba(120,90,30,0.15); color: rgba(80,55,20,0.75); }
+.pbp-rewards-note { font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.58rem; color: rgba(80,55,20,0.45); line-height: 1.5; margin-top: 0.65rem; padding-top: 0.55rem; border-top: 1px dashed rgba(120,90,30,0.2); }
+
+/* ── FUTURE PAGE (6) ── */
+.pbp-future-note { font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.7rem; color: rgba(80,55,20,0.55); line-height: 1.5; margin-bottom: 0.85rem; }
+.pbp-future-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px dashed rgba(120,90,30,0.2); }
+.pbp-future-item:last-child { border-bottom: none; }
+.pbp-future-lock { font-size: 0.8rem; color: rgba(120,90,30,0.3); flex-shrink: 0; }
+.pbp-future-name { font-family: 'Bebas Neue', sans-serif; font-size: 0.88rem; letter-spacing: 0.05em; color: rgba(60,40,10,0.55); }
+.pbp-future-chip { font-family: 'Source Code Pro', monospace; font-size: 0.35rem; letter-spacing: 0.12em; padding: 0.1rem 0.35rem; border: 1px solid rgba(120,90,30,0.2); color: rgba(80,55,20,0.4); border-radius: 2px; flex-shrink: 0; margin-left: auto; }
+
+/* ── UNLOCK RECEIPT overlay ── */
+#unlock-receipt {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(4,2,1,0.92);
+  display: none; align-items: center; justify-content: center;
+  padding: 1.25rem;
+}
+#unlock-receipt.active { display: flex; }
+.receipt-card {
+  width: 100%; max-width: 340px;
+  background: linear-gradient(168deg, #f8edd2 0%, #ede0b0 50%, #e4d09a 100%);
+  border: 1px solid rgba(120,90,30,0.45);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3);
+}
+/* Perforated edges — wider holes for more ticket feel */
+.receipt-card::before, .receipt-card::after {
+  content: '';
+  position: absolute; left: 0; right: 0; height: 4px; z-index: 1;
+  background-image: repeating-linear-gradient(to right,
+    rgba(120,90,30,0.45) 0, rgba(120,90,30,0.45) 7px,
+    transparent 7px, transparent 14px);
+}
+.receipt-card::before { top: 0; }
+.receipt-card::after  { bottom: 0; }
+
+/* Serial number strip at very top */
+.receipt-serial {
+  padding: 0.35rem 1.1rem 0.25rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.38rem; letter-spacing: 0.25em;
+  color: rgba(80,55,20,0.35);
+  border-bottom: 1px solid rgba(120,90,30,0.12);
+  display: flex; justify-content: space-between;
+}
+.receipt-header {
+  padding: 0.75rem 1.1rem 0.6rem;
+  border-bottom: 1px dashed rgba(120,90,30,0.3);
+  text-align: center; position: relative;
+}
+.receipt-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem; letter-spacing: 0.22em;
+  color: rgba(40,25,5,0.85); margin-bottom: 0.12rem;
+}
+.receipt-title.rescan { color: rgba(80,55,20,0.65); font-size: 0.9rem; }
+.receipt-subtitle {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem; letter-spacing: 0.25em;
+  color: rgba(80,55,20,0.45);
+}
+/* "ADDED TO PASSPORT" stamp mark — rotated, subtle */
+.receipt-stamp-mark {
+  position: absolute; top: 0.5rem; right: 0.7rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.32rem; letter-spacing: 0.15em;
+  color: rgba(192,78,24,0.45);
+  border: 1px solid rgba(192,78,24,0.3);
+  padding: 0.1rem 0.3rem;
+  border-radius: 1px;
+  transform: rotate(4deg);
+  line-height: 1.4;
+  text-align: center;
+}
+.receipt-fields {
+  padding: 0.8rem 1.1rem 0.7rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  border-bottom: 1px dashed rgba(120,90,30,0.3);
+}
+.receipt-field { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+.receipt-field-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem; letter-spacing: 0.16em;
+  color: rgba(80,55,20,0.45); flex-shrink: 0;
+}
+.receipt-field-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.78rem; letter-spacing: 0.06em;
+  color: #3a2808; text-align: right;
+}
+.receipt-field-value.muted { color: rgba(80,55,20,0.55); font-size: 0.65rem; }
+.receipt-field-value.accent { color: rgba(192,78,24,0.75); }
+.receipt-passport-status {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.6rem;
+  color: rgba(80,55,20,0.55); text-align: center;
+  padding: 0.5rem 1.1rem 0;
+}
+.receipt-footer {
+  padding: 0.45rem 1.1rem 0.4rem;
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.58rem;
+  color: rgba(80,55,20,0.45);
+  border-top: 1px dashed rgba(120,90,30,0.2);
+  margin-top: 0.1rem;
+}
+.receipt-cta-row {
+  padding: 0.6rem 1.1rem 1rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.receipt-cta-primary {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.95rem; letter-spacing: 0.14em;
+  color: #f5e8c0; background: #3a2808;
+  border: none; padding: 0.7rem 1rem;
+  border-radius: 2px; cursor: pointer; width: 100%;
+  transition: background 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.receipt-cta-primary:hover  { background: #4e3510; }
+.receipt-cta-primary:active { transform: scale(0.99); }
+.receipt-cta-secondary {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.2em;
+  color: rgba(80,55,20,0.55); background: transparent;
+  border: 1px solid rgba(120,90,30,0.25);
+  padding: 0.48rem 1rem; border-radius: 2px; cursor: pointer; width: 100%;
+  transition: border-color 0.15s, color 0.15s;
+}
+.receipt-cta-secondary:hover { color: rgba(60,40,10,0.8); border-color: rgba(120,90,30,0.45); }
+
+.passport-id-card {
+  margin: 0 0 1.25rem;
+  background: linear-gradient(135deg, #1a1208 0%, #141008 60%, #100e06 100%);
+  border: 1px solid rgba(160,120,8,0.28);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.passport-id-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2.5px;
+  background: linear-gradient(to right, #c04e18, #a07808, #c04e18);
+  opacity: 0.7;
+}
+.passport-id-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.7rem 1rem 0.5rem;
+  border-bottom: 1px solid rgba(160,120,8,0.1);
+}
+.passport-id-eyebrow { font-family: 'Source Code Pro', monospace; font-size: 0.5rem; letter-spacing: 0.35em; color: var(--ember); }
+.passport-id-number { font-family: 'Source Code Pro', monospace; font-size: 0.55rem; letter-spacing: 0.2em; color: rgba(160,120,8,0.55); }
+.passport-id-body { padding: 0.85rem 1rem 0.75rem; display: flex; align-items: center; gap: 1rem; }
+.passport-id-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #2a1e0a, #1a1208);
+  border: 1.5px solid rgba(160,120,8,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: var(--gold); flex-shrink: 0;
+}
+.passport-id-info { flex: 1; min-width: 0; }
+.passport-id-name { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--steam); line-height: 1.2; margin-bottom: 0.2rem; }
+.passport-id-status { font-family: 'Source Code Pro', monospace; font-size: 0.46rem; letter-spacing: 0.22em; color: var(--brass); margin-bottom: 0.3rem; }
+.passport-id-since { font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.6rem; color: rgba(160,120,8,0.4); }
+.passport-id-stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid rgba(160,120,8,0.1); }
+.passport-id-stat { padding: 0.55rem 0.5rem; text-align: center; border-right: 1px solid rgba(160,120,8,0.08); }
+.passport-id-stat:last-child { border-right: none; }
+.passport-id-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; color: var(--gold); line-height: 1; margin-bottom: 0.15rem; }
+.passport-id-stat-lbl { font-family: 'Source Code Pro', monospace; font-size: 0.37rem; letter-spacing: 0.15em; color: rgba(160,120,8,0.4); line-height: 1.3; }
+.nickname-edit-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem 0.75rem; border-top: 1px solid rgba(160,120,8,0.08); }
+.nickname-input { flex: 1; background: rgba(12,10,7,0.6); border: 1px solid rgba(160,120,8,0.2); color: var(--steam); font-family: 'Playfair Display', serif; font-size: 0.8rem; padding: 0.35rem 0.6rem; border-radius: 2px; outline: none; }
+.nickname-input::placeholder { color: rgba(160,120,8,0.3); font-style: italic; }
+.nickname-input:focus { border-color: rgba(160,120,8,0.45); }
+.nickname-save-btn { font-family: 'Source Code Pro', monospace; font-size: 0.48rem; letter-spacing: 0.2em; color: var(--ember); background: transparent; border: 1px solid rgba(192,78,24,0.3); padding: 0.35rem 0.6rem; border-radius: 2px; cursor: pointer; white-space: nowrap; transition: border-color 0.15s, color 0.15s; }
+.nickname-save-btn:hover { border-color: rgba(192,78,24,0.6); color: var(--gold); }
+
+/* ── TAPROOM REWARDS CARD ── */
+.taproom-rewards-card { margin: 0 0 1.25rem; background: linear-gradient(135deg, #141008 0%, #110e06 100%); border: 1px solid rgba(160,120,8,0.2); border-radius: 4px; padding: 0.85rem 1rem 1rem; }
+.taproom-rewards-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.75rem; }
+.taproom-rewards-title { font-family: 'Source Code Pro', monospace; font-size: 0.52rem; letter-spacing: 0.3em; color: var(--brass); }
+.taproom-rewards-count { font-family: 'Bebas Neue', sans-serif; font-size: 0.75rem; letter-spacing: 0.1em; color: rgba(160,120,8,0.5); }
+.rewards-bar-track { height: 4px; background: rgba(160,120,8,0.1); border-radius: 2px; margin-bottom: 1rem; overflow: hidden; }
+.rewards-bar-fill { height: 100%; background: linear-gradient(to right, #c04e18, #a07808); border-radius: 2px; transition: width 0.6s ease; min-width: 2px; }
+.rewards-tier-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.rewards-tier { display: flex; align-items: center; gap: 0.7rem; padding: 0.45rem 0.6rem; border-radius: 3px; border: 1px solid rgba(160,120,8,0.1); background: rgba(12,10,7,0.3); }
+.rewards-tier.reached { border-color: rgba(160,120,8,0.3); background: rgba(160,120,8,0.06); }
+.rewards-tier.next-up { border-color: rgba(192,78,24,0.25); background: rgba(192,78,24,0.04); }
+.rewards-tier-icon { font-family: 'Source Code Pro', monospace; font-size: 0.7rem; color: rgba(160,120,8,0.3); width: 16px; text-align: center; flex-shrink: 0; }
+.rewards-tier.reached .rewards-tier-icon { color: var(--gold); }
+.rewards-tier.next-up .rewards-tier-icon { color: var(--ember); }
+.rewards-tier-info { flex: 1; min-width: 0; }
+.rewards-tier-name { font-family: 'Bebas Neue', sans-serif; font-size: 0.75rem; letter-spacing: 0.08em; color: rgba(192,176,128,0.4); line-height: 1.1; }
+.rewards-tier.reached .rewards-tier-name { color: var(--steam); }
+.rewards-tier.next-up .rewards-tier-name { color: var(--aged); }
+.rewards-tier-threshold { font-family: 'Source Code Pro', monospace; font-size: 0.38rem; letter-spacing: 0.16em; color: rgba(160,120,8,0.28); margin-top: 0.1rem; }
+.rewards-tier.reached .rewards-tier-threshold { color: rgba(160,120,8,0.5); }
+.rewards-tier.next-up .rewards-tier-threshold { color: rgba(192,78,24,0.5); }
+.rewards-tier-badge { font-family: 'Source Code Pro', monospace; font-size: 0.37rem; letter-spacing: 0.14em; padding: 0.1rem 0.38rem; border-radius: 2px; flex-shrink: 0; }
+.rewards-tier.reached .rewards-tier-badge { color: var(--gold); border: 1px solid rgba(160,120,8,0.35); background: rgba(160,120,8,0.08); }
+.rewards-tier.next-up .rewards-tier-badge { color: var(--ember); border: 1px solid rgba(192,78,24,0.25); }
+.rewards-tier:not(.reached):not(.next-up) .rewards-tier-badge { color: rgba(120,90,30,0.35); border: 1px solid rgba(120,90,30,0.12); }
+.taproom-rewards-note { margin-top: 0.85rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.6rem; color: rgba(160,120,8,0.32); line-height: 1.5; padding-top: 0.7rem; border-top: 1px solid rgba(160,120,8,0.08); }
+
+/* Passport entry helper text — explains what to do for locked/partial entries */
+.passport-entry-helper {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.58rem;
+  color: rgba(160,120,8,0.38);
+  line-height: 1.4;
+  margin-top: 0.2rem;
+}
+
+/* Empty state card — shown inside passport-book when nothing is unlocked */
+.passport-empty-state {
+  margin: 0.75rem 0 0.5rem;
+  padding: 1rem 1rem 0.85rem;
+  border: 1px solid rgba(160,120,8,0.15);
+  border-left: 3px solid rgba(192,78,24,0.35);
+  background: rgba(12,10,7,0.5);
+  border-radius: 2px;
+}
+.passport-empty-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  color: var(--aged);
+  margin-bottom: 0.35rem;
+}
+.passport-empty-body {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  color: rgba(160,120,8,0.45);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+.passport-empty-cta {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.22em;
+  color: var(--ember);
+  background: transparent;
+  border: 1px solid rgba(192,78,24,0.35);
+  padding: 0.4rem 0.85rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.passport-empty-cta:hover { border-color: rgba(192,78,24,0.6); color: var(--gold); }
+
+/* Rewards empty state — zero stamps */
+.rewards-empty-state {
+  padding: 0.75rem 0 0.5rem;
+  text-align: center;
+}
+.rewards-empty-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  color: rgba(192,176,128,0.5);
+  margin-bottom: 0.35rem;
+}
+.rewards-empty-body {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.65rem;
+  color: rgba(160,120,8,0.35);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+.rewards-empty-cta {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.2em;
+  color: var(--ember);
+  background: transparent;
+  border: 1px solid rgba(192,78,24,0.3);
+  padding: 0.35rem 0.8rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.rewards-empty-cta:hover { border-color: rgba(192,78,24,0.55); color: var(--gold); }
+
+/* ── COMING NEXT section ── */
+.coming-next-section { padding: 0 0 0.5rem; }
+/* Collapsible body — transition via max-height */
+#coming-next-body {
+  overflow: hidden;
+  max-height: 600px;
+  transition: max-height 0.38s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+#coming-next-body.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+/* Toggle row sits between section-label and the card list */
+.coming-next-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 1.25rem 0.6rem;
+  cursor: pointer;
+}
+.coming-next-helper {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.62rem;
+  color: rgba(160,120,8,0.38);
+  flex: 1;
+}
+.coming-next-toggle-btn {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem;
+  letter-spacing: 0.2em;
+  color: rgba(160,120,8,0.45);
+  background: transparent;
+  border: 1px solid rgba(160,120,8,0.15);
+  padding: 0.22rem 0.55rem;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.coming-next-toggle-btn:hover { color: var(--gold); border-color: rgba(160,120,8,0.35); }
+.coming-next-card {
+  background: rgba(12,10,7,0.6);
+  border: 1px solid rgba(160,120,8,0.1);
+  border-left: 3px solid rgba(160,120,8,0.15);
+  padding: 0.85rem 1rem;
+  margin: 0 1.25rem 0.6rem;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  opacity: 0.65;
+}
+.coming-next-lock {
+  font-size: 1.1rem;
+  color: rgba(160,120,8,0.25);
+  flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+}
+.coming-next-info { flex: 1; min-width: 0; }
+.coming-next-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem;
+  letter-spacing: 0.22em;
+  color: rgba(160,120,8,0.45);
+  margin-bottom: 0.25rem;
+}
+.coming-next-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: rgba(192,176,128,0.45);
+  margin-bottom: 0.2rem;
+  line-height: 1.1;
+}
+.coming-next-teaser {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.62rem;
+  color: rgba(120,90,30,0.55);
+  line-height: 1.4;
+}
+.coming-next-chip {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.37rem;
+  letter-spacing: 0.18em;
+  color: rgba(120,90,30,0.5);
+  border: 1px solid rgba(120,90,30,0.18);
+  padding: 0.12rem 0.4rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 .passport-section { padding: 1.5rem 1.25rem 0; }
 .passport-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -2852,6 +4094,32 @@ body::before {
     <span class="about-link" onclick="nav('about')">About Trackside <span>→</span></span>
   </div>
 
+  <!-- TODAY AT THE WOODEN MATCH — operational daily module -->
+  <div class="today-module">
+    <div class="today-module-header">
+      <div class="today-module-title">TODAY AT THE WOODEN MATCH</div>
+      <div class="today-module-date" id="today-date"></div>
+    </div>
+    <div class="today-module-grid">
+      <div class="today-item">
+        <div class="today-item-label">TALES ON TAP</div>
+        <div class="today-item-value">3 active</div>
+      </div>
+      <div class="today-item">
+        <div class="today-item-label">FEATURED TALE</div>
+        <div class="today-item-value" onclick="document.getElementById('tales-list').scrollIntoView({behavior:'smooth',block:'start'})" style="cursor:pointer;color:var(--gold)">Wooden Match Amber</div>
+      </div>
+      <div class="today-item">
+        <div class="today-item-label">FOOD PAIRING</div>
+        <div class="today-item-value">Broad Street Bully</div>
+      </div>
+      <div class="today-item">
+        <div class="today-item-label">PASSPORT CHALLENGE</div>
+        <div class="today-item-value" onclick="nav('scan')" style="cursor:pointer;color:var(--ember)">Unlock any Tale →</div>
+      </div>
+    </div>
+  </div>
+
   <!-- How It Works (collapsible, shown to new users) -->
   <div class="how-it-works" id="how-it-works">
     <div class="how-label">FIRST TIME HERE?</div>
@@ -2875,30 +4143,9 @@ body::before {
     </div>
   </div>
 
-  <!-- Feature nav cards -->
-  <div class="feature-nav">
-    <div class="feature-card" onclick="nav('woodenmatch')">
-      <div class="feature-card-eyebrow">THIS PLACE · EST. 1868</div>
-      <div class="feature-card-title">The Wooden Match<br>Story</div>
-      <div class="feature-card-sub">A former train station that stayed open for 150 years.</div>
-      <div class="feature-card-arrow">READ →</div>
-    </div>
-    <div class="feature-card" onclick="nav('tracks')">
-      <div class="feature-card-eyebrow">RAIL HISTORY · LEHIGH VALLEY</div>
-      <div class="feature-card-title">The Tracks<br>&amp; Bethlehem</div>
-      <div class="feature-card-sub">Two railroads, one valley, and the city they built.</div>
-      <div class="feature-card-arrow">READ →</div>
-    </div>
-  </div>
-
-  <!-- Shown after user hides the intro — lets them bring it back -->
+  <!-- Restore link — shown in same position as How It Works when hidden -->
   <div id="how-restore" style="display:none">
     <button class="how-restore-btn" onclick="restoreHowItWorks()">▸ Show how it works</button>
-  </div>
-  <div class="menu-jump-strip">
-    <button class="menu-jump-tab active-tab" onclick="document.getElementById('tales-list').scrollIntoView({behavior:'smooth',block:'start'})">BEER</button>
-    <span class="menu-jump-sep">·</span>
-    <button class="menu-jump-tab" onclick="document.getElementById('food-anchor').scrollIntoView({behavior:'smooth',block:'start'})">FOOD</button>
   </div>
 
   <div class="section-label">
@@ -2917,19 +4164,89 @@ body::before {
   </div>
   <div class="beer-list" id="tales-list"></div>
 
+  <!-- COMING NEXT — collapsible, locked/teaser Tales -->
   <div class="section-label">
+    <div class="section-label-text">COMING NEXT — FUTURE TALES</div>
+    <div class="section-count">3 LOCKED</div>
+  </div>
+  <div class="coming-next-toggle-row" onclick="toggleComingNext()">
+    <span class="coming-next-helper">Three future stories are waiting down the line.</span>
+    <button class="coming-next-toggle-btn" id="coming-next-toggle">Show future Tales ↓</button>
+  </div>
+  <div id="coming-next-body" class="coming-next-section collapsed">
+    <div class="coming-next-card">
+      <div class="coming-next-lock">◈</div>
+      <div class="coming-next-info">
+        <div class="coming-next-label">FUTURE TRACKSIDE TALE</div>
+        <div class="coming-next-name">SteelStacks Stout</div>
+        <div class="coming-next-teaser">A future Tale from Bethlehem's industrial skyline.</div>
+      </div>
+      <div class="coming-next-chip">COMING SOON</div>
+    </div>
+    <div class="coming-next-card">
+      <div class="coming-next-lock">◈</div>
+      <div class="coming-next-info">
+        <div class="coming-next-label">FUTURE TRACKSIDE TALE</div>
+        <div class="coming-next-name">Lehigh Valley Railroad Lager</div>
+        <div class="coming-next-teaser">A future Tale following the rails that shaped the valley.</div>
+      </div>
+      <div class="coming-next-chip">COMING SOON</div>
+    </div>
+    <div class="coming-next-card">
+      <div class="coming-next-lock">◈</div>
+      <div class="coming-next-info">
+        <div class="coming-next-label">FUTURE TRACKSIDE TALE</div>
+        <div class="coming-next-name">South Bethlehem Porter</div>
+        <div class="coming-next-teaser">A future Tale from the south side — steel, smoke, and music.</div>
+      </div>
+      <div class="coming-next-chip">COMING SOON</div>
+    </div>
+  </div>
+
+  <!-- Compact food highlights — Tales screen only, not full menu -->
+  <div class="section-label">
+    <div class="section-label-text">FROM THE KITCHEN — WOODEN MATCH</div>
+  </div>
+  <div class="food-helper">A few highlights from The Wooden Match kitchen — built to pair with the Tales preview.</div>
+  <div class="beer-list" id="food-list-home"></div>
+</div>
+<div class="page" id="page-beers">
+  <div class="beers-page-hero">
+    <div class="venue-eyebrow">NOW POURING</div>
+    <div class="beers-page-title">Tap List</div>
+    <div class="beers-page-sub">Trackside pours, resident beers, zero-proof options, and Wooden Match food highlights.</div>
+  </div>
+
+  <!-- Jump strip -->
+  <div class="menu-jump-strip">
+    <button class="menu-jump-tab" onclick="document.getElementById('beers-tales-anchor').scrollIntoView({behavior:'smooth',block:'start'})">TALES</button>
+    <span class="menu-jump-sep">·</span>
+    <button class="menu-jump-tab" onclick="document.getElementById('beers-resident-anchor').scrollIntoView({behavior:'smooth',block:'start'})">RESIDENT</button>
+    <span class="menu-jump-sep">·</span>
+    <button class="menu-jump-tab" onclick="document.getElementById('beers-na-anchor').scrollIntoView({behavior:'smooth',block:'start'})">N/A</button>
+    <span class="menu-jump-sep">·</span>
+    <button class="menu-jump-tab" onclick="document.getElementById('beers-food-anchor').scrollIntoView({behavior:'smooth',block:'start'})">FOOD</button>
+  </div>
+
+  <div class="section-label" id="beers-tales-anchor">
+    <div class="section-label-text">TRACKSIDE TALES — ON TAP</div>
+    <div class="section-count">3 ON TAP</div>
+  </div>
+  <div class="beer-list" id="tales-list-beers"></div>
+
+  <div class="section-label" id="beers-resident-anchor">
     <div class="section-label-text">ON TAP · RESIDENT BEERS</div>
     <div class="section-count">3 ON TAP</div>
   </div>
   <div class="beer-list" id="regular-list"></div>
 
-  <div class="section-label">
+  <div class="section-label" id="beers-na-anchor">
     <div class="section-label-text">NON-ALCOHOLIC</div>
     <div class="section-count">2 ON TAP</div>
   </div>
   <div class="beer-list" id="na-list"></div>
 
-  <div class="section-label" id="food-anchor">
+  <div class="section-label" id="beers-food-anchor">
     <div class="section-label-text">FROM THE KITCHEN — WOODEN MATCH</div>
   </div>
   <div class="food-note">
@@ -2938,6 +4255,93 @@ body::before {
     </div>
   </div>
   <div class="beer-list" id="food-list"></div>
+</div>
+
+<!-- ====== PAGE: OUR STORY (hub) ====== -->
+<div class="page" id="page-ourstory">
+  <div class="ourstory-hero">
+    <div class="venue-eyebrow">TRACKSIDE BREWING CO.</div>
+    <div class="ourstory-title">Our Story</div>
+    <div class="ourstory-sub">The places around us are still speaking. These are some of those stories.</div>
+  </div>
+
+  <div class="ourstory-cards">
+    <div class="ourstory-card" onclick="nav('about')">
+      <div class="ourstory-card-eyebrow">THE BREWERY</div>
+      <div class="ourstory-card-title">Trackside Brewing Co.</div>
+      <div class="ourstory-card-sub">Beer, local history, and stories worth collecting.</div>
+      <div class="ourstory-card-arrow">READ →</div>
+    </div>
+    <div class="ourstory-card" onclick="nav('woodenmatch')">
+      <div class="ourstory-card-eyebrow">THIS PLACE · EST. 1868</div>
+      <div class="ourstory-card-title">The Wooden Match</div>
+      <div class="ourstory-card-sub">A former train station that stayed open for 150 years.</div>
+      <div class="ourstory-card-arrow">READ →</div>
+    </div>
+    <div class="ourstory-card" onclick="nav('tracks')">
+      <div class="ourstory-card-eyebrow">RAIL HISTORY · LEHIGH VALLEY</div>
+      <div class="ourstory-card-title">The Tracks &amp; Bethlehem</div>
+      <div class="ourstory-card-sub">Two railroads, one valley, and the city they built.</div>
+      <div class="ourstory-card-arrow">READ →</div>
+    </div>
+    <div class="ourstory-card" onclick="nav('howitworks')">
+      <div class="ourstory-card-eyebrow">THE EXPERIENCE</div>
+      <div class="ourstory-card-title">How Trackside Tales Works</div>
+      <div class="ourstory-card-sub">Scan. Unlock. Play. Collect.</div>
+      <div class="ourstory-card-arrow">OPEN →</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== PAGE: HOW TRACKSIDE TALES WORKS (within STORY tab) ====== -->
+<div class="page" id="page-howitworks">
+  <div class="hiw-hero">
+    <button class="hiw-back-btn" onclick="nav('ourstory')">← STORY</button>
+    <div class="venue-eyebrow">THE EXPERIENCE</div>
+    <div class="hiw-title">How Trackside<br>Tales Works</div>
+    <div class="hiw-sub">Scan. Unlock. Play. Collect.</div>
+  </div>
+
+  <div class="hiw-steps">
+
+    <div class="hiw-step">
+      <div class="hiw-step-num">01</div>
+      <div class="hiw-step-body">
+        <div class="hiw-step-title">Scan a Trackside Tale</div>
+        <div class="hiw-step-copy">Look for a Trackside Tales beer and scan the code on the can, menu card, or taproom sign.</div>
+      </div>
+    </div>
+
+    <div class="hiw-step">
+      <div class="hiw-step-num">02</div>
+      <div class="hiw-step-body">
+        <div class="hiw-step-title">Unlock the story</div>
+        <div class="hiw-step-copy">Each scan opens a local history Tale tied to the beer, the place, or the people behind the Lehigh Valley.</div>
+      </div>
+    </div>
+
+    <div class="hiw-step">
+      <div class="hiw-step-num">03</div>
+      <div class="hiw-step-body">
+        <div class="hiw-step-title">Earn passport stamps</div>
+        <div class="hiw-step-copy">Every unlocked Tale earns a stamp in your Guest Passport. Complete the mini-game to earn the second badge.</div>
+      </div>
+    </div>
+
+    <div class="hiw-step">
+      <div class="hiw-step-num">04</div>
+      <div class="hiw-step-body">
+        <div class="hiw-step-title">Build reward progress</div>
+        <div class="hiw-step-copy">Collected stamps move you toward preview reward tiers. Live redemption comes later through a real venue partnership.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="hiw-cta-row">
+    <button class="hiw-cta-primary" onclick="nav('scan')">START SCANNING</button>
+    <button class="hiw-cta-secondary" onclick="nav('tales')">VIEW TALES</button>
+  </div>
 </div>
 
 <!-- ====== PAGE: ABOUT ====== -->
@@ -3188,7 +4592,7 @@ body::before {
 <!-- ====== PAGE: STORY ====== -->
 <div class="page" id="page-story">
   <div class="story-nav">
-    <button class="back-btn" onclick="nav('menu')">Back to menu</button>
+    <button class="back-btn" onclick="nav('tales')">Back to Tales</button>
     <div class="story-progress"><span class="story-progress-dot"></span><span id="story-progress-txt">UNLOCKED</span></div>
   </div>
   <div id="story-content"></div>
@@ -3201,12 +4605,74 @@ body::before {
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <button class="nav-btn active" id="nav-menu" onclick="nav('menu')"><span class="nav-btn-icon">⚏</span>MENU</button>
+  <button class="nav-btn active" id="nav-tales" onclick="nav('tales')"><span class="nav-btn-icon">⚏</span>TALES</button>
+  <button class="nav-btn" id="nav-beers" onclick="nav('beers')"><span class="nav-btn-icon">◫</span>BEERS</button>
   <button class="nav-btn scan" id="nav-scan" onclick="nav('scan')"><span class="nav-btn-icon">◈</span>SCAN</button>
-  <button class="nav-btn" id="nav-profile" onclick="nav('profile')"><span class="nav-btn-icon">◉</span>PROFILE</button>
+  <button class="nav-btn" id="nav-ourstory" onclick="nav('ourstory')"><span class="nav-btn-icon">◎</span>STORY</button>
+  <button class="nav-btn" id="nav-passport" onclick="nav('passport')"><span class="nav-btn-icon">◉</span>PASSPORT</button>
+</div>
+
+<!-- UNLOCK RECEIPT — shown after stamp animation, before story opens -->
+<div id="unlock-receipt" role="dialog" aria-label="Unlock receipt">
+  <div class="receipt-card">
+    <div class="receipt-serial">
+      <span id="receipt-serial-num">TS-000000</span>
+      <span>TRACKSIDE TALES</span>
+    </div>
+    <div class="receipt-header">
+      <div class="receipt-stamp-mark" id="receipt-stamp-mark">ADDED TO<br>PASSPORT</div>
+      <div class="receipt-title" id="receipt-title">UNLOCK RECEIPT</div>
+      <div class="receipt-subtitle">THE WOODEN MATCH · BETHLEHEM, PA</div>
+    </div>
+    <div class="receipt-fields">
+      <div class="receipt-field">
+        <div class="receipt-field-label">TALE</div>
+        <div class="receipt-field-value" id="receipt-tale-name">—</div>
+      </div>
+      <div class="receipt-field">
+        <div class="receipt-field-label">STAMP</div>
+        <div class="receipt-field-value" id="receipt-stamp-value">EARNED</div>
+      </div>
+      <div class="receipt-field">
+        <div class="receipt-field-label">MINI-GAME BADGE</div>
+        <div class="receipt-field-value" id="receipt-game-value">AVAILABLE</div>
+      </div>
+      <div class="receipt-field">
+        <div class="receipt-field-label">PASSPORT PROGRESS</div>
+        <div class="receipt-field-value" id="receipt-progress">—</div>
+      </div>
+      <div class="receipt-field">
+        <div class="receipt-field-label">VENUE</div>
+        <div class="receipt-field-value" style="font-size:0.6rem">The Wooden Match · Bethlehem, PA</div>
+      </div>
+    </div>
+    <div class="receipt-passport-status" id="receipt-passport-status">Passport page updated</div>
+    <div class="receipt-footer" id="receipt-footer">Added to your Guest Passport</div>
+    <div class="receipt-cta-row">
+      <button class="receipt-cta-primary" id="receipt-continue-btn">CONTINUE TO STORY</button>
+      <button class="receipt-cta-secondary" onclick="closeReceiptToPassport()">VIEW PASSPORT</button>
+    </div>
+  </div>
+</div>
+
+<!-- TALE INTRO OVERLAY — cinematic intro per Tale, on-demand only -->
+<div id="tale-intro-overlay" role="dialog" aria-label="Tale intro">
+  <button class="tale-intro-skip" onclick="closeTaleIntro()">SKIP ×</button>
+  <div class="tale-intro-stage" id="tale-intro-stage"></div>
+  <div class="tale-intro-title-card" id="tale-intro-title-card">
+    <div class="tale-intro-eyebrow" id="tale-intro-eyebrow">TRACKSIDE TALES</div>
+    <div class="tale-intro-beer-name" id="tale-intro-beer-name"></div>
+  </div>
 </div>
 
 <!-- UNLOCK OVERLAY — PASSPORT STAMP REVEAL -->
+<!-- Branded story transition — brief overlay shown when entering a story page -->
+<div id="story-transition" aria-hidden="true">
+  <div class="story-transition-rail"></div>
+  <div class="story-transition-mark">TRACKSIDE TALES</div>
+  <div class="story-transition-sub" id="story-transition-sub">Opening the archive…</div>
+</div>
+
 <div id="unlock-overlay" role="dialog" aria-live="polite" aria-label="Tale collected">
   <div class="passport-page">
     <div class="passport-page-header" id="unlock-header">TRACKSIDE TALES · COLLECTOR'S PASSPORT</div>
@@ -3260,25 +4726,47 @@ body::before {
     <button class="game-close" onclick="closeGame()">EXIT</button>
   </div>
   <div class="game-canvas-wrap" id="game-wrap">
+    <!-- Instructions + start -->
     <div class="game-instructions" id="game-instructions"></div>
     <div class="game-stats" id="game-stats" style="display:none">
-      <div class="game-stat"><div class="game-stat-label">SCORE</div><div class="game-stat-val" id="game-score">0</div></div>
+      <div class="game-stat"><div class="game-stat-label">PROGRESS</div><div class="game-stat-val" id="game-score">0</div></div>
       <div class="game-stat"><div class="game-stat-label">TIME</div><div class="game-stat-val" id="game-time">30</div></div>
     </div>
+    <!-- Progress bar -->
+    <div class="game-progress-bar-wrap" id="game-progress-bar-wrap" style="display:none">
+      <div class="game-progress-bar-fill" id="game-progress-bar-fill"></div>
+    </div>
     <div id="game-play-area"></div>
-    <button class="game-start-btn" id="game-start" onclick="startCurrentGame()">BEGIN</button>
+    <button class="game-start-btn" id="game-start" onclick="startCurrentGame()">BEGIN CHALLENGE</button>
 
-    <div class="game-success" id="game-success">
-      <div class="game-success-badge" id="game-success-badge"></div>
-      <div class="game-success-title" id="game-success-title">VICTORY</div>
-      <div class="game-success-msg" id="game-success-msg">Badge earned.</div>
-      <button class="game-start-btn" onclick="closeGame()">CLAIM BADGE</button>
+    <!-- Already earned state -->
+    <div class="game-already-earned" id="game-already-earned" style="display:none">
+      <div class="game-ae-icon">◈</div>
+      <div class="game-ae-title">Badge already earned</div>
+      <div class="game-ae-sub" id="game-ae-sub">You completed this challenge. The badge is in your Passport.</div>
+      <div class="game-ae-btns">
+        <button class="game-start-btn" style="margin-top:0.5rem" onclick="replayGameFromEarned()">REPLAY CHALLENGE</button>
+        <button class="game-ae-passport-btn" onclick="closeGame(); nav('passport')">VIEW PASSPORT</button>
+      </div>
     </div>
 
+    <!-- Success state -->
+    <div class="game-success" id="game-success">
+      <div class="game-success-badge" id="game-success-badge"></div>
+      <div class="game-success-eyebrow">SECOND BADGE EARNED</div>
+      <div class="game-success-title" id="game-success-title">CHALLENGE COMPLETE</div>
+      <div class="game-success-msg" id="game-success-msg">Your Passport page has been completed for this Tale.</div>
+      <div class="game-success-btns">
+        <button class="game-start-btn" style="margin-top:0.5rem" onclick="closeGame(); nav('passport')">VIEW PASSPORT</button>
+        <button class="game-success-story-btn" onclick="closeGame()">BACK TO STORY</button>
+      </div>
+    </div>
+
+    <!-- Fail state -->
     <div class="game-fail" id="game-fail">
-      <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">✕</div>
-      <div style="font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; color: var(--parchment); letter-spacing: 0.1em; margin-bottom: 0.5rem;">NOT QUITE</div>
-      <div style="font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.9rem; color: var(--steam); margin-bottom: 1.5rem; text-align: center; max-width: 300px;">Try again — history doesn't come easy.</div>
+      <div class="game-fail-mark">✕</div>
+      <div class="game-fail-title">NOT QUITE</div>
+      <div class="game-fail-msg">History doesn't come easy. Try again.</div>
       <button class="game-start-btn" onclick="retryGame()">TRY AGAIN</button>
     </div>
   </div>
@@ -3704,9 +5192,30 @@ const CAN_IMAGES = {
   ROUNDHOUSE: 'data:image/webp;base64,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',
 };
 
+// ================== SUPABASE CONFIG ==================
+// Placeholders — replace before enabling remote content.
+// Get these from: Supabase Dashboard → Project Settings → API
+const SUPABASE_URL     = 'https://uuuugwfkequtgytwwuat.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_mLwsXF4lYsn7LNFRPcxUbQ_rXhyNpHJ';
+const USE_REMOTE_CONTENT = true; // remote content enabled
+
 // ================== DATA ==================
 
-const TALES = [
+// BACKEND-READINESS NOTES (future API mapping):
+// • TALES       → will map to `tales` table (id, name, story_content, beer_id, venue_id)
+// • REGULARS    → will map to `beers` table (non-tale beers, venue_id, tap_status)
+// • NON_ALC     → will map to `beers` table with category='non_alcoholic'
+// • FOOD        → will map to `venue_menu_items` table (venue_id, category, name, desc)
+// • state.unlocked      → will map to `user_tale_unlocks` (user_id, tale_id, unlocked_at)
+// • state.scanBadges    → will map to `user_badges` (user_id, badge_type='scan', tale_id)
+// • state.gameBadges    → will map to `user_badges` (user_id, badge_type='game', tale_id)
+// • state.collectedDates → derived from user_tale_unlocks.unlocked_at
+// • TALE.intro  → will map to `tale_intro_assets` (tale_id, asset_type, asset_url)
+
+// These are `let` so loadAppContent() can replace them with remote data.
+// With USE_REMOTE_CONTENT = false they are populated by the local defaults below.
+
+const _LOCAL_TALES = [
   {
     id: 'wa-lager',
     name: 'W.A. Lager',
@@ -3886,23 +5395,217 @@ const TALES = [
   }
 ];
 
-const REGULARS = [
+const _LOCAL_REGULARS = [
   { name: 'Trackside Lager', abbr: 'TRACKSIDE', image: CAN_IMAGES.TRACKSIDE, style: 'American Lager', abv: '4.9%', ibu: '20', tasting: "Our staple. Crisp, clean, sessionable — the beer every brewery needs to get right. This is ours." },
   { name: 'Bethlehem Steel Ale', abbr: 'STEEL ALE', image: CAN_IMAGES.BETHLEHEM, style: 'American Amber Ale', abv: '5.6%', ibu: '28', tasting: "A tribute to the furnaces that built America. Rich caramel malt, medium body, hops that bite just enough." },
   { name: '610 Pilsner', abbr: '610', image: CAN_IMAGES.SIX10, style: 'Czech Pilsner', abv: '5.0%', ibu: '35', tasting: "Named for the highway that cuts through the valley. Bohemian floor-malted pilsner, Saaz hops, a pour that honors the classics." }
 ];
 
-const NON_ALC = [
+const _LOCAL_NON_ALC = [
   { name: "Signalman's Citrus Wheat", abbr: 'SIGNALMAN', image: CAN_IMAGES.SIGNALMANS, style: 'Non-Alcoholic Wheat Ale', abv: '<0.5%', ibu: '12', tasting: "For the designated drivers and the morning shifts. Bright citrus over soft wheat malt — refreshment without compromise." },
   { name: 'Roundhouse Red', abbr: 'ROUNDHOUSE', image: CAN_IMAGES.ROUNDHOUSE, style: 'Non-Alcoholic Amber', abv: '<0.5%', ibu: '22', tasting: "All the caramel warmth of an amber ale, zero alcohol. Our answer to the question: why shouldn't everyone at the table drink well?" }
 ];
 
-const FOOD = [
+const _LOCAL_FOOD = [
   { name: 'Other Side Of The Pillow', desc: 'Deep fried or sautéed house potato and Cooper cheese pierogies, caramelized onions, sour cream, red wine demi-glace.' },
   { name: 'CNJ Railyard', desc: 'Organic super greens, roasted red peppers, carrot ribbons, roasted grape tomatoes, shaved parmesan, balsamic honey vinaigrette.' },
   { name: 'Broad Street Bully', desc: 'Shaved ribeye, caramelized onions, Cooper Sharp, Egypt Star Bakery French bread.' },
   { name: 'Burger Flight', desc: 'Three sliders: Double Wide, Mule Kick, Smash Bros.' }
 ];
+
+// Working references — replaced by loadAppContent() if remote content loads.
+// Default to local so the app is usable before loadAppContent() resolves.
+let TALES    = _LOCAL_TALES;
+let REGULARS = _LOCAL_REGULARS;
+let NON_ALC  = _LOCAL_NON_ALC;
+let FOOD     = _LOCAL_FOOD;
+
+// Reward tiers: local fallback (mirrors reward_tiers table seed).
+// Only used if remote content loads — otherwise renderRewards() uses hardcoded tiers.
+let REWARD_TIERS_REMOTE = null;
+
+// Coming Next: local fallback for the Coming Next section.
+// The HTML for coming-next cards is currently static; remote can override
+// via renderComingNextFromRemote() when loaded.
+let COMING_NEXT_REMOTE = null;
+
+// ================== SUPABASE CONTENT ADAPTER ==================
+// Uses Supabase REST API (plain fetch, no SDK required).
+// Supabase exposes every table at: {SUPABASE_URL}/rest/v1/{table}
+// with the anon key in the Authorization and apikey headers.
+
+// ---- Fetch helper ----
+async function supabaseFetch(table, params = '') {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?${params}`;
+  const res = await fetch(url, {
+    headers: {
+      'apikey':        SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Accept':        'application/json',
+    }
+  });
+  if (!res.ok) throw new Error(`[trackside] Supabase fetch failed: ${table} ${res.status}`);
+  return res.json();
+}
+
+// ---- Normalize remote → local shape ----
+// Each function maps a Supabase row to the object shape the app expects.
+// Only the fields the app actually reads are mapped — extras are ignored.
+
+function _normalizeTale(row) {
+  // Map: tales row + joined beer row → TALES item shape
+  // The REST join uses ?select=*,beers(*) syntax — beer fields come nested.
+  const beer = row.beers || {};
+  // Preserve local tales array for fields not yet in Supabase
+  // (mini-game config, intro SVGs, seal images, pins, story paragraphs).
+  // We patch the matching local tale so rich content is never lost.
+  const local = _LOCAL_TALES.find(t => t.id === row.slug) || {};
+  return {
+    ...local,                             // local data as base (keeps game, intro, pins, etc.)
+    id:         row.slug,
+    name:       beer.name  || local.name,
+    style:      beer.style || local.style,
+    abv:        beer.abv   ? beer.abv + '%' : local.abv,
+    ibu:        beer.ibu   ? String(beer.ibu) : local.ibu,
+    tagline:    beer.short_description || local.tagline,
+    year:       row.year   || local.year,
+    chapter:    row.chapter_label || local.chapter,
+    title:      row.title  || local.title,
+    tapStatus:  'on-tap',                 // phase 2: query venue_beers for live tap status
+  };
+}
+
+function _normalizeBeer(row, category) {
+  // Map: beers row → REGULARS / NON_ALC item shape
+  const local = [..._LOCAL_REGULARS, ..._LOCAL_NON_ALC].find(b => b.name === row.name) || {};
+  return {
+    ...local,
+    name:    row.name,
+    style:   row.style   || local.style,
+    abv:     row.abv     ? row.abv + '%' : local.abv,
+    ibu:     row.ibu     ? String(row.ibu) : local.ibu,
+    tasting: row.description || local.tasting,
+    abbr:    local.abbr  || row.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,6),
+    image:   local.image || null,
+  };
+}
+
+function _normalizeFood(row) {
+  return { name: row.name, desc: row.description || '' };
+}
+
+function _normalizeRewardTier(row) {
+  return {
+    threshold: row.stamps_required,
+    name:      row.name,
+    badge:     row.is_live ? 'REDEEM' : 'PREVIEW REWARD',
+    hint:      `Earn ${row.stamps_required} stamps to ${row.is_live ? 'redeem' : 'preview'} this reward.`,
+  };
+}
+
+function _normalizeComingNext(row) {
+  return {
+    name:   row.name,
+    teaser: row.teaser || 'A future Trackside Tale.',
+    status: row.status || 'coming_soon',
+  };
+}
+
+// ---- normalizeRemoteContent ----
+function normalizeRemoteContent(remote) {
+  const { tales, beers, food, rewards, comingNext } = remote;
+
+  const normalizedTales = (tales || [])
+    .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
+    .map(_normalizeTale)
+    .filter(t => t.id);
+
+  const normalizedRegulars = (beers || [])
+    .filter(b => b.category === 'resident')
+    .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
+    .map(b => _normalizeBeer(b, 'resident'));
+
+  const normalizedNA = (beers || [])
+    .filter(b => b.category === 'na')
+    .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
+    .map(b => _normalizeBeer(b, 'na'));
+
+  const normalizedFood = (food || [])
+    .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
+    .map(_normalizeFood);
+
+  const normalizedRewards = (rewards || [])
+    .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
+    .map(_normalizeRewardTier);
+
+  const normalizedComingNext = (comingNext || [])
+    .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
+    .map(_normalizeComingNext);
+
+  return {
+    tales:      normalizedTales.length    ? normalizedTales    : null,
+    regulars:   normalizedRegulars.length ? normalizedRegulars : null,
+    na:         normalizedNA.length       ? normalizedNA       : null,
+    food:       normalizedFood.length     ? normalizedFood     : null,
+    rewards:    normalizedRewards.length  ? normalizedRewards  : null,
+    comingNext: normalizedComingNext.length ? normalizedComingNext : null,
+  };
+}
+
+// ---- useLocalContentFallback ----
+function useLocalContentFallback() {
+  TALES    = _LOCAL_TALES;
+  REGULARS = _LOCAL_REGULARS;
+  NON_ALC  = _LOCAL_NON_ALC;
+  FOOD     = _LOCAL_FOOD;
+  REWARD_TIERS_REMOTE = null;
+  COMING_NEXT_REMOTE  = null;
+}
+
+// ---- loadRemoteContent ----
+async function loadRemoteContent() {
+  const [tales, beers, food, rewards, comingNext] = await Promise.all([
+    // tales joined with their beer row for name/style/abv/ibu
+    supabaseFetch('tales',             'select=*,beers(*)&is_active=eq.true&order=sort_order'),
+    supabaseFetch('beers',             'select=*&is_active=eq.true&order=sort_order'),
+    supabaseFetch('food_items',        'select=*&is_active=eq.true&order=sort_order'),
+    supabaseFetch('reward_tiers',      'select=*&order=sort_order'),
+    supabaseFetch('coming_next_tales', 'select=*&order=sort_order'),
+  ]);
+  return { tales, beers, food, rewards, comingNext };
+}
+
+// ---- loadAppContent — called at init ----
+async function loadAppContent() {
+  if (!USE_REMOTE_CONTENT) {
+    useLocalContentFallback();
+    return;
+  }
+  // Guard: if placeholders haven't been replaced, skip remote
+  if (SUPABASE_URL === 'PASTE_SUPABASE_URL_HERE' || SUPABASE_ANON_KEY === 'PASTE_SUPABASE_ANON_KEY_HERE') {
+    logWarn('[trackside] Supabase keys not configured — using local fallback');
+    useLocalContentFallback();
+    return;
+  }
+  try {
+    const raw        = await loadRemoteContent();
+    const normalized = normalizeRemoteContent(raw);
+    // Only replace a collection if remote returned valid data
+    if (normalized.tales)    TALES    = normalized.tales;
+    if (normalized.regulars) REGULARS = normalized.regulars;
+    if (normalized.na)       NON_ALC  = normalized.na;
+    if (normalized.food)     FOOD     = normalized.food;
+    if (normalized.rewards)  REWARD_TIERS_REMOTE = normalized.rewards;
+    if (normalized.comingNext) COMING_NEXT_REMOTE = normalized.comingNext;
+    logInfo('[trackside] Remote content loaded:', {
+      tales: TALES.length, beers: REGULARS.length + NON_ALC.length,
+      food: FOOD.length
+    });
+  } catch (err) {
+    logWarn('[trackside] Remote content unavailable — using local fallback', err.message || err);
+    useLocalContentFallback();
+  }
+}
 
 // ================== STATE ==================
 const state = {
@@ -4004,8 +5707,10 @@ function renderBeerList(container, items, opts = {}) {
   }).join('');
 }
 
-function renderFood() {
-  document.getElementById('food-list').innerHTML = FOOD.map(f => `
+function renderFood(containerId = 'food-list') {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = FOOD.map(f => `
     <div class="food-item">
       <div class="food-info">
         <div class="food-name">${f.name}</div>
@@ -4026,9 +5731,32 @@ function renderDemoButtons() {
 }
 
 function renderStory(tale) {
-  document.getElementById('story-progress-txt').textContent = 'UNLOCKED';
+  const unlocked  = state.unlocked.has(tale.id);
   const scanBadge = state.scanBadges.has(tale.id);
   const gameBadge = state.gameBadges.has(tale.id);
+
+  document.getElementById('story-progress-txt').textContent = unlocked ? 'UNLOCKED' : 'LOCKED';
+
+  // ── 4. Locked state — do not reveal story content
+  if (!unlocked) {
+    document.getElementById('story-content').innerHTML = `
+      <div class="story-hero">
+        <div class="story-hero-bg"></div>
+        <div class="story-hero-year">${tale.year}</div>
+        <div class="story-hero-content">
+          <div class="story-chapter">${tale.chapter}</div>
+          <h1 class="story-title">${tale.title}</h1>
+        </div>
+      </div>
+      <div class="story-locked-state">
+        <div class="story-locked-icon">◈</div>
+        <div class="story-locked-title">This Tale is still sealed.</div>
+        <div class="story-locked-copy">Scan this Trackside Tale at The Wooden Match to unlock the story, stamp your Passport, and play the mini-game.</div>
+        <button class="story-locked-cta" onclick="nav('scan')">START SCANNING</button>
+      </div>
+    `;
+    return;
+  }
 
   document.getElementById('story-content').innerHTML = `
     <div class="story-hero">
@@ -4047,6 +5775,15 @@ function renderStory(tale) {
         <div class="story-chapter">${tale.chapter}</div>
         <h1 class="story-title">${tale.title}</h1>
       </div>
+    </div>
+
+    <!-- 1. Identity strip — beer name + unlocked status -->
+    <div class="story-identity-strip">
+      <div>
+        <div class="story-beer-label">${tale.style} · ABV ${tale.abv} · IBU ${tale.ibu}</div>
+        <div class="story-beer-name">${tale.name}</div>
+      </div>
+      <div class="story-unlocked-badge">✓ UNLOCKED</div>
     </div>
 
     <div class="story-body">
@@ -4098,70 +5835,41 @@ function renderStory(tale) {
                 <rect width="30" height="22" fill="none" stroke="#6b4e22" stroke-width="0.4" opacity="0.18"/>
               </pattern>
             </defs>
-
-            <!-- land fill -->
             <rect x="0" y="0" width="360" height="220" fill="#0e0b05"/>
-
-            <!-- subtle block grid across central zone — Allen's 42-block plan -->
             <rect x="60" y="44" width="240" height="154" fill="url(#blockgrid)" opacity="0.7"/>
-
-            <!-- stronger grid lines for main axes — Hamilton St (E-W) and 7th St (N-S) -->
-            <!-- Hamilton St — central E-W axis -->
             <line x1="40" y1="121" x2="320" y2="121" stroke="#8a6830" stroke-width="1.6" opacity="0.38"/>
-            <!-- 7th St — central N-S axis -->
             <line x1="180" y1="38" x2="180" y2="188" stroke="#8a6830" stroke-width="1.4" opacity="0.32"/>
-            <!-- secondary E-W streets -->
             <line x1="60" y1="99" x2="300" y2="99" stroke="#6b4e22" stroke-width="0.8" opacity="0.22"/>
             <line x1="60" y1="143" x2="300" y2="143" stroke="#6b4e22" stroke-width="0.8" opacity="0.22"/>
             <line x1="60" y1="165" x2="300" y2="165" stroke="#6b4e22" stroke-width="0.8" opacity="0.18"/>
             <line x1="60" y1="77" x2="300" y2="77" stroke="#6b4e22" stroke-width="0.8" opacity="0.18"/>
-            <!-- secondary N-S streets -->
             <line x1="120" y1="44" x2="120" y2="188" stroke="#6b4e22" stroke-width="0.8" opacity="0.22"/>
             <line x1="240" y1="44" x2="240" y2="188" stroke="#6b4e22" stroke-width="0.8" opacity="0.22"/>
             <line x1="150" y1="44" x2="150" y2="188" stroke="#6b4e22" stroke-width="0.6" opacity="0.16"/>
             <line x1="210" y1="44" x2="210" y2="188" stroke="#6b4e22" stroke-width="0.6" opacity="0.16"/>
             <line x1="90" y1="44" x2="90" y2="188" stroke="#6b4e22" stroke-width="0.6" opacity="0.15"/>
             <line x1="270" y1="44" x2="270" y2="188" stroke="#6b4e22" stroke-width="0.6" opacity="0.15"/>
-
-            <!-- Market Square — highlighted block at Hamilton x 7th -->
             <rect x="165" y="108" width="30" height="26" fill="rgba(160,120,8,0.13)" stroke="#a07808" stroke-width="0.9" opacity="0.7"/>
-            <!-- faint inner cross marking the square center -->
             <line x1="180" y1="110" x2="180" y2="132" stroke="#a07808" stroke-width="0.5" opacity="0.3"/>
             <line x1="167" y1="121" x2="193" y2="121" stroke="#a07808" stroke-width="0.5" opacity="0.3"/>
-
-            <!-- Jordan Creek — northwest, flowing toward Allen's Lodge area -->
             <path d="M28 22 Q44 38 52 54 Q60 70 58 86 Q56 98 62 108" stroke="#1c3d52" stroke-width="3.5" fill="none" opacity="0.55" stroke-linecap="round"/>
-            <!-- Jordan Creek label ghost -->
             <text x="18" y="68" font-size="5.5" fill="#1c3d52" opacity="0.35" font-family="serif" font-style="italic" transform="rotate(-52,18,68)">Jordan Creek</text>
-
-            <!-- Lehigh River — runs along southern edge, broad and dominant -->
             <path d="M0 196 Q60 188 120 192 Q180 196 240 190 Q290 184 360 194" stroke="#1a3a4a" stroke-width="6" fill="none" opacity="0.5" stroke-linecap="round"/>
-            <!-- second bank line for river mass -->
             <path d="M0 204 Q60 198 120 202 Q180 207 240 200 Q295 193 360 203" stroke="#1a3a4a" stroke-width="3" fill="none" opacity="0.28" stroke-linecap="round"/>
-
-            <!-- town boundary / tract outline (faint dashed) -->
             <rect x="58" y="42" width="244" height="152" fill="none" stroke="#7a5c28" stroke-width="0.9" stroke-dasharray="5,4" opacity="0.22"/>
-
-            <!-- North arrow -->
             <g transform="translate(328,28)" opacity="0.55">
               <line x1="0" y1="14" x2="0" y2="-2" stroke="#8a6830" stroke-width="1.2"/>
               <polygon points="0,-6 -3,2 3,2" fill="#8a6830"/>
               <text x="0" y="20" font-size="6" fill="#8a6830" text-anchor="middle" font-family="serif" letter-spacing="0.05em">N</text>
             </g>
-
-            <!-- orientation label -->
             <text x="12" y="212" font-size="5" fill="#6b4e22" opacity="0.4" font-family="'Source Code Pro', monospace" letter-spacing="0.12em">1762 GRID REFERENCE</text>
           </svg>
           ` : tale.id === 'packer-pils' ? `
-          <!-- Packer Pilsner: LVRR mainline reference -->
           <svg viewBox="0 0 360 220" class="map-underlay">
             <rect x="0" y="0" width="360" height="220" fill="#0e0b05"/>
-            <!-- Lehigh River running broadly east-west -->
             <path d="M0 110 Q80 104 160 112 Q240 120 360 108" stroke="#1a3a4a" stroke-width="8" fill="none" opacity="0.45" stroke-linecap="round"/>
             <path d="M0 120 Q80 114 160 122 Q240 130 360 118" stroke="#1a3a4a" stroke-width="4" fill="none" opacity="0.22" stroke-linecap="round"/>
-            <!-- LVRR rail line (dashed) -->
             <path d="M0 132 Q80 126 160 134 Q240 142 360 130" stroke="#6b4e22" stroke-width="2" fill="none" opacity="0.55" stroke-dasharray="8,4"/>
-            <!-- tie marks -->
             <line x1="40" y1="128" x2="40" y2="136" stroke="#6b4e22" stroke-width="1.5" opacity="0.4"/>
             <line x1="80" y1="130" x2="80" y2="138" stroke="#6b4e22" stroke-width="1.5" opacity="0.4"/>
             <line x1="120" y1="131" x2="120" y2="139" stroke="#6b4e22" stroke-width="1.5" opacity="0.4"/>
@@ -4170,71 +5878,51 @@ function renderStory(tale) {
             <line x1="240" y1="136" x2="240" y2="144" stroke="#6b4e22" stroke-width="1.5" opacity="0.4"/>
             <line x1="280" y1="134" x2="280" y2="142" stroke="#6b4e22" stroke-width="1.5" opacity="0.4"/>
             <line x1="320" y1="132" x2="320" y2="140" stroke="#6b4e22" stroke-width="1.5" opacity="0.4"/>
-            <!-- faint terrain -->
             <path d="M0 60 Q60 48 120 56 Q180 64 240 52 Q300 40 360 58" stroke="#3a2a0a" stroke-width="1" fill="none" opacity="0.2"/>
-            <path d="M0 80 Q60 68 120 74 Q200 80 260 70 Q310 62 360 76" stroke="#3a2a0a" stroke-width="0.7" fill="none" opacity="0.15"/>
             <text x="12" y="212" font-size="5" fill="#6b4e22" opacity="0.4" font-family="'Source Code Pro', monospace" letter-spacing="0.12em">LVRR MAINLINE · EST. 1855</text>
           </svg>
           ` : `
-          <!-- Wooden Match: station building reference -->
           <svg viewBox="0 0 360 220" class="map-underlay">
             <rect x="0" y="0" width="360" height="220" fill="#0e0b05"/>
-            <!-- Lehigh River -->
             <path d="M0 158 Q80 150 160 156 Q240 162 360 152" stroke="#1a3a4a" stroke-width="7" fill="none" opacity="0.45" stroke-linecap="round"/>
             <path d="M0 167 Q80 159 160 165 Q240 171 360 161" stroke="#1a3a4a" stroke-width="3" fill="none" opacity="0.22" stroke-linecap="round"/>
-            <!-- Lehigh St running E-W -->
             <line x1="20" y1="110" x2="340" y2="110" stroke="#6b4e22" stroke-width="1.5" opacity="0.3"/>
-            <!-- CNJ rail line -->
             <path d="M0 130 Q80 124 160 130 Q240 136 360 126" stroke="#6b4e22" stroke-width="1.8" fill="none" opacity="0.45" stroke-dasharray="10,5"/>
-            <!-- station building footprint -->
             <rect x="148" y="94" width="64" height="36" fill="rgba(160,120,8,0.1)" stroke="#a07808" stroke-width="1" opacity="0.7"/>
             <rect x="154" y="100" width="52" height="24" fill="none" stroke="#a07808" stroke-width="0.5" opacity="0.4"/>
-            <!-- platform -->
             <rect x="144" y="130" width="72" height="8" fill="rgba(106,78,34,0.2)" stroke="#6b4e22" stroke-width="0.6" opacity="0.5"/>
             <text x="12" y="212" font-size="5" fill="#6b4e22" opacity="0.4" font-family="'Source Code Pro', monospace" letter-spacing="0.12em">CENTRAL RR OF NJ · BETHLEHEM · 1868</text>
           </svg>
           `}
-          ${tale.pins.map((p, i) => `
-            <div class="map-pin" style="left:${p.x}%;top:${p.y}%" onclick="showPin(${i})">
+          ${tale.pins.map((pin, i) => `
+            <div class="map-pin" style="left:${pin.x}%;top:${pin.y}%" onclick="showPin(${i})">
               <div class="map-pin-dot${i === 0 ? ' pin-primary' : ''}"></div>
               <div class="map-pin-pulse"></div>
-              <div class="map-pin-label">${p.label}</div>
+              <div class="map-pin-label">${pin.label}</div>
             </div>
           `).join('')}
         </div>
-        <div class="location-panel" id="location-panel"></div>
+        <div id="location-panel" class="location-panel"></div>
       </div>
 
-      <div class="timeline">
+      ${tale.timeline ? `
+      <div class="timeline-section">
         <div class="timeline-label">A LIFE IN THE VALLEY</div>
-        ${tale.timeline.map(t => `
-          <div class="timeline-item">
-            <div class="timeline-dot ${t.major ? 'major' : ''}"></div>
-            <div class="timeline-content">
-              <div class="timeline-year">${t.year}</div>
-              <div class="timeline-event">${t.event}</div>
-              <div class="timeline-detail">${t.detail}</div>
+        ${tale.timeline.map(e => `
+          <div class="timeline-event${e.major ? ' major' : ''}">
+            <div class="timeline-year">${e.year}</div>
+            <div class="timeline-event-content">
+              <div class="timeline-event-title">${e.event}</div>
+              ${e.detail ? `<div class="timeline-event-detail">${e.detail}</div>` : ''}
             </div>
-          </div>
-        `).join('')}
-      </div>
-
-      ${tale.stillHere && tale.stillHere.length ? `
-      <div class="still-here">
-        <div class="still-here-label">STILL HERE TODAY</div>
-        ${tale.stillHere.map(s => `
-          <div class="still-here-item">
-            <div class="still-here-place">${s.place}</div>
-            <div class="still-here-detail">${s.detail}</div>
           </div>
         `).join('')}
       </div>` : ''}
 
-      <!-- SCAN BADGE -->
-      <div class="collectible">
+      <div class="collectible-section">
+        <div class="collectible-label">BADGE 1/2 · SCAN BADGE</div>
+        <h3 class="collectible-title">${tale.scanBadge.title}</h3>
         <div class="collectible-icon">${renderIcon(tale.scanBadge.icon, 'ts-icon-lg')}</div>
-        <div class="collectible-title">BADGE 1/2 · ${tale.scanBadge.title}</div>
-        <div class="collectible-desc">${tale.scanBadge.desc}</div>
         ${scanBadge
           ? `<button class="collectible-btn claimed">✓ IN YOUR PASSPORT</button>`
           : state.user
@@ -4243,16 +5931,54 @@ function renderStory(tale) {
         }
       </div>
 
-      <!-- MINI GAME -->
+      <!-- 5. Mini-game — clearer context -->
       <div class="minigame-section">
         <div class="minigame-label">INTERACTIVE · BADGE 2/2</div>
         <h3 class="minigame-title">${tale.game.title}</h3>
+        ${gameBadge
+          ? `<p class="minigame-context">Both badges are now marked in your Trackside Passport.</p>`
+          : `<p class="minigame-context">Complete this short challenge to earn the second badge for this Tale.</p>`
+        }
         <p class="minigame-sub">${tale.game.instructions}</p>
         ${gameBadge
           ? `<button class="minigame-btn completed">✓ ${tale.gameBadge.title.toUpperCase()} — EARNED</button>`
           : `<button class="minigame-btn" onclick="openGame('${tale.id}')">PLAY TO EARN · ${renderIcon(tale.gameBadge.icon, 'ts-icon-sm')}</button>`
         }
       </div>
+
+      <!-- 2. Action row — watch intro + share + hint -->
+      <div>
+        <div class="story-action-row">
+          <button class="watch-intro-btn" onclick="playTaleIntro('${tale.id}')">
+            ${_introWatched.has(tale.id) ? '▶ REPLAY INTRO' : '▶ WATCH INTRO'}
+          </button>
+          <button class="share-tale-btn" onclick="shareTale('${tale.id}')">↗ SHARE TALE</button>
+        </div>
+        <div class="story-action-hint">Intro sets the scene — it doesn't reveal the full story.</div>
+      </div>
+
+      <!-- 3. Next Action panel -->
+      ${gameBadge
+        ? `<div class="story-next-action complete">
+            <div class="story-next-label">PASSPORT STATUS</div>
+            <div class="story-next-title">Passport page complete</div>
+            <div class="story-next-copy">Both badges are marked in your Trackside Passport.</div>
+            <div class="story-next-btns">
+              <button class="story-next-primary gold" onclick="nav('passport')">VIEW PASSPORT</button>
+              <button class="story-next-secondary" onclick="nav('scan')">SCAN ANOTHER TALE</button>
+            </div>
+          </div>`
+        : `<div class="story-next-action">
+            <div class="story-next-label">NEXT STEP</div>
+            <div class="story-next-title">Earn the second badge</div>
+            <div class="story-next-copy">Complete the mini-game to finish this Passport page.</div>
+            <div class="story-next-btns">
+              <button class="story-next-primary" onclick="openGame('${tale.id}')">PLAY MINI-GAME</button>
+              <button class="story-next-secondary" onclick="nav('passport')">VIEW PASSPORT</button>
+            </div>
+          </div>`
+      }
+
     </div>
   `;
 }
@@ -4282,6 +6008,15 @@ function renderPassport() {
           const stampCount = (scanStamp ? 1 : 0) + (gameStamp ? 1 : 0);
           const collected = state.collectedDates[t.id];
           const isOnTap = t.tapStatus === 'on-tap';
+
+          // Contextual helper for locked/partial entries
+          let lockedHelper = '';
+          if (!unlocked) {
+            lockedHelper = `<div class="passport-entry-helper">Scan a Trackside Tale to earn this stamp.</div>`;
+          } else if (unlocked && !gameStamp) {
+            lockedHelper = `<div class="passport-entry-helper">Complete the mini-game to earn the second badge.</div>`;
+          }
+
           return `
             <div class="passport-entry ${unlocked ? '' : 'locked'}${!isOnTap && unlocked ? ' retired' : ''}" ${unlocked ? `onclick="openTale('${t.id}')"` : ''}>
               <div class="passport-stamp">
@@ -4300,12 +6035,21 @@ function renderPassport() {
                     ? (isOnTap ? 'ON TAP' : 'RETIRED TALE')
                     : 'SCAN A CAN TO UNLOCK'}
                 </div>
+                ${lockedHelper}
               </div>
               ${unlocked ? '<div class="passport-entry-arrow">→</div>' : ''}
             </div>
           `;
         }).join('')}
       </div>
+
+      ${unlockedList.length === 0 ? `
+        <div class="passport-empty-state">
+          <div class="passport-empty-title">Your Passport is ready</div>
+          <div class="passport-empty-body">Scan a Trackside Tale to earn your first stamp and start collecting stories.</div>
+          <button class="passport-empty-cta" onclick="nav('scan')">START SCANNING</button>
+        </div>
+      ` : ''}
 
       <div class="passport-note">
         Your passport keeps every story you've collected — even after a beer rotates off tap. Once it's yours, it's yours forever.
@@ -4315,48 +6059,508 @@ function renderPassport() {
 }
 
 function renderRewards() {
-  const totalBadges = state.scanBadges.size + state.gameBadges.size;
-  const milestones = [
-    { count: 6,  icon: '◈', name: 'Trackside Sticker Pack', desc: '6 badges' },
-    { count: 12, icon: '🍺', name: 'Trackside Tasting Glass', desc: '12 badges' },
-    { count: 18, icon: '🎽', name: 'Free Pour + Trackside Tee', desc: '18 badges' },
-    { count: 24, icon: '🏆', name: 'Mug Club Perk', desc: '24 badges' },
+  const stamps = state.scanBadges.size + state.gameBadges.size;
+  const MAX_STAMPS = 12;
+  const pct = Math.min(100, Math.round((stamps / MAX_STAMPS) * 100));
+  const tiers = [
+    { threshold: 3,  icon: '◈', name: 'Early Release Preview',    badge: 'PREVIEW REWARD', hint: 'Earn 3 stamps to preview this reward.' },
+    { threshold: 6,  icon: '◉', name: 'Trackside Glassware Perk', badge: 'PREVIEW REWARD', hint: 'Earn 6 stamps to unlock this preview tier.' },
+    { threshold: 12, icon: '✦', name: 'Founders Passport Badge',  badge: 'COMING SOON',    hint: 'Earn 12 stamps to complete the Founders Passport Badge tier.' },
   ];
+  const nextIdx = tiers.findIndex(t => stamps < t.threshold);
+
+  // Empty state when no stamps yet
+  if (stamps === 0) {
+    return `
+      <div class="taproom-rewards-card">
+        <div class="taproom-rewards-header">
+          <div class="taproom-rewards-title">TAPROOM REWARDS</div>
+          <div class="taproom-rewards-count">0 / ${MAX_STAMPS} STAMPS</div>
+        </div>
+        <div class="rewards-empty-state">
+          <div class="rewards-empty-title">No stamps yet</div>
+          <div class="rewards-empty-body">Unlock a Tale to begin reward progress. Each scan and mini-game adds a stamp toward taproom rewards.</div>
+          <button class="rewards-empty-cta" onclick="nav('scan')">SCAN A TALE</button>
+        </div>
+        <div class="taproom-rewards-note">Collect Tale stamps to move toward taproom rewards. Redemption is part of the partnership preview — no live redemption yet.</div>
+      </div>
+    `;
+  }
+
   return `
-    <div class="rewards-section">
-      <div class="rewards-label">COLLECTOR REWARDS</div>
-      <div class="rewards-progress">${totalBadges} / 24 BADGES EARNED</div>
-      <div class="reward-ladder">
-        ${milestones.map(m => {
-          const earned = totalBadges >= m.count;
-          return `<div class="reward-rung ${earned ? 'earned' : 'locked'}">
-            <div class="reward-milestone">${m.icon}</div>
-            <div class="reward-info">
-              <div class="reward-threshold">${m.desc.toUpperCase()}</div>
-              <div class="reward-name">${m.name}</div>
+    <div class="taproom-rewards-card">
+      <div class="taproom-rewards-header">
+        <div class="taproom-rewards-title">TAPROOM REWARDS</div>
+        <div class="taproom-rewards-count">${stamps} / ${MAX_STAMPS} STAMPS</div>
+      </div>
+      <div class="rewards-bar-track">
+        <div class="rewards-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="rewards-tier-list">
+        ${tiers.map((t, i) => {
+          const reached = stamps >= t.threshold;
+          const isNext  = i === nextIdx;
+          const cls = reached ? 'reached' : isNext ? 'next-up' : '';
+          return `<div class="rewards-tier ${cls}">
+            <div class="rewards-tier-icon">${t.icon}</div>
+            <div class="rewards-tier-info">
+              <div class="rewards-tier-name">${t.name}</div>
+              <div class="rewards-tier-threshold">${reached ? `${t.threshold} STAMPS · EARNED` : isNext ? `${t.threshold} STAMPS · NEXT MILESTONE` : t.hint}</div>
             </div>
+            <div class="rewards-tier-badge">${reached ? 'EARNED' : t.badge}</div>
           </div>`;
         }).join('')}
       </div>
+      <div class="taproom-rewards-note">Collect Tale stamps to move toward taproom rewards. Redemption is part of the partnership preview — no live redemption yet.</div>
     </div>
   `;
+}
+
+// Generate a deterministic-looking Passport ID from the join date
+function getPassportId() {
+  try {
+    const joined = state.user?.joined || localStorage.getItem('tb_joined') || '';
+    const seed = joined ? new Date(joined).getTime() % 9000 + 1000 : 7;
+    return 'TS-' + String(seed).padStart(4, '0');
+  } catch (_) { return 'TS-0001'; }
+}
+
+let _receiptTale = null;
+
+function showUnlockReceipt(tale, wasUnlocked) {
+  _receiptTale = tale;
+  const stamps   = state.scanBadges.size + state.gameBadges.size;
+  const gameEarned = state.gameBadges.has(tale.id);
+
+  // Serial — deterministic from tale id + timestamp (cosmetic only)
+  const serial = 'TS-' + (Date.now() % 900000 + 100000);
+
+  // Populate shared fields
+  document.getElementById('receipt-serial-num').textContent = serial;
+  document.getElementById('receipt-tale-name').textContent  = tale.name;
+  document.getElementById('receipt-progress').textContent   = stamps + ' / 12 STAMPS';
+  document.getElementById('receipt-continue-btn').onclick   = closeReceiptToStory;
+
+  if (wasUnlocked) {
+    // Softer repeat-scan receipt
+    document.getElementById('receipt-title').textContent        = 'TALE ALREADY UNLOCKED';
+    document.getElementById('receipt-title').className         = 'receipt-title rescan';
+    document.getElementById('receipt-stamp-mark').textContent  = 'ALREADY\nIN PASSPORT';
+    document.getElementById('receipt-stamp-value').textContent  = 'ALREADY EARNED';
+    document.getElementById('receipt-stamp-value').className    = 'receipt-field-value muted';
+    document.getElementById('receipt-game-value').textContent   = gameEarned ? 'EARNED' : 'AVAILABLE';
+    document.getElementById('receipt-game-value').className     = 'receipt-field-value' + (gameEarned ? '' : ' accent');
+    document.getElementById('receipt-passport-status').textContent = 'Already in your Passport';
+    document.getElementById('receipt-footer').textContent       = 'No new stamps added';
+  } else {
+    // New unlock receipt
+    document.getElementById('receipt-title').textContent        = 'UNLOCK RECEIPT';
+    document.getElementById('receipt-title').className         = 'receipt-title';
+    document.getElementById('receipt-stamp-mark').textContent  = 'ADDED TO\nPASSPORT';
+    document.getElementById('receipt-stamp-value').textContent  = 'EARNED';
+    document.getElementById('receipt-stamp-value').className    = 'receipt-field-value';
+    document.getElementById('receipt-game-value').textContent   = 'AVAILABLE';
+    document.getElementById('receipt-game-value').className     = 'receipt-field-value accent';
+    document.getElementById('receipt-passport-status').textContent = 'Passport page updated';
+    document.getElementById('receipt-footer').textContent       = 'Added to your Guest Passport';
+  }
+
+  // Jump passport book to this tale's page
+  const taleIdx = TALES.findIndex(t => t.id === tale.id);
+  if (taleIdx >= 0) {
+    passportBookPage = taleIdx + 1;
+    try { localStorage.setItem('trackside_passport_book_page', String(passportBookPage)); } catch (_) {}
+  }
+
+  document.getElementById('unlock-receipt').classList.add('active');
+}
+
+function closeReceiptToStory() {
+  document.getElementById('unlock-receipt').classList.remove('active');
+  if (_receiptTale) {
+    state.currentTale = _receiptTale;
+    renderStory(_receiptTale);
+    nav('story');
+  }
+}
+
+function closeReceiptToPassport() {
+  document.getElementById('unlock-receipt').classList.remove('active');
+  nav('passport');
+}
+
+function initComingNextCollapse() {
+  const open = localStorage.getItem('trackside_coming_next_open') === '1';
+  const body   = document.getElementById('coming-next-body');
+  const toggle = document.getElementById('coming-next-toggle');
+  if (!body || !toggle) return;
+  if (open) {
+    body.classList.remove('collapsed');
+    toggle.textContent = 'Hide future Tales ↑';
+  } else {
+    body.classList.add('collapsed');
+    toggle.textContent = 'Show future Tales ↓';
+  }
+}
+
+function toggleComingNext() {
+  const body   = document.getElementById('coming-next-body');
+  const toggle = document.getElementById('coming-next-toggle');
+  if (!body || !toggle) return;
+  const isOpen = !body.classList.contains('collapsed');
+  if (isOpen) {
+    body.classList.add('collapsed');
+    toggle.textContent = 'Show future Tales ↓';
+    localStorage.setItem('trackside_coming_next_open', '0');
+  } else {
+    body.classList.remove('collapsed');
+    toggle.textContent = 'Hide future Tales ↑';
+    localStorage.setItem('trackside_coming_next_open', '1');
+  }
+}
+
+function saveNickname() {
+  const input = document.getElementById('nickname-field');
+  if (!input) return;
+  const name = input.value.trim() || 'Trackside Guest';
+  if (!state.user) {
+    // Create a minimal user record so the profile upgrades
+    state.user = { name, email: '', joined: new Date().toISOString() };
+  } else {
+    state.user.name = name;
+  }
+  save();
+  renderProfile();
+}
+
+function renderGuestPassport() {
+  // Works for both logged-in users and anonymous guests
+  const nickname = state.user?.name || 'Trackside Guest';
+  const initial  = nickname.charAt(0).toUpperCase();
+  const passId   = getPassportId();
+  const stamps   = state.scanBadges.size + state.gameBadges.size;
+  const games    = state.gameBadges.size;
+  const stories  = state.unlocked.size;
+  const rewards  = stamps >= 12 ? 3 : stamps >= 6 ? 2 : stamps >= 3 ? 1 : 0;
+
+  return `
+    <div class="passport-id-card">
+      <div class="passport-id-header">
+        <div class="passport-id-eyebrow">GUEST PASSPORT</div>
+        <div class="passport-id-number">${passId}</div>
+      </div>
+      <div class="passport-id-body">
+        <div class="passport-id-avatar">${initial}</div>
+        <div class="passport-id-info">
+          <div class="passport-id-name">${nickname}</div>
+          <div class="passport-id-status">PREVIEW GUEST · TRACKSIDE TALES</div>
+          <div class="passport-id-since">Member since preview</div>
+        </div>
+      </div>
+      <div class="passport-id-stats">
+        <div class="passport-id-stat">
+          <div class="passport-id-stat-num">${stories}</div>
+          <div class="passport-id-stat-lbl">TALES UNLOCKED</div>
+        </div>
+        <div class="passport-id-stat">
+          <div class="passport-id-stat-num">${stamps}</div>
+          <div class="passport-id-stat-lbl">STAMPS EARNED</div>
+        </div>
+        <div class="passport-id-stat">
+          <div class="passport-id-stat-num">${games}</div>
+          <div class="passport-id-stat-lbl">GAMES DONE</div>
+        </div>
+        <div class="passport-id-stat">
+          <div class="passport-id-stat-num">${rewards}</div>
+          <div class="passport-id-stat-lbl">REWARDS PROGRESS</div>
+        </div>
+      </div>
+      <div class="nickname-edit-row">
+        <input class="nickname-input" id="nickname-field" type="text"
+               value="${nickname === 'Trackside Guest' ? '' : nickname}"
+               placeholder="Enter your name…"
+               onkeydown="if(event.key==='Enter')saveNickname()">
+        <button class="nickname-save-btn" onclick="saveNickname()">SAVE</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── PASSPORT BOOK CAROUSEL ─────────────────────────────────────────────────
+// BACKEND-READINESS: passportBookPage will eventually sync via user_settings.
+
+let passportBookPage = 0;
+let _pbSlideDir = 1; // 1 = forward, -1 = back
+
+function getPassportBookPages() {
+  const nickname = state.user?.name || 'Trackside Guest';
+  const initial  = nickname.charAt(0).toUpperCase();
+  const stamps   = state.scanBadges.size + state.gameBadges.size;
+  const games    = state.gameBadges.size;
+  const stories  = state.unlocked.size;
+  const rewards  = stamps >= 12 ? 3 : stamps >= 6 ? 2 : stamps >= 3 ? 1 : 0;
+  const pct      = Math.min(100, Math.round((stamps / 12) * 100));
+  const passId   = getPassportId();
+
+  // Reusable parchment decoration — corners + center fold crease
+  const PARCH_DECOR = `
+    <div class="pbp-corner pbp-corner-tl"></div>
+    <div class="pbp-corner pbp-corner-tr"></div>
+    <div class="pbp-corner pbp-corner-bl"></div>
+    <div class="pbp-corner pbp-corner-br"></div>
+    <div class="pbp-parchment-crease"></div>`;
+
+  // ── PAGE 1: Cover / Guest ID
+  const coverPage = `
+    <div class="passport-book-page${_pbSlideDir < 0 ? ' slide-back' : ''}">
+      <div class="pbp-cover">
+        <div class="pbp-cover-crest">◈ TRACKSIDE TALES ◈</div>
+        <div class="pbp-cover-title">Trackside Tales<br>Passport</div>
+        <div class="pbp-cover-subtitle">LEHIGH VALLEY · PENNSYLVANIA</div>
+        <div class="pbp-cover-divider"></div>
+        <div class="pbp-cover-name">${nickname}</div>
+        <div class="pbp-cover-id">${passId}</div>
+        <div class="pbp-cover-status">PREVIEW GUEST</div>
+        <div class="pbp-cover-stats">
+          <div class="pbp-cover-stat">
+            <div class="pbp-cover-stat-num">${stories}</div>
+            <div class="pbp-cover-stat-lbl">TALES UNLOCKED</div>
+          </div>
+          <div class="pbp-cover-stat">
+            <div class="pbp-cover-stat-num">${stamps}</div>
+            <div class="pbp-cover-stat-lbl">STAMPS EARNED</div>
+          </div>
+          <div class="pbp-cover-stat">
+            <div class="pbp-cover-stat-num">${games}</div>
+            <div class="pbp-cover-stat-lbl">GAMES DONE</div>
+          </div>
+          <div class="pbp-cover-stat">
+            <div class="pbp-cover-stat-num">${rewards}</div>
+            <div class="pbp-cover-stat-lbl">REWARD TIERS</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── PAGES 2-4: One per active Tale
+  const talePages = TALES.map((t, idx) => {
+    const unlocked   = state.unlocked.has(t.id);
+    const scanEarned = state.scanBadges.has(t.id);
+    const gameEarned = state.gameBadges.has(t.id);
+    const complete   = unlocked && scanEarned && gameEarned;
+    const sealUri    = TS_SEAL_IMAGES[t.unlockSeal];
+
+    let statusText, ctaHtml, badgesHtml, interactionHint;
+    const sealHtml = unlocked && sealUri
+      ? `<img src="${sealUri}" width="52" height="52" style="object-fit:contain" alt="">`
+      : `<span class="pbp-tale-seal-lock">◈</span>`;
+    if (!unlocked) {
+      statusText      = 'This page has not been marked yet. Scan a Trackside Tale to earn this stamp.';
+      badgesHtml      = `<span class="stamp-badge locked-badge">STORY</span><span class="stamp-badge locked-badge">MINI-GAME</span>`;
+      ctaHtml         = `<button class="pbp-tale-cta scan" onclick="nav('scan')">SCAN THIS TALE</button>`;
+      interactionHint = `<div class="pbp-interaction-hint">Scan this Tale to mark the page.</div>`;
+    } else if (!gameEarned) {
+      statusText      = 'Story stamp earned. Complete the mini-game to add the second badge.';
+      badgesHtml      = `<span class="stamp-badge earned">STORY ✓</span><span class="stamp-badge open">MINI-GAME ○</span>`;
+      ctaHtml         = `<button class="pbp-tale-cta primary" onclick="openTale('${t.id}')">VIEW STORY</button>`;
+      interactionHint = `<div class="pbp-interaction-hint">Tap VIEW STORY to reopen this Tale.</div>`;
+    } else {
+      statusText      = 'Page complete.';
+      badgesHtml      = `<span class="stamp-badge earned">STORY ✓</span><span class="stamp-badge earned">MINI-GAME ✓</span>`;
+      ctaHtml         = `<button class="pbp-tale-cta primary" onclick="openTale('${t.id}')">VIEW STORY</button>`;
+      interactionHint = `<div class="pbp-interaction-hint">Tap VIEW STORY to reopen this Tale.</div>`;
+    }
+
+    return `
+      <div class="passport-book-page${_pbSlideDir < 0 ? ' slide-back' : ''}">
+        <div class="pbp-parchment">
+          ${PARCH_DECOR}
+          ${complete ? '<div class="stamp-page-complete-mark">PAGE COMPLETE</div>' : ''}
+          <div class="pbp-page-num">PAGE ${idx + 2} OF 6 · TRACKSIDE TALES PASSPORT</div>
+          <div class="pbp-tale-chapter">${t.chapter || 'TRACKSIDE TALE'} · ${t.year}</div>
+          <div class="pbp-tale-name">${t.name}</div>
+          <div class="pbp-tale-seal-row">
+            <div class="pbp-tale-seal">${sealHtml}</div>
+            <div class="pbp-tale-badges">${badgesHtml}</div>
+          </div>
+          <div class="pbp-tale-status ${unlocked ? '' : 'locked-status'}">${statusText}</div>
+          ${ctaHtml}
+          ${interactionHint}
+        </div>
+      </div>`;
+  });
+
+  // ── PAGE 5: Taproom Rewards
+  const tiers = [
+    { threshold: 3,  icon: '◈', name: 'Early Release Preview',    badge: 'PREVIEW REWARD' },
+    { threshold: 6,  icon: '◉', name: 'Trackside Glassware Perk', badge: 'PREVIEW REWARD' },
+    { threshold: 12, icon: '✦', name: 'Founders Passport Badge',  badge: 'COMING SOON'    },
+  ];
+  const rewardsPage = `
+    <div class="passport-book-page${_pbSlideDir < 0 ? ' slide-back' : ''}">
+      <div class="pbp-parchment">
+        ${PARCH_DECOR}
+        <div class="pbp-page-num">PAGE 5 OF 6 · TRACKSIDE TALES PASSPORT</div>
+        <div class="pbp-rewards-title">Taproom Rewards</div>
+        <div class="pbp-rewards-count">${stamps} / 12 STAMPS EARNED</div>
+        <div class="pbp-rewards-bar-track">
+          <div class="pbp-rewards-bar-fill" style="width:${pct}%"></div>
+        </div>
+        ${tiers.map(t => {
+          const reached = stamps >= t.threshold;
+          return `<div class="pbp-reward-tier ${reached ? 'reached' : ''}">
+            <div class="pbp-reward-tier-icon">${t.icon}</div>
+            <div class="pbp-reward-tier-name">${t.name}</div>
+            <div class="pbp-reward-tier-chip">${reached ? 'EARNED' : t.badge}</div>
+          </div>`;
+        }).join('')}
+        <div class="pbp-rewards-note">Rewards are part of the partnership preview — no live redemption yet.</div>
+      </div>
+    </div>`;
+
+  // ── PAGE 6: Future Pages
+  const futurePage = `
+    <div class="passport-book-page${_pbSlideDir < 0 ? ' slide-back' : ''}">
+      <div class="pbp-parchment">
+        ${PARCH_DECOR}
+        <div class="pbp-page-num">PAGE 6 OF 6 · TRACKSIDE TALES PASSPORT</div>
+        <div class="pbp-rewards-title">Future Pages</div>
+        <div class="pbp-future-note">Future Tales will add new pages to your Passport.</div>
+        <div class="pbp-future-item">
+          <div class="pbp-future-lock">◈</div>
+          <div class="pbp-future-name">SteelStacks Stout</div>
+          <div class="pbp-future-chip">COMING SOON</div>
+        </div>
+        <div class="pbp-future-item">
+          <div class="pbp-future-lock">◈</div>
+          <div class="pbp-future-name">Lehigh Valley Railroad Lager</div>
+          <div class="pbp-future-chip">COMING SOON</div>
+        </div>
+        <div class="pbp-future-item">
+          <div class="pbp-future-lock">◈</div>
+          <div class="pbp-future-name">South Bethlehem Porter</div>
+          <div class="pbp-future-chip">COMING SOON</div>
+        </div>
+      </div>
+    </div>`;
+
+  return [coverPage, ...talePages, rewardsPage, futurePage];
+}
+
+function renderStampBook() {
+  const TOTAL = 6;
+  const p = Math.min(Math.max(passportBookPage, 0), TOTAL - 1);
+  passportBookPage = p;
+  const pages = getPassportBookPages();
+
+  return `
+    <div class="stamp-book-section">
+      <div class="stamp-book-header">
+        <div class="stamp-book-label">PASSPORT STAMP BOOK</div>
+      </div>
+      <div class="stamp-book-sub">Every Tale you unlock marks a page in your Trackside Passport.</div>
+      <div class="passport-book-frame">
+        <div class="passport-book-carousel" id="passport-book-carousel">
+          ${pages[p]}
+        </div>
+        <div class="passport-book-nav">
+          <button class="pb-nav-btn" id="pb-prev" onclick="changePassportPage(-1)"
+                  ${p === 0 ? 'disabled' : ''}>← PREV</button>
+          <div class="pb-nav-center">
+            <div class="pb-nav-ticks">
+              ${Array.from({length: TOTAL}, (_, i) =>
+                `<div class="pb-tick${i === p ? ' active' : ''}"></div>`).join('')}
+            </div>
+            <div class="pb-nav-hint">swipe or tap to flip</div>
+          </div>
+          <button class="pb-nav-btn" id="pb-next" onclick="changePassportPage(1)"
+                  ${p === TOTAL - 1 ? 'disabled' : ''}>NEXT →</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function initPassportSwipe() {
+  const carousel = document.getElementById('passport-book-carousel');
+  if (!carousel || carousel.dataset.swipeInit) return;
+  carousel.dataset.swipeInit = '1';
+
+  let startX = 0, startY = 0, active = false;
+  const SWIPE_THRESHOLD = 45;   // min horizontal px to count as a swipe
+  const ANGLE_THRESHOLD = 35;   // max angle from horizontal (degrees)
+
+  function onStart(e) {
+    const t = e.touches ? e.touches[0] : e;
+    startX = t.clientX;
+    startY = t.clientY;
+    active = true;
+  }
+
+  function onEnd(e) {
+    if (!active) return;
+    active = false;
+    const t = e.changedTouches ? e.changedTouches[0] : e;
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    // Reject if too vertical (user is scrolling the page)
+    const angle = Math.abs(Math.atan2(Math.abs(dy), Math.abs(dx)) * 180 / Math.PI);
+    if (angle > ANGLE_THRESHOLD) return;
+    if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+    changePassportPage(dx < 0 ? 1 : -1);
+  }
+
+  carousel.addEventListener('touchstart', onStart, { passive: true });
+  carousel.addEventListener('touchend',   onEnd,   { passive: true });
+}
+
+function changePassportPage(delta) {
+  const TOTAL = 6;
+  const newPage = Math.min(Math.max(passportBookPage + delta, 0), TOTAL - 1);
+  if (newPage === passportBookPage) return;
+  _pbSlideDir = delta;
+  passportBookPage = newPage;
+  try { localStorage.setItem('trackside_passport_book_page', String(newPage)); } catch (_) {}
+
+  const carousel = document.getElementById('passport-book-carousel');
+  const nav      = document.getElementById('pb-prev')?.parentElement;
+  if (!carousel) return;
+
+  const pages = getPassportBookPages();
+  carousel.innerHTML = pages[newPage];
+  initPassportSwipe();
+
+  // Update nav buttons without full re-render
+  const prev = document.getElementById('pb-prev');
+  const next = document.getElementById('pb-next');
+  if (prev) prev.disabled = newPage === 0;
+  if (next) next.disabled = newPage === TOTAL - 1;
+  // Refresh tick marks
+  document.querySelectorAll('.pb-tick').forEach((t, i) => {
+    t.classList.toggle('active', i === newPage);
+  });
 }
 
 function renderProfile() {
   const el = document.getElementById('profile-content');
 
   if (!state.user) {
+    // Guest view — show passport card (with Trackside Guest placeholder) + join prompt
     el.innerHTML = `
-      <div class="guest-prompt">
-        <div class="profile-avatar-big">?</div>
-        <div class="guest-prompt-title">Save Your Journey</div>
-        <div class="guest-prompt-desc">Create a free account to collect digital artifacts, track the stories you've unlocked, and build a Trackside Tales Passport that stays with you forever — even after beers rotate off tap.</div>
+      <div style="padding:1.25rem 1.25rem 0">
+        ${renderGuestPassport()}
+        ${renderRewards()}
+      </div>
+      ${renderStampBook()}
+      <div class="guest-prompt" style="padding-top:0">
+        <div class="guest-prompt-title">Personalize Your Passport</div>
+        <div class="guest-prompt-desc">Enter your name above to customize your Trackside Passport for this preview. Full accounts are coming with the live product.</div>
         <form class="signup-form" onsubmit="signup(event)">
           <input class="signup-input" type="text" placeholder="Your name" id="signup-name" required>
           <input class="signup-input" type="email" placeholder="Email address" id="signup-email" required>
           <button class="signup-btn" type="submit">JOIN TRACKSIDE</button>
         </form>
-        <div class="signup-skip" onclick="nav('menu')">Maybe later — keep browsing</div>
+        <div class="signup-skip" onclick="nav('tales')">Maybe later — keep browsing</div>
         <button class="reset-preview-btn" onclick="resetPreview()">RESET PREVIEW</button>
         <div class="feedback-row" style="margin-top:0.75rem">
           <a class="feedback-btn" href="mailto:carfagno.joey@yahoo.com?subject=Trackside%20App%20Feedback&body=What%20worked%3A%0A%0AWhat%20confused%20you%3A%0A%0AWhat%20would%20you%20want%20added%3A%0A%0AOther%20notes%3A%0A">SEND NOTES TO JOE</a>
@@ -4366,35 +6570,15 @@ function renderProfile() {
     return;
   }
 
-  const initial = state.user.name.charAt(0).toUpperCase();
-  const scanned = state.unlocked.size;
-  const totalBadges = state.scanBadges.size + state.gameBadges.size;
-
   el.innerHTML = `
-    <div class="profile-hero">
-      <div class="profile-avatar-big">${initial}</div>
-      <div class="profile-name">${state.user.name}</div>
-      <div class="profile-tier">TRACKSIDE EXPLORER · CONDUCTOR'S CLUB ELIGIBLE</div>
+    <div style="padding:1.25rem 1.25rem 0">
+      ${renderGuestPassport()}
+      ${renderRewards()}
     </div>
 
-    <div class="stats-row">
-      <div class="stat-cell">
-        <div class="stat-num">${scanned}</div>
-        <div class="stat-lbl">Stories Unlocked</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-num">${totalBadges}</div>
-        <div class="stat-lbl">Badges Earned</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-num">${TALES.length - scanned}</div>
-        <div class="stat-lbl">To Discover</div>
-      </div>
-    </div>
+    ${renderStampBook()}
 
     ${renderPassport()}
-
-    ${renderRewards()}
 
     <div class="collectibles-section">
       <div class="collectibles-label">BADGE COLLECTION · ALL-TIME</div>
@@ -4416,7 +6600,7 @@ function renderProfile() {
       <div class="collectibles-label">ACCOUNT</div>
       <div style="font-size:0.72rem;color:var(--steam);line-height:1.8;padding:0.5rem 0;">
         <div style="color:var(--aged);font-size:0.55rem;letter-spacing:0.2em;margin-bottom:0.2rem;">EMAIL</div>
-        <div>${state.user.email}</div>
+        <div>${state.user.email || '—'}</div>
       </div>
       <button style="background:transparent;border:1px solid rgba(160,120,8,0.2);color:var(--aged);font-family:'Source Code Pro';font-size:0.6rem;letter-spacing:0.2em;padding:0.6rem 1rem;margin-top:1rem;cursor:pointer;width:100%;" onclick="logout()">
         SIGN OUT
@@ -4432,22 +6616,55 @@ function renderProfile() {
 // ================== ACTIONS ==================
 
 function nav(page, opts = {}) {
+  // Alias old names → new names for backward compat
+  if (page === 'menu') page = 'tales';
+  if (page === 'profile') page = 'passport';
+
   state.page = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+
+  // Map logical page names to DOM ids
+  const domId = {
+    tales:       'menu',
+    beers:       'beers',
+    scan:        'scan',
+    ourstory:    'ourstory',
+    howitworks:  'howitworks',
+    passport:    'profile',
+    story:       'story',
+    about:       'about',
+    woodenmatch: 'woodenmatch',
+    tracks:      'tracks',
+  }[page] || page;
+
+  const el = document.getElementById('page-' + domId);
+  if (el) el.classList.add('active');
+
   document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
-  if (['menu','scan','profile'].includes(page)) document.getElementById('nav-' + page).classList.add('active');
-  if (page === 'profile') renderProfile();
+  const navMap = { tales:'tales', beers:'beers', scan:'scan', ourstory:'ourstory', passport:'passport' };
+  if (navMap[page]) {
+    const nb = document.getElementById('nav-' + navMap[page]);
+    if (nb) nb.classList.add('active');
+  }
+  // Sub-pages that live under the STORY tab keep STORY tab highlighted
+  if (['about','woodenmatch','tracks','howitworks'].includes(page)) {
+    const nb = document.getElementById('nav-ourstory');
+    if (nb) nb.classList.add('active');
+  }
+
+  if (page === 'passport') {
+    renderProfile();
+    setTimeout(initPassportSwipe, 0);
+  }
   window.scrollTo(0, 0);
 
-  // Camera lifecycle — only active on scan page
+  // Camera lifecycle
   if (page === 'scan') {
     startQrScanner();
   } else {
     stopQrScanner();
   }
 
-  // URL sync (skip if this nav came from a URL change — avoids loops)
   if (!opts.fromRoute) {
     const hash = routeForPage(page);
     if (hash && location.hash !== hash) {
@@ -4457,21 +6674,311 @@ function nav(page, opts = {}) {
 }
 
 function routeForPage(page) {
-  if (page === 'menu') return '#/';
-  if (page === 'scan') return '#/scan';
-  if (page === 'profile') return '#/profile';
-  if (page === 'about') return '#/about';
+  if (page === 'tales')      return '#/';
+  if (page === 'beers')      return '#/beers';
+  if (page === 'scan')       return '#/scan';
+  if (page === 'ourstory')   return '#/story';
+  if (page === 'passport')   return '#/passport';
+  if (page === 'about')      return '#/about';
   if (page === 'woodenmatch') return '#/woodenmatch';
-  if (page === 'tracks') return '#/tracks';
+  if (page === 'tracks')     return '#/tracks';
   if (page === 'story' && state.currentTale) return '#/story/' + state.currentTale.id;
   return '#/';
+}
+
+// ── TALE INTRO SYSTEM ─────────────────────────────────────────────────────
+// On-demand cinematic intro for each Tale. Called from WATCH/REPLAY INTRO
+// button on story pages. Never fires during simulateScan() / stamp unlock.
+// BACKEND-READINESS: intro assets will eventually come from tale_intro_assets
+// table (tale_id, asset_type='css_animation'|'video', asset_url).
+
+const _introWatched = new Set(); // tracks which intros seen this session
+let   _introTimer   = null;      // holds the auto-close setTimeout
+
+// SVG animation markup for each Tale — atmospheric, CSS-driven, no video
+const TALE_INTROS = {
+
+  'wa-lager': `
+    <svg viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0">
+      <rect width="390" height="844" fill="#060402"/>
+
+      <!-- Parchment map grid — fades in -->
+      <g style="animation:waGridFadeIn 1.2s ease forwards">
+        <pattern id="wg" x="0" y="0" width="38" height="32" patternUnits="userSpaceOnUse">
+          <rect width="38" height="32" fill="none" stroke="#8a6830" stroke-width="0.5"/>
+        </pattern>
+        <rect x="40" y="120" width="310" height="600" fill="url(#wg)"/>
+      </g>
+
+      <!-- Hamilton St — E-W primary axis, draws left→right -->
+      <line x1="40" y1="422" x2="350" y2="422"
+            stroke="#a07808" stroke-width="2.5"
+            stroke-dasharray="310" stroke-dashoffset="310"
+            style="animation:waAxisH 1.4s 0.8s ease forwards"/>
+
+      <!-- 7th St — N-S primary axis, draws top→bottom -->
+      <line x1="195" y1="120" x2="195" y2="720"
+            stroke="#a07808" stroke-width="2"
+            stroke-dasharray="600" stroke-dashoffset="600"
+            style="animation:waAxisV 1.2s 1.4s ease forwards"/>
+
+      <!-- Market Square highlight -->
+      <rect x="170" y="402" width="50" height="40"
+            fill="rgba(160,120,8,0.15)" stroke="#c89010" stroke-width="1.2"
+            opacity="0"
+            style="animation:waSquareGlow 3.5s 1.8s ease forwards"/>
+
+      <!-- Stamp text -->
+      <text x="195" y="770" text-anchor="middle"
+            font-family="'Source Code Pro',monospace" font-size="9"
+            letter-spacing="8" fill="#c04e18" opacity="0"
+            style="animation:waStampFadeIn 3.5s 2.5s ease forwards">
+        1762 GRID REFERENCE
+      </text>
+
+      <!-- Jordan Creek hint -->
+      <path d="M30 80 Q50 140 55 200 Q60 250 62 290"
+            stroke="#1a3a4a" stroke-width="4" fill="none" stroke-linecap="round"
+            opacity="0" style="animation:pkFadeIn 1s 2s ease forwards"/>
+
+      <!-- Ambient warm overlay -->
+      <radialGradient id="waGlow" cx="50%" cy="50%">
+        <stop offset="0%" stop-color="#c04e18" stop-opacity="0.04"/>
+        <stop offset="100%" stop-color="#060402" stop-opacity="0"/>
+      </radialGradient>
+      <rect width="390" height="844" fill="url(#waGlow)"/>
+    </svg>`,
+
+  'packer-pils': `
+    <svg viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0">
+      <rect width="390" height="844" fill="#060402"/>
+
+      <!-- Valley terrain lines -->
+      <path d="M0 340 Q80 320 160 330 Q240 340 320 325 Q360 318 390 328"
+            stroke="#3a2a0a" stroke-width="1" fill="none" opacity="0"
+            style="animation:pkFadeIn 1.2s 0.3s ease forwards"/>
+      <path d="M0 360 Q70 345 150 355 Q230 365 310 350 Q360 342 390 355"
+            stroke="#2e2208" stroke-width="0.8" fill="none" opacity="0"
+            style="animation:pkFadeIn 1.2s 0.5s ease forwards"/>
+
+      <!-- Lehigh River — draws across -->
+      <path d="M0 480 Q60 474 120 480 Q180 486 240 478 Q300 470 390 478"
+            stroke="#1a3a4a" stroke-width="12" fill="none"
+            stroke-linecap="round" stroke-dasharray="600" stroke-dashoffset="600"
+            style="animation:pkRiverDraw 1.6s 0.6s ease forwards"/>
+      <path d="M0 492 Q60 486 120 492 Q180 498 240 490 Q300 482 390 490"
+            stroke="#1a3a4a" stroke-width="5" fill="none"
+            stroke-linecap="round" opacity="0.4"
+            stroke-dasharray="600" stroke-dashoffset="600"
+            style="animation:pkRiverDraw 1.6s 0.9s ease forwards"/>
+
+      <!-- LVRR Rail line — draws across below river -->
+      <line x1="0" y1="540" x2="390" y2="538"
+            stroke="#6b4e22" stroke-width="3"
+            stroke-dasharray="500" stroke-dashoffset="500"
+            style="animation:pkRailDraw 1.4s 1.8s ease forwards"/>
+      <line x1="0" y1="548" x2="390" y2="546"
+            stroke="#6b4e22" stroke-width="3"
+            stroke-dasharray="500" stroke-dashoffset="500"
+            style="animation:pkRailDraw 1.4s 2.0s ease forwards"/>
+
+      <!-- Tie marks -->
+      <g stroke="#6b4e22" stroke-width="5" stroke-linecap="round"
+         opacity="0" style="animation:pkFadeIn 0.4s 2.8s ease forwards">
+        <line x1="40"  y1="534" x2="40"  y2="552"/>
+        <line x1="90"  y1="534" x2="90"  y2="552"/>
+        <line x1="140" y1="534" x2="140" y2="552"/>
+        <line x1="190" y1="534" x2="190" y2="552"/>
+        <line x1="240" y1="534" x2="240" y2="552"/>
+        <line x1="290" y1="534" x2="290" y2="552"/>
+        <line x1="340" y1="534" x2="340" y2="552"/>
+      </g>
+
+      <!-- Train light — moves along rail line -->
+      <circle id="pkLight" cy="543" r="6" fill="#c89010" opacity="0"
+              style="animation:pkFadeIn 0.3s 3s ease forwards">
+        <animate attributeName="cx" from="0" to="420"
+                 dur="2.5s" begin="3.2s" fill="freeze" calcMode="spline"
+                 keySplines="0.4 0 0.6 1"/>
+      </circle>
+      <circle cy="543" r="18" fill="rgba(200,144,16,0.1)" opacity="0"
+              style="animation:pkFadeIn 0.3s 3s ease forwards">
+        <animate attributeName="cx" from="0" to="420"
+                 dur="2.5s" begin="3.2s" fill="freeze" calcMode="spline"
+                 keySplines="0.4 0 0.6 1"/>
+      </circle>
+
+      <!-- Ambient -->
+      <radialGradient id="pkGlow" cx="50%" cy="64%">
+        <stop offset="0%" stop-color="#1a3a4a" stop-opacity="0.15"/>
+        <stop offset="100%" stop-color="#060402" stop-opacity="0"/>
+      </radialGradient>
+      <rect width="390" height="844" fill="url(#pkGlow)"/>
+    </svg>`,
+
+  'wooden-match': `
+    <svg viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0">
+      <rect width="390" height="844" fill="#060402"/>
+
+      <!-- Station building silhouette — fades in -->
+      <g opacity="0" style="animation:wmStationFade 1.5s 0.4s ease forwards">
+        <!-- Main building body -->
+        <rect x="80" y="340" width="230" height="200" fill="#0e0b07" stroke="#3a2a0a" stroke-width="1.5"/>
+        <!-- Mansard roof -->
+        <polygon points="65,340 195,240 325,340" fill="#0e0b07" stroke="#3a2a0a" stroke-width="1.5"/>
+        <polygon points="95,340 195,268 295,340" fill="#14100a" stroke="#3a2a0a" stroke-width="1"/>
+        <!-- Cupola -->
+        <rect x="170" y="230" width="50" height="38" fill="#0e0b07" stroke="#3a2a0a" stroke-width="1"/>
+        <polygon points="162,232 195,205 228,232" fill="#0e0b07" stroke="#3a2a0a" stroke-width="1"/>
+        <!-- Chimney -->
+        <rect x="240" y="210" width="18" height="55" fill="#0e0b07" stroke="#2a1e0a" stroke-width="1"/>
+        <!-- Platform -->
+        <rect x="60" y="540" width="270" height="14" fill="#1a1208" stroke="#3a2a0a" stroke-width="1"/>
+      </g>
+
+      <!-- Windows — light on one by one -->
+      <!-- Window 1 -->
+      <rect x="105" y="375" width="36" height="44" rx="2"
+            fill="#c89010" opacity="0"
+            style="animation:wmWinLight1 5s 1.2s ease forwards"/>
+      <!-- Window 2 -->
+      <rect x="162" y="375" width="36" height="44" rx="2"
+            fill="#c89010" opacity="0"
+            style="animation:wmWinLight2 5s 1.2s ease forwards"/>
+      <!-- Window 3 -->
+      <rect x="219" y="375" width="36" height="44" rx="2"
+            fill="#c89010" opacity="0"
+            style="animation:wmWinLight3 5s 1.2s ease forwards"/>
+      <!-- Window 4 (smaller, upper) -->
+      <rect x="173" y="295" width="44" height="30" rx="2"
+            fill="#c89010" opacity="0"
+            style="animation:wmWinLight4 5s 1.2s ease forwards"/>
+
+      <!-- Window glow halos -->
+      <rect x="97" y="367" width="52" height="60" rx="4"
+            fill="rgba(200,144,16,0.08)" opacity="0"
+            style="animation:wmWinLight1 5s 1.2s ease forwards"/>
+      <rect x="154" y="367" width="52" height="60" rx="4"
+            fill="rgba(200,144,16,0.08)" opacity="0"
+            style="animation:wmWinLight2 5s 1.2s ease forwards"/>
+      <rect x="211" y="367" width="52" height="60" rx="4"
+            fill="rgba(200,144,16,0.08)" opacity="0"
+            style="animation:wmWinLight3 5s 1.2s ease forwards"/>
+
+      <!-- Platform rail glow -->
+      <rect x="60" y="540" width="270" height="3" fill="#a07808" opacity="0"
+            style="animation:wmPlatformGlow 1.2s 3s ease forwards"/>
+
+      <!-- Amber warm-light fill over whole scene -->
+      <radialGradient id="wmAmber" cx="50%" cy="52%">
+        <stop offset="0%" stop-color="#c89010" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#060402" stop-opacity="0"/>
+      </radialGradient>
+      <rect width="390" height="844" fill="url(#wmAmber)" opacity="0"
+            style="animation:wmAmberFill 4s 1.5s ease forwards"/>
+
+      <!-- CNJ label -->
+      <text x="195" y="610" text-anchor="middle"
+            font-family="'Source Code Pro',monospace" font-size="8"
+            letter-spacing="5" fill="#6b4e22" opacity="0"
+            style="animation:pkFadeIn 1s 3.8s ease forwards">
+        CENTRAL RR OF NEW JERSEY · 1868
+      </text>
+    </svg>`,
+};
+
+function playTaleIntro(taleId) {
+  // Guard: never show over the stamp unlock overlay
+  if (document.getElementById('unlock-overlay')?.classList.contains('active')) return;
+
+  const overlay   = document.getElementById('tale-intro-overlay');
+  const stage     = document.getElementById('tale-intro-stage');
+  const titleCard = document.getElementById('tale-intro-title-card');
+  const eyebrow   = document.getElementById('tale-intro-eyebrow');
+  const beerName  = document.getElementById('tale-intro-beer-name');
+  if (!overlay || !stage) return;
+
+  const tale = TALES.find(t => t.id === taleId);
+  if (!tale) return;
+
+  const svgMarkup = TALE_INTROS[taleId] || TALE_INTROS['wa-lager'];
+
+  // Reset state
+  if (_introTimer) { clearTimeout(_introTimer); _introTimer = null; }
+  titleCard.classList.remove('show');
+  stage.innerHTML = svgMarkup;
+  eyebrow.textContent   = tale.chapter || 'TRACKSIDE TALES';
+  beerName.textContent  = tale.name;
+
+  overlay.classList.add('active');
+  _introWatched.add(taleId);
+
+  // Show title card after 3.8s
+  setTimeout(() => titleCard.classList.add('show'), 3800);
+
+  // Auto-close after 7.5s
+  _introTimer = setTimeout(closeTaleIntro, 7500);
+}
+
+function closeTaleIntro() {
+  if (_introTimer) { clearTimeout(_introTimer); _introTimer = null; }
+  const overlay   = document.getElementById('tale-intro-overlay');
+  const titleCard = document.getElementById('tale-intro-title-card');
+  const stage     = document.getElementById('tale-intro-stage');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  // Slight delay before clearing so fade is clean if we add one later
+  setTimeout(() => {
+    titleCard.classList.remove('show');
+    stage.innerHTML = '';
+  }, 300);
+  // Refresh the story page button label if we're on a story
+  if (state.page === 'story' && state.currentTale) {
+    renderStory(state.currentTale);
+  }
+}
+
+// ── STORY TRANSITION ──────────────────────────────────────────────────────
+// Branded brief overlay (600ms) shown only when opening a story page.
+// Not used for basic nav taps, profile, beer list scrolling, etc.
+const TRANSITION_SUBS = [
+  'Opening the archive…',
+  'Stamping the passport…',
+  'Loading the next story…',
+];
+let _transitionIdx = 0;
+
+function showStoryTransition(cb) {
+  const el  = document.getElementById('story-transition');
+  const sub = document.getElementById('story-transition-sub');
+  if (!el) { cb(); return; }
+
+  // Never show over the passport stamp unlock — that is the priority moment.
+  const unlockActive = document.getElementById('unlock-overlay')?.classList.contains('active');
+  if (unlockActive) { cb(); return; }
+
+  // Respect reduced motion
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) { cb(); return; }
+
+  // Rotate subtitle
+  if (sub) {
+    sub.textContent = TRANSITION_SUBS[_transitionIdx % TRANSITION_SUBS.length];
+    _transitionIdx++;
+  }
+
+  el.classList.add('visible');
+  setTimeout(() => {
+    cb();
+    setTimeout(() => el.classList.remove('visible'), 120);
+  }, 600);
 }
 
 function openTale(id) {
   if (!state.unlocked.has(id)) { nav('scan'); return; }
   state.currentTale = TALES.find(t => t.id === id);
   renderStory(state.currentTale);
-  nav('story');
+  showStoryTransition(() => nav('story'));
 }
 
 function simulateScan(id) {
@@ -4553,12 +7060,13 @@ function simulateScan(id) {
     overlay.classList.remove('active');
     state.currentTale = tale;
     renderStory(tale);
-    nav('story');
-    if (!wasUnlocked) {
-      setTimeout(() => toast('STORY UNLOCKED: ' + tale.person.name.toUpperCase()), 400);
-      if (state.user) setTimeout(() => toast('BADGE EARNED: ' + tale.scanBadge.title.toUpperCase()), 2200);
-    }
     refreshMenu();
+    if (!wasUnlocked) {
+      setTimeout(() => toast('STORY UNLOCKED: ' + tale.person.name.toUpperCase()), 300);
+      if (state.user) setTimeout(() => toast('BADGE EARNED: ' + tale.scanBadge.title.toUpperCase()), 2100);
+    }
+    // Show receipt for both new unlocks and re-scans (different content)
+    showUnlockReceipt(tale, wasUnlocked);
   }, OVERLAY_MS);
 }
 
@@ -4597,6 +7105,36 @@ function signup(e) {
   renderProfile();
 }
 
+function shareTale(taleId) {
+  const APP_URL = 'https://Jayc92.github.io/trackside-tales/';
+  const shareTitle = 'Trackside Tale Unlocked';
+  const shareText  = 'I unlocked a Trackside Tale at The Wooden Match — beer, rail history, and passport stamps.';
+  const shareUrl   = APP_URL;
+
+  if (navigator.share) {
+    navigator.share({ title: shareTitle, text: shareText, url: shareUrl })
+      .catch(() => {}); // user dismissed — not an error
+  } else {
+    // Clipboard fallback
+    const copyStr = shareText + ' ' + shareUrl;
+    try {
+      navigator.clipboard.writeText(copyStr).then(() => {
+        toast('TALE LINK COPIED');
+      }).catch(() => {
+        // Very old browser — last resort
+        const ta = document.createElement('textarea');
+        ta.value = copyStr;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        toast('TALE LINK COPIED');
+      });
+    } catch (_) { toast('TALE LINK COPIED'); }
+  }
+}
+
 function logout() {
   state.user = null;
   save();
@@ -4610,7 +7148,8 @@ function resetPreview() {
   // Clear only this app's own localStorage keys — nothing else is touched
   const OWN_KEYS = [
     'tb_user', 'tb_unlocked', 'tb_scan_badges',
-    'tb_game_badges', 'tb_collected_dates', 'tb_how_dismissed'
+    'tb_game_badges', 'tb_collected_dates', 'tb_how_dismissed', 'tb_joined',
+    'trackside_coming_next_open', 'trackside_passport_book_page'
   ];
   OWN_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
   // Reset in-memory state
@@ -4619,6 +7158,7 @@ function resetPreview() {
   state.scanBadges = new Set();
   state.gameBadges = new Set();
   state.collectedDates = {};
+  passportBookPage = 0;
   // Reset header avatar
   try {
     document.getElementById('profile-btn').classList.add('guest');
@@ -4705,23 +7245,50 @@ function toast(msg) {
   setTimeout(() => t.classList.remove('show'), 2600);
 }
 
-function refreshMenu() { renderBeerList('tales-list', TALES, { tales: true }); }
+function refreshMenu() {
+  renderBeerList('tales-list', TALES, { tales: true });
+  renderBeerList('tales-list-beers', TALES, { tales: true });
+}
 
 // ================== MINI GAMES ==================
 
 function openGame(tId) {
   const tale = TALES.find(t => t.id === tId);
   state.currentGame = tale;
+  const alreadyEarned = state.gameBadges.has(tId);
+
   document.getElementById('game-title').textContent = tale.game.title + ' · ' + tale.name.toUpperCase();
   document.getElementById('game-instructions').textContent = tale.game.instructions;
-  document.getElementById('game-instructions').style.display = '';
-  document.getElementById('game-start').style.display = '';
   document.getElementById('game-play-area').innerHTML = '';
   document.getElementById('game-play-area').style.display = 'none';
   document.getElementById('game-stats').style.display = 'none';
+  document.getElementById('game-progress-bar-wrap').style.display = 'none';
   document.getElementById('game-success').classList.remove('active');
   document.getElementById('game-fail').classList.remove('active');
+
+  if (alreadyEarned) {
+    // Show "already earned" — badge still good, offer replay
+    document.getElementById('game-instructions').style.display = 'none';
+    document.getElementById('game-start').style.display = 'none';
+    document.getElementById('game-ae-sub').textContent =
+      tale.gameBadge.title + ' is already in your Passport.';
+    document.getElementById('game-already-earned').style.display = 'flex';
+  } else {
+    document.getElementById('game-instructions').style.display = '';
+    document.getElementById('game-start').style.display = '';
+    document.getElementById('game-already-earned').style.display = 'none';
+  }
+
   document.getElementById('game-overlay').classList.add('active');
+}
+
+function replayGameFromEarned() {
+  // User explicitly chose to replay — don't re-award badge
+  const tale = state.currentGame;
+  document.getElementById('game-already-earned').style.display = 'none';
+  document.getElementById('game-instructions').textContent = tale.game.instructions;
+  document.getElementById('game-instructions').style.display = '';
+  document.getElementById('game-start').style.display = '';
 }
 
 function closeGame() {
@@ -4734,16 +7301,25 @@ function closeGame() {
 
 let gameState = { score: 0, timer: 30, loop: null, timerLoop: null };
 
+function updateProgressBar(current, total) {
+  const fill = document.getElementById('game-progress-bar-fill');
+  if (fill) fill.style.width = Math.min(100, Math.round(current / total * 100)) + '%';
+}
+
 function startCurrentGame() {
   document.getElementById('game-instructions').style.display = 'none';
   document.getElementById('game-start').style.display = 'none';
+  document.getElementById('game-already-earned').style.display = 'none';
   document.getElementById('game-success').classList.remove('active');
   document.getElementById('game-fail').classList.remove('active');
   document.getElementById('game-play-area').style.display = '';
   document.getElementById('game-stats').style.display = 'flex';
+  document.getElementById('game-progress-bar-wrap').style.display = '';
+  document.getElementById('game-progress-bar-fill').style.width = '0%';
   gameState = { score: 0, timer: 30, loop: null, timerLoop: null };
   document.getElementById('game-score').textContent = '0';
   document.getElementById('game-time').textContent = '30';
+  document.getElementById('game-time').classList.remove('game-time-warn');
   const type = state.currentGame.game.type;
   if (type === 'grid') startGridGame();
   else if (type === 'spike') startSpikeGame();
@@ -4756,15 +7332,23 @@ function gameWin() {
   if (gameState.loop) { clearInterval(gameState.loop); gameState.loop = null; }
   if (gameState.timerLoop) { clearInterval(gameState.timerLoop); gameState.timerLoop = null; }
   const tale = state.currentGame;
-  state.gameBadges.add(tale.id);
-  save();
+  const wasAlreadyEarned = state.gameBadges.has(tale.id);
+  if (!wasAlreadyEarned) {
+    state.gameBadges.add(tale.id);
+    save();
+  }
+  updateProgressBar(1, 1);
   document.getElementById('game-success-badge').innerHTML = renderIcon(tale.gameBadge.icon, 'ts-icon-stamp');
-  document.getElementById('game-success-title').textContent = tale.game.successTitle;
-  document.getElementById('game-success-msg').textContent = tale.game.successMsg;
+  document.getElementById('game-success-title').textContent = tale.gameBadge.title.toUpperCase();
+  document.getElementById('game-success-msg').textContent =
+    wasAlreadyEarned
+      ? 'You replayed the challenge. Your badge was already in your Passport.'
+      : 'Your Passport page has been completed for this Tale.';
   document.getElementById('game-play-area').style.display = 'none';
   document.getElementById('game-stats').style.display = 'none';
+  document.getElementById('game-progress-bar-wrap').style.display = 'none';
   document.getElementById('game-success').classList.add('active');
-  setTimeout(() => toast('BADGE EARNED: ' + tale.gameBadge.title.toUpperCase()), 500);
+  if (!wasAlreadyEarned) setTimeout(() => toast('BADGE EARNED: ' + tale.gameBadge.title.toUpperCase()), 500);
 }
 
 function gameLose() {
@@ -4772,6 +7356,7 @@ function gameLose() {
   if (gameState.timerLoop) { clearInterval(gameState.timerLoop); gameState.timerLoop = null; }
   document.getElementById('game-play-area').style.display = 'none';
   document.getElementById('game-stats').style.display = 'none';
+  document.getElementById('game-progress-bar-wrap').style.display = 'none';
   document.getElementById('game-fail').classList.add('active');
 }
 
@@ -4834,7 +7419,9 @@ function startGridGame() {
 
   gameState.timerLoop = setInterval(() => {
     gameState.timer--;
-    document.getElementById('game-time').textContent = gameState.timer;
+    const el = document.getElementById('game-time');
+    el.textContent = gameState.timer;
+    if (gameState.timer <= 8) el.classList.add('game-time-warn');
     if (gameState.timer <= 0) {
       clearInterval(gameState.timerLoop); gameState.timerLoop = null;
       gameLose();
@@ -4909,6 +7496,7 @@ function tapLot(n, x, y, el) {
   gameState.gridStep++;
   gameState.score = gameState.gridStep;
   document.getElementById('game-score').textContent = gameState.score;
+  updateProgressBar(gameState.gridStep, gameState.gridTotal);
 
   if (gameState.gridStep >= gameState.gridTotal) {
     if (gameState.timerLoop) { clearInterval(gameState.timerLoop); gameState.timerLoop = null; }
@@ -4981,7 +7569,9 @@ function startSpikeGame() {
 
   gameState.timerLoop = setInterval(() => {
     gameState.timer--;
-    document.getElementById('game-time').textContent = gameState.timer;
+    const el = document.getElementById('game-time');
+    el.textContent = gameState.timer;
+    if (gameState.timer <= 6) el.classList.add('game-time-warn');
     if (gameState.timer <= 0) {
       clearInterval(gameState.timerLoop); gameState.timerLoop = null;
       if (gameState.loop) { clearTimeout(gameState.loop); gameState.loop = null; }
@@ -5009,6 +7599,7 @@ function spawnSpike(area) {
     spike.classList.add('driven');
     gameState.spikesHit++;
     document.getElementById('game-score').textContent = gameState.spikesHit;
+    updateProgressBar(gameState.spikesHit, gameState.spikesNeeded);
     setTimeout(() => spike.remove(), 350);
   });
 
@@ -5211,7 +7802,9 @@ function startMatchGame() {
 
   gameState.timerLoop = setInterval(() => {
     gameState.timer--;
-    document.getElementById('game-time').textContent = gameState.timer;
+    const el = document.getElementById('game-time');
+    el.textContent = gameState.timer;
+    if (gameState.timer <= 8) el.classList.add('game-time-warn');
     if (gameState.timer <= 0) {
       clearInterval(gameState.timerLoop); gameState.timerLoop = null;
       if (gameState.matchesStruck >= gameState.matchesNeeded) gameWin();
@@ -5219,8 +7812,6 @@ function startMatchGame() {
     }
   }, 1000);
 }
-
-// Light the next dark lamp in the station and emit a quick spark from
 // the match to the lamp. Returns false if all are already lit.
 function lightNextLamp(area) {
   const lamps = area.querySelectorAll('.station-lamp:not(.lit)');
@@ -5267,6 +7858,7 @@ function lightNextLamp(area) {
   // Update counters
   gameState.matchesStruck++;
   document.getElementById('game-score').textContent = gameState.matchesStruck;
+  updateProgressBar(gameState.matchesStruck, gameState.matchesNeeded);
   const counter = document.getElementById('strike-counter');
   if (counter) counter.textContent = 'LAMPS · ' + gameState.matchesStruck + ' / ' + gameState.matchesNeeded;
 
@@ -5576,16 +8168,18 @@ function applyRoute() {
       }
     }
 
-    if (hash.startsWith('#/scan')) return nav('scan', { fromRoute: true });
-    if (hash.startsWith('#/profile')) return nav('profile', { fromRoute: true });
-    if (hash.startsWith('#/about')) return nav('about', { fromRoute: true });
+    if (hash.startsWith('#/scan'))       return nav('scan',       { fromRoute: true });
+    if (hash.startsWith('#/passport'))   return nav('passport',   { fromRoute: true });
+    if (hash.startsWith('#/profile'))    return nav('passport',   { fromRoute: true }); // back-compat
+    if (hash.startsWith('#/beers'))      return nav('beers',      { fromRoute: true });
+    if (hash.startsWith('#/story') && !storyMatch) return nav('ourstory', { fromRoute: true });
+    if (hash.startsWith('#/about'))      return nav('about',      { fromRoute: true });
     if (hash.startsWith('#/woodenmatch')) return nav('woodenmatch', { fromRoute: true });
-    if (hash.startsWith('#/tracks')) return nav('tracks', { fromRoute: true });
-    nav('menu', { fromRoute: true });
+    if (hash.startsWith('#/tracks'))     return nav('tracks',     { fromRoute: true });
+    nav('tales', { fromRoute: true });
   } catch (e) {
     logError('[trackside] applyRoute failed:', e);
-    // If routing itself crashes, at least stay on menu
-    try { nav('menu', { fromRoute: true }); } catch (e2) {}
+    try { nav('tales', { fromRoute: true }); } catch (e2) {}
   }
 }
 
@@ -5646,11 +8240,17 @@ try {
 } catch (e) { /* preview env may block — ignore */ }
 
 // ================== INIT ==================
+// loadAppContent() resolves before render — awaited so TALES/REGULARS/etc
+// are populated (local or remote) before any list renders.
+(async () => {
 try {
+  await loadAppContent();
   renderBeerList('tales-list', TALES, { tales: true });
+  renderBeerList('tales-list-beers', TALES, { tales: true });
   renderBeerList('regular-list', REGULARS);
   renderBeerList('na-list', NON_ALC);
-  renderFood();
+  renderFood('food-list');
+  renderFood('food-list-home');
   renderDemoButtons();
   if (state.user) {
     document.getElementById('profile-btn').classList.remove('guest');
@@ -5672,10 +8272,24 @@ try {
 
   // Handle deep links on first load — if someone scans a QR to open the page
   // directly at /#/story/wa-lager, this routes them straight to the unlocked story.
+  initComingNextCollapse();
+  // Restore saved passport book page
+  try {
+    const saved = localStorage.getItem('trackside_passport_book_page');
+    if (saved !== null) passportBookPage = Math.min(Math.max(parseInt(saved, 10) || 0, 0), 5);
+  } catch (_) {}
   applyRoute();
+  // Populate "Today" module date
+  try {
+    const el = document.getElementById('today-date');
+    if (el) el.textContent = new Date().toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}).toUpperCase();
+  } catch (_) {}
 } catch (e) {
   logError('[trackside] init failed:', e);
+  // If init crashed after a failed remote load, ensure local fallback is in place
+  useLocalContentFallback();
 }
+})(); // end async init IIFE
 </script>
 </body>
 </html>
