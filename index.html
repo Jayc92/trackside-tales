@@ -1349,27 +1349,57 @@ body.is-navigating .nav-btn:active {
 }
 #page-scan.active { display: flex; }
 
-.scan-viewport { width: 240px; height: 240px; position: relative; margin-bottom: 2rem; }
-/* Live camera container overrides scan-viewport visuals when active */
+.scan-viewport {
+  width: min(82vw, 340px);
+  max-width: 340px;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  position: relative;
+  margin: 0 auto 2rem;
+  overflow: hidden;
+}
+/* Live camera container fills the square scan viewport */
 #qr-reader {
   position: absolute;
   inset: 0;
+  width: 100% !important;
+  height: 100% !important;
   overflow: hidden;
   border-radius: 2px;
 }
+/* html5-qrcode internal scan region — force square fill */
+#qr-reader__scan_region {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  display: block !important;
+  background: transparent !important;
+}
+/* Camera video — cover the square, no letterbox */
+#qr-reader__scan_region video,
 #qr-reader video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+  object-position: center center !important;
+  display: block !important;
+}
+/* Any extra injected div wrapper from html5-qrcode */
+#qr-reader > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+/* Prevent injected canvas/img from overflowing the frame */
+#qr-reader canvas,
+#qr-reader img {
+  max-width: none !important;
 }
 /* Hide html5-qrcode's default UI chrome — we use our own overlay */
+/* Note: only hiding dashboard and header; keeping scan_region img rule
+   narrow to avoid impacting video layout */
 #qr-reader__dashboard,
-#qr-reader__scan_region img,
 #qr-reader__header_message { display: none !important; }
-#qr-reader__scan_region {
-  background: transparent !important;
-  min-height: 100% !important;
-}
+#qr-reader__scan_region img { display: none !important; }
 .scan-live-chip {
   position: absolute;
   top: -24px; left: 50%; transform: translateX(-50%);
@@ -5480,17 +5510,25 @@ let COMING_NEXT_REMOTE = null;
 // with the anon key in the Authorization and apikey headers.
 
 // ---- Fetch helper ----
-async function supabaseFetch(table, params = '') {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?${params}`;
+async function supabaseFetch(table, params = '', fetchOpts = {}) {
+  const url = params
+    ? `${SUPABASE_URL}/rest/v1/${table}?${params}`
+    : `${SUPABASE_URL}/rest/v1/${table}`;
   const res = await fetch(url, {
+    method: fetchOpts.method || 'GET',
     headers: {
       'apikey':        SUPABASE_ANON_KEY,
       'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
       'Accept':        'application/json',
-    }
+      ...(fetchOpts.headers || {})
+    },
+    ...(fetchOpts.body ? { body: fetchOpts.body } : {})
   });
   if (!res.ok) throw new Error(`[trackside] Supabase fetch failed: ${table} ${res.status}`);
-  return res.json();
+  // POST/PATCH with return=minimal returns 204 with empty body.
+  // Parse text defensively so both empty and JSON responses work.
+  const text = await res.text();
+  return text ? JSON.parse(text) : true;
 }
 
 // ---- Remote QR code lookup ----
@@ -5533,6 +5571,227 @@ async function lookupQRCodeRemote(codeValue) {
     return null;
   }
 }
+
+// ================== v4.2 — GUEST IDENTITY & PERSISTENCE ==================
+
+// ---- Stable guest identity (no login required) ----
+
+function getOrCreateGuestId() {
+  const key = 'trackside_guest_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID
+      ? crypto.randomUUID()
+      : 'guest-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+function getGuestProfileLocal() {
+  return {
+    guest_id:   getOrCreateGuestId(),
+    nickname:   state.user?.name || localStorage.getItem('tb_user') && JSON.parse(localStorage.getItem('tb_user') || 'null')?.name || 'Guest Rider',
+    created_at: localStorage.getItem('trackside_guest_created_at') || null
+  };
+}
+
+// ---- Remote upsert / fetch helpers ----
+
+async function upsertGuestProfileRemote() {
+  if (!USE_REMOTE_CONTENT || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  const guest = getGuestProfileLocal();
+  try {
+    await supabaseFetch('guest_profiles', '', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer':        'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        guest_id:   guest.guest_id,
+        nickname:   guest.nickname,
+        updated_at: new Date().toISOString()
+      })
+    });
+    return true;
+  } catch (err) {
+    logWarn('[trackside] Guest profile sync unavailable — using local fallback', err);
+    return false;
+  }
+}
+
+async function fetchGuestProgressRemote() {
+  if (!USE_REMOTE_CONTENT || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  const guestId = getOrCreateGuestId();
+  const encoded = encodeURIComponent(guestId);
+  try {
+    const [unlocks, badges] = await Promise.all([
+      supabaseFetch('guest_unlocks', `select=*&guest_id=eq.${encoded}`),
+      supabaseFetch('guest_badges',  `select=*&guest_id=eq.${encoded}`)
+    ]);
+    return {
+      unlocks: Array.isArray(unlocks) ? unlocks : [],
+      badges:  Array.isArray(badges)  ? badges  : []
+    };
+  } catch (err) {
+    logWarn('[trackside] Guest progress fetch unavailable — using local fallback', err);
+    return null;
+  }
+}
+
+async function recordUnlockRemote(taleSlug, opts = {}) {
+  if (!USE_REMOTE_CONTENT || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  if (!taleSlug) return false;
+  try {
+    await supabaseFetch('guest_unlocks', '', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer':        'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        guest_id:    getOrCreateGuestId(),
+        tale_slug:   taleSlug,
+        beer_id:     opts.beerId  || null,
+        qr_code:     opts.qrCode  || null,
+        source:      opts.source  || 'demo',
+        unlocked_at: new Date().toISOString()
+      })
+    });
+    console.log('[trackside] Unlock saved to Supabase:', taleSlug);
+    return true;
+  } catch (err) {
+    logWarn('[trackside] Unlock save unavailable — local progress retained', err);
+    return false;
+  }
+}
+
+async function recordBadgeRemote(badgeKey, opts = {}) {
+  if (!USE_REMOTE_CONTENT || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  if (!badgeKey) return false;
+  try {
+    await supabaseFetch('guest_badges', '', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer':        'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        guest_id:    getOrCreateGuestId(),
+        tale_slug:   opts.taleSlug   || null,
+        badge_key:   badgeKey,
+        badge_label: opts.badgeLabel || null,
+        earned_at:   new Date().toISOString()
+      })
+    });
+    console.log('[trackside] Badge saved to Supabase:', badgeKey);
+    return true;
+  } catch (err) {
+    logWarn('[trackside] Badge save unavailable — local badge retained', err);
+    return false;
+  }
+}
+
+async function recordScanEventRemote(codeValue, status, taleSlug = null) {
+  if (!USE_REMOTE_CONTENT || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  try {
+    await supabaseFetch('guest_scan_events', '', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        guest_id:            getOrCreateGuestId(),
+        code_value:          String(codeValue || ''),
+        resolved_tale_slug:  taleSlug,
+        scan_status:         status || 'unknown',
+        created_at:          new Date().toISOString()
+      })
+    });
+    return true;
+  } catch (err) {
+    logWarn('[trackside] Scan event save unavailable', err);
+    return false;
+  }
+}
+
+// ---- Local state merge helpers ----
+
+function mergeRemoteUnlocksIntoLocal(taleSlugs) {
+  if (!Array.isArray(taleSlugs) || !taleSlugs.length) return;
+  let changed = false;
+  taleSlugs.forEach(slug => {
+    if (!state.unlocked.has(slug)) {
+      state.unlocked.add(slug);
+      // recordCollectedDate only writes if not already set — safe to call
+      if (!state.collectedDates[slug]) {
+        state.collectedDates[slug] = new Date().toISOString();
+      }
+      state.scanBadges.add(slug);
+      changed = true;
+    }
+  });
+  if (changed) save();
+}
+
+function mergeRemoteBadgesIntoLocal(badgeKeys) {
+  if (!Array.isArray(badgeKeys) || !badgeKeys.length) return;
+  let changed = false;
+  badgeKeys.forEach(key => {
+    if (!key) return;
+    // Game badges stored as 'game:<taleId>'
+    if (key.startsWith('game:')) {
+      const taleId = key.slice(5);
+      if (taleId && !state.gameBadges.has(taleId)) {
+        state.gameBadges.add(taleId);
+        changed = true;
+      }
+    }
+    // Scan badges stored as 'scan:<taleId>'
+    if (key.startsWith('scan:')) {
+      const taleId = key.slice(5);
+      if (taleId && !state.scanBadges.has(taleId)) {
+        state.scanBadges.add(taleId);
+        changed = true;
+      }
+    }
+  });
+  if (changed) save();
+}
+
+async function hydrateGuestProgressFromRemote() {
+  const remote = await fetchGuestProgressRemote();
+  if (!remote) return false;
+  try {
+    const remoteTaleSlugs = remote.unlocks
+      .map(u => u.tale_slug || u.taleSlug || u.slug)
+      .filter(Boolean);
+    const remoteBadgeKeys = remote.badges
+      .map(b => b.badge_key || b.badgeKey || b.key)
+      .filter(Boolean);
+
+    mergeRemoteUnlocksIntoLocal(remoteTaleSlugs);
+    mergeRemoteBadgesIntoLocal(remoteBadgeKeys);
+
+    if (remoteTaleSlugs.length || remoteBadgeKeys.length) {
+      // Re-render lists and passport with merged data
+      refreshMenu();
+      renderBeerList('tales-list',       TALES, { tales: true });
+      renderBeerList('tales-list-beers', TALES, { tales: true });
+      if (state.page === 'passport') renderProfile();
+    }
+
+    logInfo('[trackside] Guest progress restored from Supabase:', {
+      unlocks: remoteTaleSlugs.length,
+      badges:  remoteBadgeKeys.length
+    });
+    return true;
+  } catch (err) {
+    logWarn('[trackside] Guest progress merge failed — using local fallback', err);
+    return false;
+  }
+}
+
+// ---- End v4.2 guest persistence ----
 
 // ---- Normalize remote → local shape ----
 // Each function maps a Supabase row to the object shape the app expects.
@@ -5824,7 +6083,7 @@ function renderFood(containerId = 'food-list') {
 
 function renderDemoButtons() {
   document.getElementById('demo-buttons').innerHTML = TALES.map(t => `
-    <button class="demo-quick-btn" onclick="simulateScan('${t.id}')">
+    <button class="demo-quick-btn" onclick="simulateScan('${t.id}', {source:'demo'})">
       <span>${t.name} — ${t.person.name}</span>
       <span class="demo-quick-btn-arrow">→</span>
     </button>
@@ -7131,7 +7390,7 @@ function openTale(id) {
   showStoryTransition(() => nav('story'));
 }
 
-function simulateScan(id) {
+function simulateScan(id, opts = {}) {
   const overlay = document.getElementById('unlock-overlay');
   const wasUnlocked = state.unlocked.has(id);
   const tale = TALES.find(t => t.id === id);
@@ -7141,6 +7400,19 @@ function simulateScan(id) {
   recordCollectedDate(id);
   if (state.user && !wasUnlocked) state.scanBadges.add(id);
   save();
+
+  // v4.2 — persist to Supabase in the background; never blocks local flow
+  recordUnlockRemote(id, {
+    source: opts.source || 'demo',
+    qrCode: opts.qrCode || null,
+    beerId: tale?.id    || null
+  });
+  if (!wasUnlocked) {
+    recordBadgeRemote('scan:' + id, {
+      taleSlug:   id,
+      badgeLabel: tale?.scanBadge?.title || 'Scan Badge'
+    });
+  }
 
   // ---- Populate passport-stamp content ----
   // Different copy depending on whether this is a fresh collection or a re-tap.
@@ -7486,6 +7758,11 @@ function gameWin() {
   if (!wasAlreadyEarned) {
     state.gameBadges.add(tale.id);
     save();
+    // v4.2 — persist game badge to Supabase in the background
+    recordBadgeRemote('game:' + tale.id, {
+      taleSlug:   tale.id,
+      badgeLabel: tale.gameBadge?.title || 'Game Badge'
+    });
   }
   updateProgressBar(1, 1);
   document.getElementById('game-success-badge').innerHTML = renderIcon(tale.gameBadge.icon, 'ts-icon-stamp');
@@ -8112,15 +8389,18 @@ function onQrSuccess(decodedText) {
       const remoteMatch = await lookupQRCodeRemote(decodedText);
       if (remoteMatch && remoteMatch.taleId) {
         console.log('[trackside] QR code resolved from Supabase:', remoteMatch.taleId);
-        simulateScan(remoteMatch.taleId);
+        recordScanEventRemote(decodedText, 'resolved', remoteMatch.taleId);
+        simulateScan(remoteMatch.taleId, { source: 'qr', qrCode: decodedText });
         return;
       }
       const taleId = parseQrPayload(decodedText);
       if (!taleId) {
+        recordScanEventRemote(decodedText, 'unknown', null);
         toast('UNRECOGNIZED CODE · NOT A TRACKSIDE TALE');
         return;
       }
-      simulateScan(taleId);
+      recordScanEventRemote(decodedText, 'local_fallback', taleId);
+      simulateScan(taleId, { source: 'local_fallback', qrCode: decodedText });
     } catch (e) {
       logError('[trackside] QR success handler crashed:', e);
       toast('SCAN ERROR · TRY AGAIN');
@@ -8401,7 +8681,12 @@ try {
 // are populated (local or remote) before any list renders.
 (async () => {
 try {
-  console.log('[trackside] App version: 4.1');
+  console.log('[trackside] App version: 4.2');
+
+  // v4.2 — ensure guest ID exists and log a shortened version
+  const _gid = getOrCreateGuestId();
+  console.log('[trackside] Guest ID:', _gid.slice(0, 8) + '…');
+
   await loadAppContent();
   renderComingNextFromRemote(); // overwrite static HTML if remote data loaded
   renderBeerList('tales-list', TALES, { tales: true });
@@ -8438,6 +8723,10 @@ try {
     if (saved !== null) passportBookPage = Math.min(Math.max(parseInt(saved, 10) || 0, 0), 5);
   } catch (_) {}
   applyRoute();
+  // v4.2 — sync guest identity and restore remote progress.
+  // Both run in the background; neither blocks render or local behavior.
+  upsertGuestProfileRemote();
+  hydrateGuestProgressFromRemote();
   // Populate "Today" module date
   try {
     const el = document.getElementById('today-date');
