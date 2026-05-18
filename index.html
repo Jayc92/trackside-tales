@@ -5793,6 +5793,171 @@ async function hydrateGuestProgressFromRemote() {
 
 // ---- End v4.2 guest persistence ----
 
+// ================== v4.3 — SECURE QR VALIDATION ==================
+//
+// QR resolution priority:
+//   1. Supabase Edge Function (server-side validation — preferred)
+//   2. Direct Supabase qr_codes table lookup (fallback if Edge unavailable)
+//   3. Local parseQrPayload slug match (last resort demo fallback)
+//
+// QR code format printed on cans:
+//   Raw token:  ts_demo_WA_7G9KQ4M2V8X1B6R3P0D5
+//   URL form:   https://jayc92.github.io/trackside-tales/?code=ts_demo_WA_7G9KQ4M2V8X1B6R3P0D5
+//
+// Demo tokens:
+//   ts_demo_WA_7G9KQ4M2V8X1B6R3P0D5         → wa-lager
+//   ts_demo_PACKER_N4F8Z2Q9L6C1Y7A3T5K0     → packer-pilsner
+//   ts_demo_WM_AMBER_Q8R2M5T1B6R3P0D5       → wooden-match-amber
+// ================================================================
+
+const QR_VALIDATE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/validate-qr`;
+
+// ---- Edge Function validator ----
+// Sends the raw scanned value to the server for authoritative validation.
+// Returns { valid, taleSlug, beerId, qrCode } or { valid:false, reason } or null.
+// null means the Edge Function was unreachable — fallback should follow.
+async function validateQRCodeWithEdgeFunction(codeValue) {
+  if (!USE_REMOTE_CONTENT || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  if (!codeValue) return null;
+
+  try {
+    const res = await fetch(QR_VALIDATE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey':         SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        code:     String(codeValue).trim(),
+        guest_id: getOrCreateGuestId ? getOrCreateGuestId() : null
+      })
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data) {
+      logWarn('[trackside] Edge QR validation failed — falling back', res.status);
+      return null; // unreachable/error → fall through
+    }
+
+    if (!data.valid || !data.tale_slug) {
+      return { valid: false, reason: data.reason || 'invalid' };
+    }
+
+    return {
+      valid:    true,
+      taleSlug: data.tale_slug,
+      beerId:   data.beer_id  || null,
+      qrCode:   data.qr_code  || String(codeValue).trim()
+    };
+  } catch (err) {
+    logWarn('[trackside] Edge QR validation unavailable — falling back', err);
+    return null; // network error → fall through
+  }
+}
+
+// ---- Unified QR resolver (priority chain) ----
+async function resolveScannedQRCode(decodedText) {
+  // Step 1: Edge Function (server-side authoritative)
+  const edge = await validateQRCodeWithEdgeFunction(decodedText);
+
+  if (edge && edge.valid) {
+    console.log('[trackside] QR code validated by Edge Function:', edge.taleSlug);
+    return {
+      taleSlug: edge.taleSlug,
+      beerId:   edge.beerId || null,
+      qrCode:   edge.qrCode || decodedText,
+      source:   'edge_qr',
+      status:   'edge_resolved'
+    };
+  }
+
+  if (edge && edge.valid === false) {
+    // Edge was reachable and explicitly rejected the code — do not continue.
+    return { invalid: true, reason: edge.reason || 'invalid', status: 'edge_invalid' };
+  }
+
+  // Step 2: Direct Supabase qr_codes table (Edge was unavailable, not deployed yet)
+  const remoteMatch = await lookupQRCodeRemote(decodedText);
+  if (remoteMatch && (remoteMatch.taleSlug || remoteMatch.taleId)) {
+    const taleSlug = remoteMatch.taleSlug || remoteMatch.taleId;
+    console.log('[trackside] QR code resolved from Supabase fallback:', taleSlug);
+    return {
+      taleSlug,
+      qrCode: decodedText,
+      source: 'supabase_qr_fallback',
+      status: 'resolved'
+    };
+  }
+
+  // Step 3: Local slug/URL parsing (offline / no connectivity)
+  const localTale = parseQrPayload(decodedText);
+  if (localTale) {
+    return {
+      taleSlug: localTale,
+      qrCode:   decodedText,
+      source:   'local_fallback',
+      status:   'local_fallback'
+    };
+  }
+
+  return { invalid: true, reason: 'unknown_code', status: 'unknown' };
+}
+
+// ---- URL ?code= launch support ----
+// Allows physical QR codes that open:
+//   https://jayc92.github.io/trackside-tales/?code=ts_demo_WA_7G9KQ4M2V8X1B6R3P0D5
+// to trigger the unlock flow immediately on page load.
+function getCodeFromCurrentUrl() {
+  try {
+    const url    = new URL(window.location.href);
+    const direct = url.searchParams.get('code');
+    if (direct) return direct;
+
+    const hash      = window.location.hash || '';
+    const hashQuery = hash.includes('?') ? hash.split('?')[1] : '';
+    if (hashQuery) {
+      const params    = new URLSearchParams(hashQuery);
+      const hashCode  = params.get('code');
+      if (hashCode) return hashCode;
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function processUrlQRCode() {
+  const code = getCodeFromCurrentUrl();
+  if (!code) return;
+
+  // Deduplicate: don't replay the same code on every render/route change.
+  const sessionKey = 'trackside_last_url_code_processed';
+  try {
+    if (sessionStorage.getItem(sessionKey) === code) return;
+    sessionStorage.setItem(sessionKey, code);
+  } catch (_) {}
+
+  console.log('[trackside] URL QR code detected:', code.slice(0, 20) + '…');
+
+  const result = await resolveScannedQRCode(code);
+  recordScanEventRemote(code, result.status || 'unknown', result.taleSlug || null);
+
+  if (result.invalid) {
+    toast('QR CODE NOT RECOGNIZED');
+    return;
+  }
+
+  simulateScan(result.taleSlug, {
+    source: 'url_qr',
+    qrCode: result.qrCode || code,
+    beerId: result.beerId || null
+  });
+}
+
+// ---- End v4.3 QR validation ----
+
 // ---- Normalize remote → local shape ----
 // Each function maps a Supabase row to the object shape the app expects.
 // Only the fields the app actually reads are mapped — extras are ignored.
@@ -8386,21 +8551,18 @@ function onQrSuccess(decodedText) {
   stopQrScanner();
   (async () => {
     try {
-      const remoteMatch = await lookupQRCodeRemote(decodedText);
-      if (remoteMatch && remoteMatch.taleId) {
-        console.log('[trackside] QR code resolved from Supabase:', remoteMatch.taleId);
-        recordScanEventRemote(decodedText, 'resolved', remoteMatch.taleId);
-        simulateScan(remoteMatch.taleId, { source: 'qr', qrCode: decodedText });
-        return;
-      }
-      const taleId = parseQrPayload(decodedText);
-      if (!taleId) {
-        recordScanEventRemote(decodedText, 'unknown', null);
+      const result = await resolveScannedQRCode(decodedText);
+      recordScanEventRemote(decodedText, result.status || 'unknown', result.taleSlug || null);
+
+      if (result.invalid) {
         toast('UNRECOGNIZED CODE · NOT A TRACKSIDE TALE');
         return;
       }
-      recordScanEventRemote(decodedText, 'local_fallback', taleId);
-      simulateScan(taleId, { source: 'local_fallback', qrCode: decodedText });
+      simulateScan(result.taleSlug, {
+        source: result.source || 'qr',
+        qrCode: result.qrCode || decodedText,
+        beerId: result.beerId || null
+      });
     } catch (e) {
       logError('[trackside] QR success handler crashed:', e);
       toast('SCAN ERROR · TRY AGAIN');
@@ -8681,7 +8843,7 @@ try {
 // are populated (local or remote) before any list renders.
 (async () => {
 try {
-  console.log('[trackside] App version: 4.2');
+  console.log('[trackside] App version: 4.3');
 
   // v4.2 — ensure guest ID exists and log a shortened version
   const _gid = getOrCreateGuestId();
@@ -8727,6 +8889,8 @@ try {
   // Both run in the background; neither blocks render or local behavior.
   upsertGuestProfileRemote();
   hydrateGuestProgressFromRemote();
+  // v4.3 — check if app was launched via a ?code= QR URL
+  processUrlQRCode();
   // Populate "Today" module date
   try {
     const el = document.getElementById('today-date');
