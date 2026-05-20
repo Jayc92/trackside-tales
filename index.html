@@ -241,95 +241,329 @@ body.is-navigating .nav-btn:active {
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ============ HOME / MENU ============ */
-.venue-hero {
-  padding: 1.75rem 1.25rem 1.5rem;
+/* ============ HOME v4.5 — OPTION A PALETTE ============ */
+/* Color tokens for Option A subtle lift — applied to home only.
+   Global tokens (--coal, --gold, etc.) remain on :root and other pages. */
+:root {
+  --h-bg:       #14100E;
+  --h-panel:    #1E1815;
+  --h-card:     #241D19;
+  --h-border:   #4B382C;
+  --h-bronze:   #C47A36;
+  --h-highlight:#D89A58;
+  --h-text:     #F1E7D7;
+  --h-muted:    #BFAE96;
+}
+
+/* ── Hero ─────────────────────────────────────────────── */
+.home-hero {
+  position: relative;
+  margin: 1.1rem 1.1rem 0;
+  border: 1px solid var(--h-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--h-card);
+  box-shadow:
+    0 0 0 1px rgba(196,122,54,0.08) inset,
+    0 8px 32px rgba(0,0,0,0.55);
+}
+
+/* Brass corner bolts */
+.home-hero::before,
+.home-hero::after {
+  content: '';
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--h-highlight), #3d2010);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.18), 0 1px 2px rgba(0,0,0,0.7);
+  z-index: 6;
+}
+.home-hero::before { top: 10px; left: 10px; }
+.home-hero::after  { top: 10px; right: 10px; }
+
+/* Bottom bolt pair via sibling — inlined as data-bolt pseudo on .home-hero-inner */
+.home-hero-bolts-bottom {
+  position: absolute;
+  bottom: 10px; left: 0; right: 0;
+  display: flex; justify-content: space-between;
+  padding: 0 10px;
+  pointer-events: none; z-index: 6;
+}
+.home-hero-bolts-bottom span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--h-highlight), #3d2010);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.18), 0 1px 2px rgba(0,0,0,0.7);
+  display: block;
+}
+
+/* Train illustration area */
+/* Hero photo area */
+.home-hero-train {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  position: relative;
+  overflow: hidden;
+  background: #080604;
+}
+
+/* Real photo fills the frame */
+.home-hero-train img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+/* Gradient fade at bottom so hero bleeds into copy panel */
+.home-hero-train::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 38%;
+  background: linear-gradient(to top, rgba(20,16,14,0.85), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Featured chip */
+.home-featured-chip {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.3em;
+  color: var(--h-bg);
+  background: linear-gradient(135deg, var(--h-bronze), var(--h-highlight));
+  padding: 0.28rem 0.8rem;
+  border-radius: 2px;
+  white-space: nowrap;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* Hero text panel */
+.home-hero-body {
+  padding: 1.1rem 1.25rem 1.35rem;
+  border-top: 1px solid var(--h-border);
   background:
-    radial-gradient(ellipse at 80% 20%, rgba(192, 78, 24, 0.08), transparent 60%),
-    linear-gradient(135deg, #160f08 0%, #0d0906 100%);
-  border-bottom: 1px solid var(--brass-line-soft);
-  position: relative; overflow: hidden;
-}
-.venue-hero::before, .venue-hero::after {
-  content: ''; position: absolute;
-  height: 4px; width: 250px; right: -20%;
-  background: linear-gradient(to right, transparent, rgba(192,78,24,0.3), transparent);
-}
-.venue-hero::before { top: 40%; }
-.venue-hero::after { top: calc(40% + 8px); opacity: 0.6; }
-/* Rivets in the corner — industrial detail */
-.venue-hero > .hero-rivets {
-  position: absolute; top: 0.85rem; right: 0.9rem;
-  display: flex; gap: 0.35rem; z-index: 1;
-}
-.hero-rivet {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, var(--brass), #3d2e18);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.1), 0 1px 1px rgba(0,0,0,0.5);
+    linear-gradient(135deg, rgba(196,122,54,0.06) 0%, transparent 60%),
+    var(--h-card);
+  position: relative;
 }
 
-.venue-eyebrow {
-  font-size: 0.55rem; letter-spacing: 0.4em; color: var(--ember);
-  margin-bottom: 0.6rem;
-  animation: fadeIn 0.5s var(--ease-out-quart) 0.05s both;
+/* Horizontal rail accent lines across hero body */
+.home-hero-body::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 45%; height: 100%;
+  background:
+    linear-gradient(90deg, transparent, rgba(196,122,54,0.04)),
+    repeating-linear-gradient(0deg,
+      transparent 0px, transparent 18px,
+      rgba(196,122,54,0.04) 18px, rgba(196,122,54,0.04) 19px);
+  pointer-events: none;
 }
-.venue-name {
+
+.home-hero-eyebrow {
+  font-size: 0.48rem;
+  letter-spacing: 0.38em;
+  color: var(--h-bronze);
+  margin-bottom: 0.5rem;
+  animation: hFadeUp 0.5s var(--ease-out-quart) 0.05s both;
+}
+.home-hero-title {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 2rem; color: var(--parchment);
-  line-height: 1; letter-spacing: 0.04em; margin-bottom: 0.45rem;
-  animation: fadeIn 0.6s var(--ease-out-quart) 0.1s both;
+  font-size: 2.15rem;
+  color: var(--h-text);
+  letter-spacing: 0.05em;
+  line-height: 0.95;
+  margin-bottom: 0.25rem;
+  animation: hFadeUp 0.55s var(--ease-out-quart) 0.1s both;
 }
-.venue-tag {
-  font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.9rem;
-  color: var(--steam); line-height: 1.5; max-width: 340px;
-  animation: fadeIn 0.6s var(--ease-out-quart) 0.18s both;
+.home-hero-sub {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem;
+  color: var(--h-bronze);
+  letter-spacing: 0.22em;
+  margin-bottom: 0.75rem;
+  animation: hFadeUp 0.55s var(--ease-out-quart) 0.15s both;
 }
-.venue-meta {
-  display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.1rem;
-  animation: fadeIn 0.6s var(--ease-out-quart) 0.26s both;
+.home-hero-tagline {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--h-muted);
+  line-height: 1.55;
+  margin-bottom: 1.1rem;
+  max-width: 300px;
+  animation: hFadeUp 0.6s var(--ease-out-quart) 0.2s both;
 }
-.venue-pill {
-  font-size: 0.55rem; letter-spacing: 0.2em;
-  padding: 0.35rem 0.65rem; border: 1px solid var(--brass-line);
-  color: var(--brass); display: inline-flex; align-items: center; gap: 0.3rem;
-  background: rgba(12, 10, 7, 0.3);
-  transition: border-color 0.2s, color 0.2s;
-}
-.venue-pill.live::before {
-  content: ''; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--ember); animation: pulse 1.5s infinite;
-  box-shadow: 0 0 6px rgba(192, 78, 24, 0.6);
-}
-.about-link {
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  margin-top: 1rem;
-  font-size: 0.6rem; letter-spacing: 0.25em; color: var(--gold);
-  padding-bottom: 2px; border-bottom: 1px solid var(--brass);
+.home-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--h-bg);
+  background: linear-gradient(135deg, var(--h-bronze) 0%, var(--h-highlight) 100%);
+  padding: 0.65rem 1.2rem;
+  border: none;
+  border-radius: 2px;
   cursor: pointer;
-  transition: color 0.2s, border-color 0.2s, gap 0.2s;
-  animation: fadeIn 0.6s var(--ease-out-quart) 0.34s both;
+  box-shadow:
+    0 2px 8px rgba(196,122,54,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  transition: filter 0.18s, transform 0.12s, box-shadow 0.18s;
+  animation: hFadeUp 0.6s var(--ease-out-quart) 0.28s both;
 }
-.about-link:hover { color: var(--ember); border-color: var(--ember); gap: 0.6rem; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.home-hero-cta:hover  {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 14px rgba(196,122,54,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.home-hero-cta:active { transform: scale(0.97); }
+.home-hero-cta-arrow  { font-size: 0.75rem; }
 
-.section-label {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1.75rem 1.25rem 0.85rem;
+@keyframes hFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
-.section-label-text {
-  font-size: 0.6rem; letter-spacing: 0.35em; color: var(--ember);
-  display: flex; align-items: center; gap: 0.6rem;
-}
-.section-label-text::before {
-  content: ''; width: 24px; height: 1px;
-  background: linear-gradient(to right, transparent, var(--ember));
-}
-.section-count { font-size: 0.55rem; letter-spacing: 0.2em; color: var(--aged); }
 
-/* BEER · FOOD quick-jump strip — sits above the section list, below feature cards.
-   Tapping FOOD scrolls to the kitchen section via smooth scroll.
-   This is NOT the bottom nav — bottom nav MENU returns to the main page. */
+/* ── Menu stack cards ─────────────────────────────────── */
+.home-menu-stack {
+  padding: 1.1rem 1.1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.home-menu-card {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--h-card);
+  border: 1px solid var(--h-border);
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color 0.22s var(--ease-out-quart),
+    box-shadow   0.22s var(--ease-out-quart),
+    transform    0.16s var(--ease-out-quart);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.home-menu-card:hover {
+  border-color: var(--h-bronze);
+  box-shadow:
+    0 4px 18px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(196,122,54,0.15) inset;
+  transform: translateY(-1px);
+}
+.home-menu-card:active { transform: scale(0.985); }
+
+/* Top brass hairline */
+.home-menu-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(216,154,88,0.5), transparent);
+  transition: opacity 0.22s;
+}
+.home-menu-card:hover::before { opacity: 1; }
+
+/* Left badge column */
+.home-menu-badge {
+  width: 76px;
+  min-height: 76px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--h-panel);
+  border-right: 1px solid var(--h-border);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Real badge image fills the column */
+.home-menu-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+/* Fallback SVG shown only when img fails */
+.home-menu-badge .badge-fallback {
+  width: 30px; height: 30px;
+  position: relative; z-index: 1;
+  opacity: 0.5;
+}
+
+/* Text body */
+.home-menu-body {
+  flex: 1;
+  padding: 0.9rem 0.8rem 0.9rem 1rem;
+  min-width: 0;
+}
+.home-menu-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  color: var(--h-text);
+  line-height: 1;
+  margin-bottom: 0.3rem;
+  transition: color 0.18s;
+}
+.home-menu-card:hover .home-menu-title { color: var(--h-highlight); }
+.home-menu-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.72rem;
+  color: var(--h-muted);
+  line-height: 1.45;
+}
+
+/* Right chevron */
+.home-menu-arrow {
+  padding: 0 1rem;
+  font-size: 1rem;
+  color: var(--h-border);
+  flex-shrink: 0;
+  transition: color 0.2s, transform 0.2s;
+}
+.home-menu-card:hover .home-menu-arrow {
+  color: var(--h-bronze);
+  transform: translateX(2px);
+}
+
+/* ── Home footer spacer below stack ──────────────────── */
+.home-footer-space { height: 1.5rem; }
+
+/* ── Preserve IDs needed by JS (hidden containers) ───── */
+/* #tales-list and #food-list-home remain in DOM, invisible on home.
+   refreshMenu() and renderComingNextFromRemote() still populate them
+   so other pages that pull from these collections work correctly.   */
+.home-hidden-lists {
+  display: none !important;
+  visibility: hidden;
+  height: 0; overflow: hidden;
+  position: absolute; pointer-events: none;
+}
+
+/* ── Beers page jump strip (shared) ── */
 .menu-jump-strip {
   display: flex;
   align-items: center;
@@ -359,119 +593,6 @@ body.is-navigating .nav-btn:active {
   font-family: 'Bebas Neue', sans-serif;
   pointer-events: none;
 }
-.tales-helper {
-  margin: -0.4rem 1.25rem 0.6rem;
-  padding: 0.4rem 0 0.4rem 0.7rem;
-  border-left: 2px solid rgba(192, 78, 24, 0.45);
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-  font-size: 0.72rem;
-  color: var(--steam);
-  line-height: 1.45;
-  letter-spacing: 0.005em;
-}
-
-/* START WITH A SCAN — quick-action CTA between Tales header and helper */
-.scan-cta-row {
-  padding: 0 1.25rem 0.5rem;
-}
-.scan-cta-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.7rem 1rem;
-  background: linear-gradient(135deg, rgba(192,78,24,0.12) 0%, rgba(160,120,8,0.08) 100%);
-  border: 1px solid rgba(192,78,24,0.4);
-  border-radius: 3px;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1rem;
-  letter-spacing: 0.12em;
-  color: var(--ember);
-  cursor: pointer;
-  transition: background 0.18s, border-color 0.18s, transform 0.12s;
-}
-.scan-cta-btn:hover  { border-color: rgba(192,78,24,0.65); background: linear-gradient(135deg, rgba(192,78,24,0.18) 0%, rgba(160,120,8,0.12) 100%); }
-.scan-cta-btn:active { transform: scale(0.98); }
-.scan-cta-icon { font-size: 1rem; color: var(--ember); }
-
-/* ============ HOW IT WORKS (home card) ============ */
-.how-it-works {
-  margin: 1rem 1.25rem 0;
-  padding: 1.1rem 1.1rem 0.9rem;
-  background:
-    linear-gradient(135deg, rgba(192, 78, 24, 0.05), rgba(160, 120, 8, 0.03));
-  border: 1px solid var(--brass-line);
-  border-left: 3px solid var(--ember);
-  position: relative; overflow: hidden;
-}
-.how-it-works::after {
-  content: '';
-  position: absolute; top: 0; right: 0;
-  width: 80px; height: 80px;
-  background: radial-gradient(circle at 100% 0%, rgba(200, 144, 16, 0.08), transparent 70%);
-  pointer-events: none;
-}
-.how-label {
-  font-size: 0.5rem; letter-spacing: 0.35em; color: var(--ember);
-  margin-bottom: 0.5rem;
-}
-.how-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.1rem; color: var(--parchment);
-  letter-spacing: 0.04em; line-height: 1;
-  margin-bottom: 0.8rem;
-}
-.how-steps {
-  display: flex; flex-direction: column; gap: 0.6rem;
-}
-.how-step {
-  display: flex; gap: 0.8rem; align-items: flex-start;
-}
-.how-step-num {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: var(--coal); border: 1px solid var(--brass);
-  color: var(--gold);
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 0.7rem; line-height: 20px;
-  text-align: center; flex-shrink: 0;
-  letter-spacing: 0;
-}
-.how-step-text {
-  font-size: 0.72rem; line-height: 1.55; color: var(--steam);
-  padding-top: 2px;
-}
-.how-step-text strong { color: var(--parchment); font-weight: 600; }
-.how-dismiss {
-  text-align: right;
-  margin-top: 0.7rem;
-  padding-top: 0.5rem;
-  border-top: 1px dashed var(--brass-line);
-}
-.how-dismiss-btn {
-  background: transparent; border: none;
-  color: var(--aged); font-family: 'Source Code Pro', monospace;
-  font-size: 0.55rem; letter-spacing: 0.2em;
-  cursor: pointer; padding: 0.2rem 0;
-}
-.how-dismiss-btn:hover { color: var(--gold); }
-
-/* Restore link — appears after the how-it-works block is hidden */
-.how-restore-btn {
-  display: block;
-  margin: 0.25rem 1.25rem 0.5rem;
-  background: transparent;
-  border: none;
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-  font-size: 0.72rem;
-  color: var(--aged);
-  cursor: pointer;
-  padding: 0.2rem 0;
-  opacity: 0.6;
-  transition: opacity 0.2s, color 0.2s;
-}
-.how-restore-btn:hover { opacity: 1; color: var(--gold); }
 
 /* Discreet demo-reset button — lives at the bottom of the Profile page.
    Intentionally low-contrast: useful for demos but not a primary action. */
@@ -511,76 +632,6 @@ body.is-navigating .nav-btn:active {
 .feedback-btn:hover {
   color: rgba(200,144,16,0.7);
   border-color: rgba(160,120,8,0.35);
-}
-
-/* ============ FEATURE NAV CARDS (Menu discovery) ============ */
-.feature-nav {
-  padding: 1.5rem 1.25rem 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-.feature-card {
-  position: relative;
-  overflow: hidden;
-  padding: 1rem 0.9rem 0.9rem;
-  background:
-    linear-gradient(135deg, rgba(192, 78, 24, 0.05), transparent 40%),
-    linear-gradient(135deg, #1a1208 0%, #120d07 100%);
-  border: 1px solid var(--brass-line);
-  cursor: pointer;
-  transition: border-color 0.3s var(--ease-out-quart),
-              transform 0.2s var(--ease-out-quart),
-              filter 0.15s ease,
-              box-shadow 0.3s var(--ease-out-quart);
-  will-change: transform;
-}
-.feature-card:hover {
-  border-color: var(--brass);
-  transform: translateY(-2px) scale(1.015);
-  box-shadow:
-    0 6px 18px rgba(0,0,0,0.45),
-    0 0 20px rgba(192, 78, 24, 0.1);
-}
-.feature-card:active { transform: scale(0.97); filter: brightness(1.07); }
-.feature-card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(to right, var(--ember), transparent);
-  transition: background 0.3s var(--ease-out-quart);
-}
-.feature-card:hover::before {
-  background: linear-gradient(to right, var(--ember), var(--gold), transparent);
-}
-.feature-card-eyebrow {
-  font-size: 0.5rem; letter-spacing: 0.3em; color: var(--ember);
-  margin-bottom: 0.4rem;
-}
-.feature-card-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.05rem; color: var(--parchment);
-  letter-spacing: 0.04em; line-height: 1.05;
-  margin-bottom: 0.35rem;
-}
-.feature-card-sub {
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-  font-size: 0.7rem; color: var(--steam);
-  line-height: 1.4;
-  margin-bottom: 0.65rem;
-}
-.feature-card-arrow {
-  font-size: 0.6rem; letter-spacing: 0.2em;
-  color: var(--gold);
-  display: inline-flex; align-items: center; gap: 0.3rem;
-  transition: gap 0.3s var(--ease-out-quart),
-              color 0.3s var(--ease-out-quart),
-              letter-spacing 0.3s var(--ease-out-quart);
-}
-.feature-card:hover .feature-card-arrow {
-  gap: 0.55rem;
-  color: var(--ember);
-  letter-spacing: 0.25em;
 }
 
 /* BEER CARDS */
@@ -3127,60 +3178,7 @@ body.is-navigating .nav-btn:active {
   letter-spacing: 0.2em;
   color: var(--ember);
 }
-.today-module {
-  margin: 0 1.25rem 1rem;
-  border: 1px solid rgba(160,120,8,0.18);
-  border-left: 3px solid rgba(192,78,24,0.5);
-  background: rgba(14,11,6,0.7);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.today-module-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.85rem 0.45rem;
-  border-bottom: 1px solid rgba(160,120,8,0.1);
-}
-.today-module-title {
-  font-family: 'Source Code Pro', monospace;
-  font-size: 0.46rem;
-  letter-spacing: 0.28em;
-  color: var(--ember);
-}
-.today-module-date {
-  font-family: 'Source Code Pro', monospace;
-  font-size: 0.44rem;
-  letter-spacing: 0.18em;
-  color: rgba(160,120,8,0.4);
-}
-.today-module-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-}
-.today-item {
-  padding: 0.5rem 0.85rem;
-  border-right: 1px solid rgba(160,120,8,0.08);
-  border-bottom: 1px solid rgba(160,120,8,0.08);
-}
-.today-item:nth-child(even) { border-right: none; }
-.today-item:nth-child(3),
-.today-item:nth-child(4) { border-bottom: none; }
-.today-item-label {
-  font-family: 'Source Code Pro', monospace;
-  font-size: 0.38rem;
-  letter-spacing: 0.2em;
-  color: rgba(160,120,8,0.38);
-  margin-bottom: 0.2rem;
-}
-.today-item-value {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  color: var(--aged);
-  line-height: 1.1;
-}
+/* today-module removed v4.5 — no longer used on Home */
 
 /* ── SHARE TALE + WATCH INTRO row on story pages ── */
 .share-tale-row { padding: 0.75rem 0 0.25rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
@@ -4156,140 +4154,115 @@ body.is-navigating .nav-btn:active {
   </div>
 </div>
 
-<!-- ====== PAGE: MENU ====== -->
+<!-- ====== PAGE: MENU (v4.5 redesign) ====== -->
 <div class="page active" id="page-menu">
-  <div class="venue-hero">
-    <div class="hero-rivets">
-      <div class="hero-rivet"></div>
-      <div class="hero-rivet"></div>
-      <div class="hero-rivet"></div>
-    </div>
-    <div class="venue-eyebrow">BETHLEHEM, PA</div>
-    <div class="venue-name">Trackside Tales<br>at The Wooden Match</div>
-    <div class="venue-tag">Regular pours. Rotating Tales. Stories worth collecting.</div>
-    <div class="venue-meta">
-      <span class="venue-pill live">Open today</span>
-      <span class="venue-pill">On Tap · 8</span>
-      <span class="venue-pill">Trackside Tales · 3</span>
-    </div>
-    <span class="about-link" onclick="nav('about')">About Trackside <span>→</span></span>
-  </div>
 
-  <!-- TODAY AT THE WOODEN MATCH — operational daily module -->
-  <div class="today-module">
-    <div class="today-module-header">
-      <div class="today-module-title">TODAY AT THE WOODEN MATCH</div>
-      <div class="today-module-date" id="today-date"></div>
+  <!-- ── Hero card ─────────────────────────────────── -->
+  <div class="home-hero">
+    <div class="home-hero-bolts-bottom"><span></span><span></span></div>
+
+    <!-- Hero image -->
+    <div class="home-hero-train">
+      <!-- Featured chip sits on top of the photo -->
+      <div class="home-featured-chip">✦ FEATURED TALE</div>
+
+      <!-- Real hero photo. Falls back to dark background if asset missing. -->
+      <img
+        src="assets/home/home-hero-trackside-tales.png"
+        alt="Trackside Tales at The Wooden Match — steam locomotive at golden hour"
+        loading="eager"
+        decoding="async"
+      >
     </div>
-    <div class="today-module-grid">
-      <div class="today-item">
-        <div class="today-item-label">TALES ON TAP</div>
-        <div class="today-item-value">3 active</div>
-      </div>
-      <div class="today-item">
-        <div class="today-item-label">FEATURED TALE</div>
-        <div class="today-item-value" onclick="document.getElementById('tales-list').scrollIntoView({behavior:'smooth',block:'start'})" style="cursor:pointer;color:var(--gold)">Wooden Match Amber</div>
-      </div>
-      <div class="today-item">
-        <div class="today-item-label">FOOD PAIRING</div>
-        <div class="today-item-value">Broad Street Bully</div>
-      </div>
-      <div class="today-item">
-        <div class="today-item-label">PASSPORT CHALLENGE</div>
-        <div class="today-item-value" onclick="nav('scan')" style="cursor:pointer;color:var(--ember)">Unlock any Tale →</div>
-      </div>
+
+    <!-- Hero copy panel -->
+    <div class="home-hero-body">
+      <div class="home-hero-eyebrow">BETHLEHEM, PA · THE WOODEN MATCH</div>
+      <div class="home-hero-title">TRACKSIDE<br>TALES</div>
+      <div class="home-hero-sub">AT THE WOODEN MATCH</div>
+      <div class="home-hero-tagline">Stories, beers, and the people who keep the spirit on track.</div>
+      <button class="home-hero-cta" onclick="nav('tales')">
+        EXPLORE THE TALE
+        <span class="home-hero-cta-arrow">→</span>
+      </button>
     </div>
   </div>
 
-  <!-- How It Works (collapsible, shown to new users) -->
-  <div class="how-it-works" id="how-it-works">
-    <div class="how-label">FIRST TIME HERE?</div>
-    <div class="how-title">How Trackside Tales Works</div>
-    <div class="how-steps">
-      <div class="how-step">
-        <div class="how-step-num">1</div>
-        <div class="how-step-text"><strong>Scan a can.</strong> Every Trackside Tales beer carries a QR code that unlocks its story.</div>
+  <!-- ── Navigation stack ───────────────────────────── -->
+  <div class="home-menu-stack">
+
+    <!-- TALES -->
+    <div class="home-menu-card" onclick="nav('tales')">
+      <div class="home-menu-badge">
+        <img src="assets/home/home-card-tales.png" alt="Tales" loading="lazy"
+          onerror="this.style.display='none'">
+        <svg class="badge-fallback" viewBox="0 0 28 28" fill="none"><path d="M7 9h14M7 13h10M7 17h7" stroke="#C47A36" stroke-width="1.5" stroke-linecap="round"/></svg>
       </div>
-      <div class="how-step">
-        <div class="how-step-num">2</div>
-        <div class="how-step-text"><strong>Earn two badges per tale.</strong> One for scanning, one for completing the interactive mini-game.</div>
+      <div class="home-menu-body">
+        <div class="home-menu-title">TALES</div>
+        <div class="home-menu-sub">Stories from the track and beyond.</div>
       </div>
-      <div class="how-step">
-        <div class="how-step-num">3</div>
-        <div class="how-step-text"><strong>Keep it in your Passport.</strong> Every story you unlock stays with you — even after a beer rotates off tap.</div>
-      </div>
+      <div class="home-menu-arrow">›</div>
     </div>
-    <div class="how-dismiss">
-      <button class="how-dismiss-btn" onclick="dismissHowItWorks()">GOT IT — HIDE THIS</button>
+
+    <!-- BEERS -->
+    <div class="home-menu-card" onclick="nav('beers')">
+      <div class="home-menu-badge">
+        <img src="assets/home/home-card-beers.png" alt="Beers" loading="lazy"
+          onerror="this.style.display='none'">
+        <svg class="badge-fallback" viewBox="0 0 28 28" fill="none"><rect x="9" y="8" width="10" height="15" rx="1.5" stroke="#C47A36" stroke-width="1.5"/><path d="M19 11q3 1.5 3 3.5t-3 3.5" stroke="#C47A36" stroke-width="1.5" fill="none"/></svg>
+      </div>
+      <div class="home-menu-body">
+        <div class="home-menu-title">BEERS</div>
+        <div class="home-menu-sub">Explore our craft, on tap and beyond.</div>
+      </div>
+      <div class="home-menu-arrow">›</div>
     </div>
+
+    <!-- STORY -->
+    <div class="home-menu-card" onclick="nav('ourstory')">
+      <div class="home-menu-badge">
+        <img src="assets/home/home-card-story.png" alt="Story" loading="lazy"
+          onerror="this.style.display='none'">
+        <svg class="badge-fallback" viewBox="0 0 28 28" fill="none"><line x1="8" y1="10" x2="8" y2="20" stroke="#C47A36" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="10" x2="20" y2="20" stroke="#C47A36" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="12" x2="20" y2="12" stroke="#D89A58" stroke-width="1.2"/><line x1="8" y1="16" x2="20" y2="16" stroke="#D89A58" stroke-width="1.2"/></svg>
+      </div>
+      <div class="home-menu-body">
+        <div class="home-menu-title">STORY</div>
+        <div class="home-menu-sub">Our history, our founders, our why.</div>
+      </div>
+      <div class="home-menu-arrow">›</div>
+    </div>
+
+    <!-- PASSPORT -->
+    <div class="home-menu-card" onclick="nav('passport')">
+      <div class="home-menu-badge">
+        <img src="assets/home/home-card-passport.png" alt="Passport" loading="lazy"
+          onerror="this.style.display='none'">
+        <svg class="badge-fallback" viewBox="0 0 28 28" fill="none"><rect x="7" y="7" width="14" height="17" rx="1.5" stroke="#C47A36" stroke-width="1.5"/><circle cx="11" cy="13" r="1.5" stroke="#D89A58" stroke-width="1"/><circle cx="17" cy="13" r="1.5" stroke="#D89A58" stroke-width="1"/></svg>
+      </div>
+      <div class="home-menu-body">
+        <div class="home-menu-title">PASSPORT</div>
+        <div class="home-menu-sub">Collect stamps. Earn rewards.</div>
+      </div>
+      <div class="home-menu-arrow">›</div>
+    </div>
+
+  </div><!-- /home-menu-stack -->
+
+  <div class="home-footer-space"></div>
+
+  <!-- ── Hidden JS-managed lists (refreshMenu / renderComingNextFromRemote
+       still populate these; they are invisible on the Home page but other
+       pages read from the same TALES/FOOD arrays so they must remain) ── -->
+  <div class="home-hidden-lists">
+    <div id="tales-list"></div>
+    <div id="food-list-home"></div>
+    <div id="how-it-works"></div>
+    <div id="how-restore"></div>
+    <div id="coming-next-body"></div>
+    <span id="today-date"></span>
   </div>
 
-  <!-- Restore link — shown in same position as How It Works when hidden -->
-  <div id="how-restore" style="display:none">
-    <button class="how-restore-btn" onclick="restoreHowItWorks()">▸ Show how it works</button>
-  </div>
-
-  <div class="section-label">
-    <div class="section-label-text">TRACKSIDE TALES — SCAN TO UNLOCK</div>
-    <div class="section-count">3 ON TAP</div>
-  </div>
-  <!-- Quick CTA for guests who want to start immediately -->
-  <div class="scan-cta-row">
-    <button class="scan-cta-btn" onclick="nav('scan')">
-      <span class="scan-cta-icon">◎</span>
-      START WITH A SCAN
-    </button>
-  </div>
-  <div class="tales-helper">
-    Each Trackside Tale unlocks a story, a mini-game, and a passport stamp.
-  </div>
-  <div class="beer-list" id="tales-list"></div>
-
-  <!-- COMING NEXT — collapsible, locked/teaser Tales -->
-  <div class="section-label">
-    <div class="section-label-text">COMING NEXT — FUTURE TALES</div>
-    <div class="section-count">3 LOCKED</div>
-  </div>
-  <div class="coming-next-toggle-row" onclick="toggleComingNext()">
-    <span class="coming-next-helper">Three future stories are waiting down the line.</span>
-    <button class="coming-next-toggle-btn" id="coming-next-toggle">Show future Tales ↓</button>
-  </div>
-  <div id="coming-next-body" class="coming-next-section collapsed">
-    <div class="coming-next-card">
-      <div class="coming-next-lock">◈</div>
-      <div class="coming-next-info">
-        <div class="coming-next-label">FUTURE TRACKSIDE TALE</div>
-        <div class="coming-next-name">SteelStacks Stout</div>
-        <div class="coming-next-teaser">A future Tale from Bethlehem's industrial skyline.</div>
-      </div>
-      <div class="coming-next-chip">COMING SOON</div>
-    </div>
-    <div class="coming-next-card">
-      <div class="coming-next-lock">◈</div>
-      <div class="coming-next-info">
-        <div class="coming-next-label">FUTURE TRACKSIDE TALE</div>
-        <div class="coming-next-name">Lehigh Valley Railroad Lager</div>
-        <div class="coming-next-teaser">A future Tale following the rails that shaped the valley.</div>
-      </div>
-      <div class="coming-next-chip">COMING SOON</div>
-    </div>
-    <div class="coming-next-card">
-      <div class="coming-next-lock">◈</div>
-      <div class="coming-next-info">
-        <div class="coming-next-label">FUTURE TRACKSIDE TALE</div>
-        <div class="coming-next-name">South Bethlehem Porter</div>
-        <div class="coming-next-teaser">A future Tale from the south side — steel, smoke, and music.</div>
-      </div>
-      <div class="coming-next-chip">COMING SOON</div>
-    </div>
-  </div>
-
-  <!-- Compact food highlights — Tales screen only, not full menu -->
-  <div class="section-label">
-    <div class="section-label-text">FROM THE KITCHEN — WOODEN MATCH</div>
-  </div>
-  <div class="food-helper">A few highlights from The Wooden Match kitchen — built to pair with the Tales preview.</div>
-  <div class="beer-list" id="food-list-home"></div>
 </div>
 <div class="page" id="page-beers">
   <div class="beers-page-hero">
@@ -8843,7 +8816,7 @@ try {
 // are populated (local or remote) before any list renders.
 (async () => {
 try {
-  console.log('[trackside] App version: 4.4');
+  console.log('[trackside] App version: 4.5');
 
   // v4.2 — ensure guest ID exists and log a shortened version
   const _gid = getOrCreateGuestId();
