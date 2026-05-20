@@ -154,19 +154,59 @@ body::before {
 
 .app-bar {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(12,10,7,0.96);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(160,120,8,0.2);
-  padding: env(safe-area-inset-top, 0) 1.25rem 0;
+  background: rgba(25,23,21,0.97);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--brass-line);
+  padding: env(safe-area-inset-top, 0) 1rem 0;
 }
+/* Three-column layout: left action | centered logo | right action */
 .app-bar-inner {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.9rem 0; min-height: 52px;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0.7rem 0;
+  min-height: 52px;
+  gap: 0.5rem;
 }
+/* Left slot — Now Pouring */
+.app-bar-left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+/* Center slot — logo */
+.app-bar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+/* Right slot — profile */
+.app-bar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+/* Logo image */
+.header-logo-img {
+  height: 36px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+/* Text fallback shown when logo image fails */
+.header-logo-text {
+  display: none;
+  flex-direction: column;
+  line-height: 1;
+}
+.header-logo-text .logo-main { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.22em; color: var(--gold); }
+.header-logo-text .logo-sub  { font-size: 0.5rem; letter-spacing: 0.22em; color: var(--aged); margin-top: 0.15rem; }
+.header-logo-text .logo-sub span { color: var(--ember); }
+/* Keep old .logo-block for any back-compat references */
 .logo-block { display: flex; flex-direction: column; line-height: 1; cursor: pointer; }
-.logo-main { font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; letter-spacing: 0.25em; color: var(--gold); }
-.logo-sub { font-size: 0.55rem; letter-spacing: 0.25em; color: var(--aged); margin-top: 0.2rem; }
+.logo-main { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.22em; color: var(--gold); }
+.logo-sub { font-size: 0.5rem; letter-spacing: 0.22em; color: var(--aged); margin-top: 0.15rem; }
 .logo-sub span { color: var(--ember); }
 
 /* Live indicator — glowing dot + label, center-right of app bar */
@@ -179,8 +219,8 @@ body::before {
   border: 1px solid rgba(200, 144, 16, 0.25);
   background: rgba(200, 144, 16, 0.04);
   white-space: nowrap;
-  margin-left: auto;
-  margin-right: 0.5rem;
+  margin-left: 0;
+  margin-right: 0;
 }
 .live-indicator-dot {
   width: 6px; height: 6px; border-radius: 50%;
@@ -202,14 +242,19 @@ body::before {
 
 .profile-btn {
   width: 38px; height: 38px; border-radius: 50%;
-  background: var(--iron); border: 1px solid rgba(160,120,8,0.3);
+  background: var(--iron); border: 1px solid rgba(201,130,63,0.3);
   display: flex; align-items: center; justify-content: center;
   font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; color: var(--gold);
   cursor: pointer; transition: border-color 0.2s;
-  flex-shrink: 0;
+  flex-shrink: 0; overflow: hidden; padding: 0;
 }
 .profile-btn.guest { color: var(--aged); }
 .profile-btn:hover { border-color: var(--ember); }
+.profile-icon-img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+  display: block; border-radius: 50%;
+}
 
 /* PAGES */
 .page { display: none; min-height: 100dvh; padding-bottom: 6rem; }
@@ -588,6 +633,122 @@ body.is-navigating .nav-btn:active {
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ── Tales Hub page (v4.5.3) ───────────────────────── */
+.taleshub-hero {
+  padding: 1.6rem 1.25rem 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid var(--brass-line-soft);
+}
+.taleshub-eyebrow {
+  font-size: 0.48rem;
+  letter-spacing: 0.38em;
+  color: var(--ember);
+  margin-bottom: 0.55rem;
+}
+.taleshub-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  color: var(--parchment);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+.taleshub-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.8rem;
+  color: var(--steam);
+  line-height: 1.55;
+  margin-bottom: 1.1rem;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.taleshub-cards {
+  padding: 1rem 1.1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.taleshub-card {
+  background: var(--iron-2);
+  border: 1px solid var(--brass-line);
+  border-radius: 3px;
+  padding: 1.2rem 1.25rem 1.15rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: default;
+}
+/* Subtle left brass accent */
+.taleshub-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, var(--ember), transparent);
+}
+/* Top hairline */
+.taleshub-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--ember), transparent 60%);
+  opacity: 0.6;
+}
+.taleshub-card-label {
+  font-size: 0.46rem;
+  letter-spacing: 0.32em;
+  color: var(--ember);
+  margin-bottom: 0.5rem;
+  padding-left: 0.75rem;
+}
+.taleshub-card-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+  color: var(--parchment);
+  line-height: 1;
+  margin-bottom: 0.3rem;
+  padding-left: 0.75rem;
+}
+.taleshub-card-subtitle {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.76rem;
+  color: var(--steam);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+  padding-left: 0.75rem;
+}
+.taleshub-card-body {
+  font-size: 0.75rem;
+  color: var(--aged);
+  line-height: 1.65;
+  padding-left: 0.75rem;
+  margin-bottom: 1rem;
+}
+.taleshub-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: 0.75rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.22em;
+  color: var(--iron);
+  background: linear-gradient(135deg, var(--ember), var(--gold));
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(201,130,63,0.3);
+  transition: filter 0.15s, transform 0.1s;
+}
+.taleshub-card-cta:hover  { filter: brightness(1.08); }
+.taleshub-card-cta:active { transform: scale(0.97); }
 
 /* ── Beers page jump strip (shared) ── */
 .menu-jump-strip {
@@ -4210,17 +4371,42 @@ body.is-navigating .nav-btn:active {
 <!-- APP BAR -->
 <div class="app-bar">
   <div class="app-bar-inner">
-    <div class="logo-block" onclick="nav('menu')">
-      <div class="logo-main">TRACKSIDE</div>
-      <div class="logo-sub">at <span>THE WOODEN MATCH</span></div>
+
+    <!-- Left: Now Pouring -->
+    <div class="app-bar-left">
+      <div class="live-indicator" onclick="nav('beers')" title="Now pouring at The Wooden Match" style="cursor:pointer">
+        <span class="live-indicator-dot"></span>
+        <span>NOW POURING</span>
+      </div>
     </div>
-    <div class="live-indicator" title="Now pouring at The Wooden Match">
-      <span class="live-indicator-dot"></span>
-      <span>NOW POURING</span>
+
+    <!-- Center: Logo -->
+    <div class="app-bar-center" onclick="nav('tales')">
+      <img
+        src="assets/brand/trackside-header-logo.png"
+        alt="Trackside Brewing Co."
+        class="header-logo-img"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+      >
+      <div class="header-logo-text" aria-hidden="true">
+        <div class="logo-main">TRACKSIDE</div>
+        <div class="logo-sub">at <span>THE WOODEN MATCH</span></div>
+      </div>
     </div>
-    <button class="profile-btn guest" id="profile-btn" onclick="nav('profile')">
-      <span id="avatar-initial">G</span>
-    </button>
+
+    <!-- Right: Profile -->
+    <div class="app-bar-right">
+      <button class="profile-btn guest" id="profile-btn" onclick="nav('profile')">
+        <img
+          src="assets/brand/profile-icon.png"
+          alt=""
+          class="profile-icon-img"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+        >
+        <span id="avatar-initial" style="display:none">G</span>
+      </button>
+    </div>
+
   </div>
 </div>
 
@@ -4249,7 +4435,7 @@ body.is-navigating .nav-btn:active {
   <div class="home-menu-stack">
 
     <!-- TALES -->
-    <div class="home-menu-card" onclick="nav('tales')">
+    <div class="home-menu-card" onclick="nav('taleshub')">
       <div class="home-menu-badge">
         <img src="assets/home/home-card-tales.png" alt="Tales" loading="lazy"
           onerror="this.style.display='none'">
@@ -4321,6 +4507,51 @@ body.is-navigating .nav-btn:active {
   </div>
 
 </div>
+<!-- ====== PAGE: TALES HUB (v4.5.3) ====== -->
+<div class="page" id="page-taleshub">
+
+  <!-- Header -->
+  <div class="taleshub-hero">
+    <div class="taleshub-eyebrow">TRACKSIDE TALES</div>
+    <div class="taleshub-title">STORIES FROM<br>THE TRACK</div>
+    <div class="taleshub-sub">History, heritage, and the people who keep the spirit on track — one pour at a time.</div>
+  </div>
+
+  <!-- Story cards -->
+  <div class="taleshub-cards">
+
+    <!-- The Wooden Match -->
+    <div class="taleshub-card">
+      <div class="taleshub-card-label">PARTNER VENUE</div>
+      <div class="taleshub-card-title">THE WOODEN MATCH</div>
+      <div class="taleshub-card-subtitle">A rail-side Bethlehem tavern built for stories, beer, and the people passing through.</div>
+      <div class="taleshub-card-body">Built inside an 1868 Central Railroad of New Jersey station building, The Wooden Match is more than a taproom — it is the first real-world partner for the Trackside Tales experience. The building itself is part of the story: a preserved piece of Bethlehem rail history that still draws travelers, regulars, and history-seekers. It is exactly the kind of place Trackside Tales was designed for.</div>
+      <button class="taleshub-card-cta" onclick="nav('woodenmatch')">READ THE STORY →</button>
+    </div>
+
+    <!-- Trackside Brewing -->
+    <div class="taleshub-card">
+      <div class="taleshub-card-label">THE CONCEPT</div>
+      <div class="taleshub-card-title">TRACKSIDE BREWING COMPANY</div>
+      <div class="taleshub-card-subtitle">A brewery concept built around local history, rail heritage, and stories worth collecting.</div>
+      <div class="taleshub-card-body">Trackside Brewing pairs craft beer with the forgotten figures and events of the Lehigh Valley. Every beer in the Trackside Tales series is tied to a real person, place, or moment. Scan the can. Unlock the story. Earn a passport stamp. The beer is the ticket — the history is the destination.</div>
+      <button class="taleshub-card-cta" onclick="nav('about')">READ THE STORY →</button>
+    </div>
+
+    <!-- Trackside Tales -->
+    <div class="taleshub-card">
+      <div class="taleshub-card-label">THE EXPERIENCE</div>
+      <div class="taleshub-card-title">TRACKSIDE TALES</div>
+      <div class="taleshub-card-subtitle">Every pour has a route. Every can can unlock a story.</div>
+      <div class="taleshub-card-body">Trackside Tales turns a taproom visit into something worth remembering. Scan the QR code on a Trackside can to unlock a local history chapter, earn a passport stamp, collect a badge, and play a mini-game tied to each tale. Your progress travels with you across visits.</div>
+      <button class="taleshub-card-cta" onclick="nav('scan')">EXPLORE TALES →</button>
+    </div>
+
+  </div>
+
+  <div style="height:1.5rem"></div>
+</div>
+
 <div class="page" id="page-beers">
   <div class="beers-page-hero">
     <div class="venue-eyebrow">NOW POURING</div>
@@ -4723,7 +4954,7 @@ body.is-navigating .nav-btn:active {
     </span>
     HOME
   </button>
-  <button class="nav-btn" id="nav-tales" onclick="nav('tales')">
+  <button class="nav-btn" id="nav-tales" onclick="nav('taleshub')">
     <span class="nav-btn-icon">
       <img src="assets/nav/nav-tales.png"    alt="" class="nav-icon-img" onerror="this.style.display='none';var f=this.nextElementSibling;if(f)f.classList.add('show');">
       <span class="nav-icon-fallback">⚏</span>
@@ -7253,7 +7484,8 @@ function nav(page, opts = {}) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
   const domId = {
-    tales:       'menu',
+    tales:       'menu',      // home screen
+    taleshub:    'taleshub',  // Tales story hub (v4.5.3)
     beers:       'beers',
     scan:        'scan',
     ourstory:    'ourstory',
@@ -7277,12 +7509,17 @@ function nav(page, opts = {}) {
     const nb = document.getElementById('nav-' + navMap[page]);
     if (nb) nb.classList.add('active');
   }
-  // tales/home page highlights the HOME button
+  // home page highlights HOME button
   if (page === 'tales') {
     const nb = document.getElementById('nav-home');
     if (nb) nb.classList.add('active');
   }
-  // ourstory sub-pages: no nav button active (story tab removed from nav)
+  // Tales hub highlights TALES button
+  if (page === 'taleshub') {
+    const nb = document.getElementById('nav-tales');
+    if (nb) nb.classList.add('active');
+  }
+  // ourstory sub-pages: no nav button active (story tab not in main nav)
 
   if (page === 'passport') {
     renderProfile();
@@ -8906,7 +9143,7 @@ try {
 // are populated (local or remote) before any list renders.
 (async () => {
 try {
-  console.log('[trackside] App version: 4.5.2');
+  console.log('[trackside] App version: 4.5.3');
 
   // v4.2 — ensure guest ID exists and log a shortened version
   const _gid = getOrCreateGuestId();
