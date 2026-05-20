@@ -4082,6 +4082,46 @@ body.is-navigating .nav-btn:active {
 .nav-btn-icon { font-size: 1.1rem; }
 .nav-btn.scan .nav-btn-icon { color: var(--ember); }
 
+/* v4.5 — image-based nav icons */
+.nav-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  position: relative;
+}
+.nav-icon-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  /* Tint inactive icons to match aged/muted color */
+  filter: brightness(0.55) sepia(0.4);
+  transition: filter 0.2s;
+}
+.nav-btn.active .nav-icon-img {
+  filter: brightness(1) sepia(0.3) saturate(1.4);
+}
+.nav-btn.scan .nav-icon-img {
+  filter: brightness(0.75) sepia(0.6) saturate(1.6) hue-rotate(-10deg);
+}
+.nav-btn.scan.active .nav-icon-img {
+  filter: brightness(1.1) sepia(0.5) saturate(2) hue-rotate(-10deg);
+}
+/* Fallback glyph — hidden when image loads successfully */
+.nav-icon-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  z-index: -1;
+  pointer-events: none;
+}
+
 /* TOAST */
 .toast {
   position: fixed; bottom: 5.5rem; left: 50%;
@@ -4659,11 +4699,41 @@ body.is-navigating .nav-btn:active {
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <button class="nav-btn active" id="nav-tales" onclick="nav('tales')"><span class="nav-btn-icon">⚏</span>TALES</button>
-  <button class="nav-btn" id="nav-beers" onclick="nav('beers')"><span class="nav-btn-icon">◫</span>BEERS</button>
-  <button class="nav-btn scan" id="nav-scan" onclick="nav('scan')"><span class="nav-btn-icon">◈</span>SCAN</button>
-  <button class="nav-btn" id="nav-ourstory" onclick="nav('ourstory')"><span class="nav-btn-icon">◎</span>STORY</button>
-  <button class="nav-btn" id="nav-passport" onclick="nav('passport')"><span class="nav-btn-icon">◉</span>PASSPORT</button>
+  <button class="nav-btn active" id="nav-home"     onclick="nav('tales')">
+    <span class="nav-btn-icon">
+      <img src="assets/nav/nav-home.png"     alt="" class="nav-icon-img" onerror="this.style.display='none'">
+      <span class="nav-icon-fallback">⊞</span>
+    </span>
+    HOME
+  </button>
+  <button class="nav-btn" id="nav-tales" onclick="nav('tales')">
+    <span class="nav-btn-icon">
+      <img src="assets/nav/nav-tales.png"    alt="" class="nav-icon-img" onerror="this.style.display='none'">
+      <span class="nav-icon-fallback">⚏</span>
+    </span>
+    TALES
+  </button>
+  <button class="nav-btn" id="nav-beers" onclick="nav('beers')">
+    <span class="nav-btn-icon">
+      <img src="assets/nav/nav-menu.png"     alt="" class="nav-icon-img" onerror="this.style.display='none'">
+      <span class="nav-icon-fallback">◫</span>
+    </span>
+    MENU
+  </button>
+  <button class="nav-btn scan" id="nav-scan" onclick="nav('scan')">
+    <span class="nav-btn-icon">
+      <img src="assets/nav/nav-scan.png"     alt="" class="nav-icon-img" onerror="this.style.display='none'">
+      <span class="nav-icon-fallback">◈</span>
+    </span>
+    SCAN
+  </button>
+  <button class="nav-btn" id="nav-passport" onclick="nav('passport')">
+    <span class="nav-btn-icon">
+      <img src="assets/nav/nav-passport.png" alt="" class="nav-icon-img" onerror="this.style.display='none'">
+      <span class="nav-icon-fallback">◉</span>
+    </span>
+    PASSPORT
+  </button>
 </div>
 
 <!-- UNLOCK RECEIPT — shown after stamp animation, before story opens -->
@@ -7183,16 +7253,19 @@ function nav(page, opts = {}) {
 
   document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
 
-  const navMap = { tales:'tales', beers:'beers', scan:'scan', ourstory:'ourstory', passport:'passport' };
+  // v4.5 nav: home+tales both map to the tales/home page;
+  // beers → nav-beers (labeled MENU); ourstory sub-pages get no highlight (tab removed).
+  const navMap = { beers:'beers', scan:'scan', passport:'passport' };
   if (navMap[page]) {
     const nb = document.getElementById('nav-' + navMap[page]);
     if (nb) nb.classList.add('active');
   }
-
-  if (['about','woodenmatch','tracks','howitworks'].includes(page)) {
-    const nb = document.getElementById('nav-ourstory');
+  // tales/home page highlights the HOME button
+  if (page === 'tales') {
+    const nb = document.getElementById('nav-home');
     if (nb) nb.classList.add('active');
   }
+  // ourstory sub-pages: no nav button active (story tab removed from nav)
 
   if (page === 'passport') {
     renderProfile();
