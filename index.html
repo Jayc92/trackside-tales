@@ -164,8 +164,8 @@ body::before {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 0.7rem 0;
-  min-height: 52px;
+  padding: 0.6rem 0;
+  min-height: 60px;
   gap: 0.5rem;
 }
 /* Left slot — Now Pouring */
@@ -189,8 +189,9 @@ body::before {
 }
 /* Logo image */
 .header-logo-img {
-  height: 36px;
+  height: 52px;
   width: auto;
+  max-width: 160px;
   display: block;
   object-fit: contain;
 }
@@ -241,19 +242,19 @@ body::before {
 }
 
 .profile-btn {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: var(--iron); border: 1px solid rgba(201,130,63,0.3);
+  /* Container — no visible border/circle; just sizes and positions the icon */
+  width: 40px; height: 40px;
+  background: transparent; border: none;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; color: var(--gold);
-  cursor: pointer; transition: border-color 0.2s;
-  flex-shrink: 0; overflow: hidden; padding: 0;
+  cursor: pointer; flex-shrink: 0; padding: 0;
 }
-.profile-btn.guest { color: var(--aged); }
-.profile-btn:hover { border-color: var(--ember); }
+.profile-btn.guest { opacity: 0.75; }
+.profile-btn:hover { opacity: 1; }
 .profile-icon-img {
-  width: 100%; height: 100%;
-  object-fit: cover; object-position: center;
-  display: block; border-radius: 50%;
+  /* Icon fills the button; no circular crop */
+  width: 40px; height: 40px;
+  object-fit: contain; object-position: center;
+  display: block;
 }
 
 /* PAGES */
@@ -755,30 +756,35 @@ body.is-navigating .nav-btn:active {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.6rem;
-  margin: 0.5rem 1.25rem 0.25rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid rgba(160,120,8,0.2);
-  background: rgba(12,10,7,0.5);
+  gap: 0;
+  margin: 0.75rem 1.25rem 0;
+  border: 1px solid var(--brass-line);
+  background: var(--iron);
+  border-radius: 2px;
+  overflow: hidden;
 }
 .menu-jump-tab {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 0.85rem;
-  letter-spacing: 0.18em;
+  flex: 1;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.2em;
   color: var(--aged);
   background: transparent;
   border: none;
+  border-right: 1px solid var(--brass-line-soft);
   cursor: pointer;
-  padding: 0.15rem 0.5rem;
-  transition: color 0.15s;
+  padding: 0.55rem 0.25rem;
+  transition: background 0.15s, color 0.15s;
+  text-align: center;
 }
-.menu-jump-tab:hover,
-.menu-jump-tab.active-tab { color: var(--gold); }
+.menu-jump-tab:last-of-type { border-right: none; }
+.menu-jump-tab:hover { background: rgba(201,130,63,0.06); color: var(--gold); }
+.menu-jump-tab.active-tab {
+  background: rgba(201,130,63,0.1);
+  color: var(--ember);
+}
 .menu-jump-sep {
-  color: rgba(160,120,8,0.35);
-  font-size: 0.85rem;
-  font-family: 'Bebas Neue', sans-serif;
-  pointer-events: none;
+  display: none; /* separators replaced by dividing borders on tabs */
 }
 
 /* Discreet demo-reset button — lives at the bottom of the Profile page.
@@ -822,23 +828,34 @@ body.is-navigating .nav-btn:active {
 }
 
 /* BEER CARDS */
-.beer-list { padding: 0 1.25rem; }
+.beer-list { padding: 0 1.1rem; }
 .beer-card {
-  background: var(--iron); border: 1px solid var(--brass-line-soft);
-  padding: 1rem; margin-bottom: 0.75rem;
+  background: var(--iron-2);
+  border: 1px solid var(--brass-line-soft);
+  border-radius: 2px;
+  padding: 1rem; margin-bottom: 0.6rem;
   display: flex; gap: 1rem; align-items: flex-start;
   cursor: pointer; position: relative; overflow: hidden;
-  transition: border-color 0.25s var(--ease-out-quart),
-              transform 0.2s var(--ease-out-quart),
-              filter 0.15s ease,
-              box-shadow 0.25s var(--ease-out-quart);
+  transition: border-color 0.22s var(--ease-out-quart),
+              transform 0.18s var(--ease-out-quart),
+              box-shadow 0.22s var(--ease-out-quart);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+/* Top hairline accent on non-tales cards */
+.beer-card:not(.tales)::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--brass-line), transparent 70%);
+  pointer-events: none;
 }
 .beer-card:hover {
-  border-color: rgba(160,120,8,0.35);
+  border-color: rgba(201,130,63,0.35);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,130,63,0.08) inset;
 }
-.beer-card:active { transform: scale(0.985); filter: brightness(1.06); }
+.beer-card:active { transform: scale(0.986); }
 .beer-card.tales {
   /* Stronger background: parchment-warm, slightly ember-tinted */
   background:
@@ -3282,24 +3299,49 @@ body.is-navigating .nav-btn:active {
 #page-beers { display: none; }
 #page-beers.active { display: block; }
 .beers-page-hero {
-  padding: 1.5rem 1.25rem 1rem;
-  border-bottom: 1px solid rgba(160,120,8,0.12);
-  background: linear-gradient(180deg, rgba(192,78,24,0.06) 0%, transparent 100%);
+  padding: 1.6rem 1.25rem 1.25rem;
+  border-bottom: 1px solid var(--brass-line);
+  background:
+    linear-gradient(135deg, rgba(201,130,63,0.07) 0%, transparent 55%),
+    var(--coal);
+  position: relative;
+  overflow: hidden;
+}
+/* Decorative horizontal rail lines — matches home hero atmosphere */
+.beers-page-hero::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 40%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px, transparent 22px,
+    rgba(201,130,63,0.04) 22px, rgba(201,130,63,0.04) 23px
+  );
+  pointer-events: none;
+}
+.beers-page-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem;
+  letter-spacing: 0.38em;
+  color: var(--ember);
+  margin-bottom: 0.55rem;
 }
 .beers-page-title {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 2rem;
-  letter-spacing: 0.08em;
-  color: var(--steam);
+  font-size: 2.2rem;
+  letter-spacing: 0.05em;
+  color: var(--parchment);
   line-height: 1;
-  margin: 0.3rem 0 0.4rem;
+  margin-bottom: 0.4rem;
 }
 .beers-page-sub {
   font-family: 'Playfair Display', serif;
   font-style: italic;
-  font-size: 0.72rem;
-  color: rgba(160,120,8,0.5);
-  line-height: 1.5;
+  font-size: 0.78rem;
+  color: var(--steam);
+  line-height: 1.55;
+  max-width: 320px;
 }
 
 /* ── OUR STORY PAGE ── */
@@ -4273,28 +4315,29 @@ body.is-navigating .nav-btn:active {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   position: relative;
 }
 .nav-icon-img {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   object-position: center;
   display: block;
-  /* Tint inactive icons to match aged/muted color */
-  filter: brightness(0.55) sepia(0.4);
+  /* Inactive: warm-tinted, readable but subdued */
+  filter: brightness(0.72) sepia(0.35) saturate(1.2);
   transition: filter 0.2s;
 }
 .nav-btn.active .nav-icon-img {
-  filter: brightness(1) sepia(0.3) saturate(1.4);
+  /* Active: full warm bronze/gold */
+  filter: brightness(1.05) sepia(0.25) saturate(1.6);
 }
 .nav-btn.scan .nav-icon-img {
-  filter: brightness(0.75) sepia(0.6) saturate(1.6) hue-rotate(-10deg);
+  filter: brightness(0.85) sepia(0.5) saturate(1.7) hue-rotate(-8deg);
 }
 .nav-btn.scan.active .nav-icon-img {
-  filter: brightness(1.1) sepia(0.5) saturate(2) hue-rotate(-10deg);
+  filter: brightness(1.15) sepia(0.4) saturate(2.2) hue-rotate(-8deg);
 }
 /* Fallback glyph — hidden by default; only shown via JS if img fails */
 .nav-icon-fallback {
@@ -4554,8 +4597,8 @@ body.is-navigating .nav-btn:active {
 
 <div class="page" id="page-beers">
   <div class="beers-page-hero">
-    <div class="venue-eyebrow">NOW POURING</div>
-    <div class="beers-page-title">Tap List</div>
+    <div class="beers-page-eyebrow">BETHLEHEM, PA · NOW POURING</div>
+    <div class="beers-page-title">THE TAP LIST</div>
     <div class="beers-page-sub">Trackside pours, resident beers, zero-proof options, and Wooden Match food highlights.</div>
   </div>
 
@@ -9143,7 +9186,7 @@ try {
 // are populated (local or remote) before any list renders.
 (async () => {
 try {
-  console.log('[trackside] App version: 4.5.3');
+  console.log('[trackside] App version: 4.5.4');
 
   // v4.2 — ensure guest ID exists and log a shortened version
   const _gid = getOrCreateGuestId();
