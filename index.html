@@ -163,16 +163,16 @@ body::before {
 /* Three-column layout: left action | centered logo | right action */
 .app-bar-inner {
   display: grid;
-  grid-template-columns: 105px 1fr 105px;
+  grid-template-columns: 95px 1fr 95px;
   align-items: center;
-  padding: 0.75rem 0;
-  min-height: 92px;
+  padding: 0.7rem 0;
+  min-height: 102px;
   gap: 0.25rem;
 }
 @media (max-width: 390px) {
   .app-bar-inner {
-    grid-template-columns: 98px 1fr 98px;
-    min-height: 84px;
+    grid-template-columns: 90px 1fr 90px;
+    min-height: 90px;
   }
 }
 /* Left slot — Now Pouring */
@@ -196,16 +196,16 @@ body::before {
 }
 /* Logo image */
 .header-logo-img {
-  height: 82px;
+  height: 96px;
   width: auto;
-  max-width: 260px;
+  max-width: 280px;
   display: block;
   object-fit: contain;
 }
 @media (max-width: 390px) {
   .header-logo-img {
-    height: 72px;
-    max-width: 220px;
+    height: 80px;
+    max-width: 230px;
   }
 }
 /* Text fallback shown when logo image fails */
@@ -834,20 +834,19 @@ body.is-navigating .nav-btn:active {
   z-index: 3;
 }
 
-/* Image label — floats on image, top-left */
+/* Image label — brass tab chip at top of content panel, normal flow */
 .taleshub-image-label {
-  position: absolute;
-  top: 14px; left: 14px;
-  z-index: 5;
+  display: inline-block;
+  align-self: flex-start;
   font-family: 'Source Code Pro', monospace;
-  font-size: 0.46rem;
+  font-size: 0.43rem;
   letter-spacing: 0.28em;
   color: #191715;
   background: linear-gradient(135deg, #C9823F, #E0A15A);
-  padding: 0.32rem 0.72rem;
+  padding: 0.24rem 0.6rem;
   border-radius: 1px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.45);
-  pointer-events: none;
+  margin-bottom: 0.48rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 
 /* ── Right content panel ────────────────────────── */
@@ -935,6 +934,289 @@ body.is-navigating .nav-btn:active {
   .taleshub-card-subtitle { font-size: 0.76rem; }
   .taleshub-card-body { font-size: 0.66rem; line-height: 1.5; }
   .taleshub-card-cta { font-size: 0.48rem; min-width: 135px; }
+}
+
+/* ════════════════════════════════════════════════════
+   SHARED DESIGN SYSTEM — v4.5.7
+   Applied across Tales, Story, Passport, Scan pages.
+   These supplement (not replace) existing page CSS.
+   ════════════════════════════════════════════════════ */
+
+/* ── Page hero — shared header block ───────────────── */
+.page-hero {
+  padding: 1.6rem 1.25rem 1.35rem;
+  border-bottom: 1px solid var(--brass-line);
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(201,130,63,0.07) 0%, transparent 55%),
+    var(--coal);
+}
+.page-hero::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; width: 38%;
+  background: repeating-linear-gradient(0deg,
+    transparent 0px, transparent 22px,
+    rgba(201,130,63,0.04) 22px, rgba(201,130,63,0.04) 23px);
+  pointer-events: none;
+}
+.page-hero-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem;
+  letter-spacing: 0.36em;
+  color: var(--ember);
+  margin-bottom: 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.page-hero-eyebrow::before {
+  content: '';
+  width: 16px; height: 1px; flex-shrink: 0;
+  background: linear-gradient(to right, transparent, var(--ember));
+}
+.page-hero-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.1rem;
+  color: var(--parchment);
+  letter-spacing: 0.05em;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+.page-hero-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  color: var(--steam);
+  line-height: 1.55;
+  max-width: 320px;
+}
+
+/* ── Plaque card — shared framed card ──────────────── */
+.plaque-card {
+  background: var(--iron-2);
+  border: 1px solid var(--brass-line);
+  border-radius: 3px;
+  padding: 1.1rem 1.2rem 1rem;
+  position: relative;
+  overflow: hidden;
+}
+.plaque-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.5) 40%,
+    rgba(224,161,90,0.6) 50%,
+    rgba(201,130,63,0.5) 60%, transparent);
+  pointer-events: none;
+}
+
+/* ── Brass label chip ───────────────────────────────── */
+.brass-label {
+  display: inline-block;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem;
+  letter-spacing: 0.28em;
+  color: #191715;
+  background: linear-gradient(135deg, var(--ember), var(--gold));
+  padding: 0.2rem 0.55rem;
+  border-radius: 1px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* ── Brass button ───────────────────────────────────── */
+.brass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.2em;
+  color: var(--parchment);
+  background: linear-gradient(180deg,
+    rgba(224,161,90,0.16), rgba(138,58,24,0.12)),
+    #2C211A;
+  border: 1px solid rgba(201,130,63,0.58);
+  border-radius: 2px;
+  padding: 0.58rem 1.1rem;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 6px rgba(0,0,0,0.3);
+  transition: background 0.15s, border-color 0.15s;
+}
+.brass-btn:hover {
+  background: linear-gradient(180deg,
+    rgba(224,161,90,0.28), rgba(138,58,24,0.18)),
+    #33251D;
+  border-color: rgba(224,161,90,0.72);
+}
+.brass-btn:active { opacity: 0.82; }
+
+/* ── Brass divider line ─────────────────────────────── */
+.brass-divider {
+  border: none;
+  height: 1px;
+  margin: 0;
+  background: linear-gradient(90deg,
+    transparent, var(--brass-line) 20%, var(--brass-line) 80%, transparent);
+}
+
+/* ── Empty / fallback state plaque ─────────────────── */
+.empty-plaque {
+  margin: 1.5rem 1.1rem;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  border: 1px solid var(--brass-line-soft);
+  border-radius: 3px;
+  background:
+    radial-gradient(ellipse at center,
+      rgba(201,130,63,0.06) 0%, transparent 70%),
+    var(--iron);
+}
+.empty-plaque-icon {
+  font-size: 1.4rem;
+  opacity: 0.35;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+.empty-plaque-text {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  color: var(--aged);
+  line-height: 1.55;
+}
+
+/* ════════════════════════════════════════════════════
+   SCAN page — warm charcoal scanner station
+   ════════════════════════════════════════════════════ */
+#page-scan {
+  background:
+    radial-gradient(ellipse at 50% 25%,
+      rgba(201,130,63,0.12) 0%, transparent 62%),
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 14px,
+      rgba(201,130,63,0.02) 14px, rgba(201,130,63,0.02) 15px),
+    var(--coal);
+}
+
+/* Scanner frame corners — replace the old :before/:after on .scan-viewport
+   with a wrapper border that matches the plaque system */
+.scan-viewport {
+  border: 1px solid rgba(201,130,63,0.45);
+  box-shadow:
+    0 0 0 4px rgba(201,130,63,0.06) inset,
+    0 6px 24px rgba(0,0,0,0.5);
+}
+
+/* Scan page title treatment */
+.scan-page-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.55rem;
+  letter-spacing: 0.1em;
+  color: var(--parchment);
+  margin-bottom: 0.3rem;
+}
+.scan-page-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.76rem;
+  color: var(--steam);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto 0.5rem;
+}
+
+/* ════════════════════════════════════════════════════
+   STORY / OUR STORY page — editorial heritage cards
+   ════════════════════════════════════════════════════ */
+.ourstory-hero {
+  padding: 1.6rem 1.25rem 1.3rem;
+  border-bottom: 1px solid var(--brass-line);
+  background:
+    linear-gradient(135deg, rgba(201,130,63,0.07) 0%, transparent 55%),
+    var(--coal);
+}
+.ourstory-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.1rem;
+  letter-spacing: 0.05em;
+  color: var(--parchment);
+  line-height: 1;
+  margin: 0.35rem 0 0.45rem;
+}
+.ourstory-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  color: var(--steam);
+  line-height: 1.55;
+}
+.ourstory-card {
+  background: var(--iron-2);
+  border: 1px solid var(--brass-line);
+  border-left: 3px solid rgba(201,130,63,0.5);
+  border-radius: 2px;
+  padding: 1rem 1.1rem 0.9rem;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.ourstory-card:hover {
+  border-color: rgba(201,130,63,0.45);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+}
+.ourstory-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, var(--brass-line), transparent 70%);
+}
+.ourstory-card-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem;
+  letter-spacing: 0.28em;
+  color: var(--ember);
+  margin-bottom: 0.35rem;
+}
+.ourstory-card-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: 0.05em;
+  color: var(--parchment);
+  line-height: 1.05;
+  margin-bottom: 0.3rem;
+  transition: color 0.18s;
+}
+.ourstory-card:hover .ourstory-card-title { color: var(--gold); }
+
+/* ════════════════════════════════════════════════════
+   PASSPORT / PROFILE page — collector ledger
+   ════════════════════════════════════════════════════ */
+.profile-hero {
+  padding: 1.75rem 1.25rem 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid var(--brass-line);
+  background:
+    radial-gradient(ellipse at 50% 0%,
+      rgba(201,130,63,0.08) 0%, transparent 65%),
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 18px,
+      rgba(201,130,63,0.02) 18px, rgba(201,130,63,0.02) 19px),
+    var(--coal);
+}
+.profile-avatar-big {
+  border: 2px solid rgba(201,130,63,0.5);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(201,130,63,0.15), transparent 60%),
+    linear-gradient(135deg, var(--rust), var(--coal));
+  box-shadow: 0 0 24px rgba(201,130,63,0.2);
+}
+.rewards-section {
+  padding: 1.4rem 1.1rem 0;
 }
 
 /* ── Beers page jump strip (shared) ── */
@@ -1786,7 +2068,7 @@ body.is-navigating .nav-btn:active {
   flex-direction: column; align-items: center; justify-content: flex-start;
   padding: 3rem 1.25rem 7rem; text-align: center; min-height: 100dvh;
   overflow-y: auto;
-  background: radial-gradient(ellipse at 50% 35%, rgba(192,78,24,0.15), transparent 70%);
+  /* v4.5.7: background updated in shared system block */
 }
 #page-scan.active { display: flex; }
 
@@ -3323,11 +3605,10 @@ body.is-navigating .nav-btn:active {
 #page-profile.active { display: block; }
 
 .profile-hero {
-  padding: 2.25rem 1.25rem 1.75rem;
+  /* v4.5.7: restyled in shared system block */
+  padding: 1.75rem 1.25rem 1.5rem;
   text-align: center;
-  border-bottom: 1px solid rgba(160,120,8,0.15);
   position: relative;
-  background: radial-gradient(ellipse at 50% 0%, rgba(200, 144, 16, 0.06), transparent 60%);
 }
 .profile-avatar-big {
   width: 84px; height: 84px; border-radius: 50%;
@@ -3534,36 +3815,33 @@ body.is-navigating .nav-btn:active {
 #page-ourstory { display: none; }
 #page-ourstory.active { display: block; }
 .ourstory-hero {
-  padding: 1.75rem 1.25rem 1.25rem;
-  border-bottom: 1px solid rgba(160,120,8,0.12);
+  /* v4.5.7: styling moved to shared system block */
+  padding: 1.6rem 1.25rem 1.3rem;
 }
 .ourstory-title {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.4rem;
-  letter-spacing: 0.06em;
-  color: var(--steam);
+  font-size: 2.1rem;
+  letter-spacing: 0.05em;
+  color: var(--parchment);
   line-height: 1;
   margin: 0.3rem 0 0.5rem;
 }
 .ourstory-sub {
   font-family: 'Playfair Display', serif;
   font-style: italic;
-  font-size: 0.75rem;
-  color: rgba(160,120,8,0.45);
-  line-height: 1.5;
+  font-size: 0.78rem;
+  color: var(--steam);
+  line-height: 1.55;
 }
 .ourstory-cards { padding: 1rem 1.25rem 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .ourstory-card {
-  background: linear-gradient(135deg, #1a1208 0%, #141008 100%);
-  border: 1px solid rgba(160,120,8,0.18);
-  border-left: 3px solid rgba(192,78,24,0.45);
-  border-radius: 2px;
-  padding: 1rem 1rem 0.85rem;
+  /* v4.5.7: restyled in shared system block — just preserve active state */
   cursor: pointer;
-  transition: border-color 0.2s, filter 0.15s;
+  padding: 1rem 1.1rem 0.9rem;
+  border-radius: 2px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.ourstory-card:hover { border-color: rgba(160,120,8,0.35); }
-.ourstory-card:active { filter: brightness(1.07); transform: scale(0.99); }
+.ourstory-card:active { opacity: 0.88; transform: scale(0.99); }
 .ourstory-card-eyebrow {
   font-family: 'Source Code Pro', monospace;
   font-size: 0.44rem;
@@ -3572,10 +3850,11 @@ body.is-navigating .nav-btn:active {
   margin-bottom: 0.35rem;
 }
 .ourstory-card-title {
+  /* v4.5.7: color updated in shared block */
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.2rem;
-  letter-spacing: 0.06em;
-  color: var(--steam);
+  letter-spacing: 0.05em;
+  color: var(--parchment);
   line-height: 1.1;
   margin-bottom: 0.3rem;
 }
@@ -4772,11 +5051,11 @@ body.is-navigating .nav-btn:active {
     <!-- Card 2: Trackside Brewing -->
     <div class="taleshub-card" onclick="nav('about')">
       <div class="taleshub-card-image">
-        <span class="taleshub-image-label">THE CONCEPT</span>
         <img src="assets/tales/tales-trackside-brewing.png" alt="Trackside Brewing Co."
           loading="lazy" onerror="this.style.display='none'">
       </div>
       <div class="taleshub-card-content">
+        <span class="taleshub-image-label">THE CONCEPT</span>
         <div class="taleshub-card-title">TRACKSIDE BREWING CO.</div>
         <div class="taleshub-card-subtitle">A brewery concept rooted in local history, rail heritage, and stories worth collecting.</div>
         <div class="taleshub-card-body">Every Trackside beer is tied to a real person or moment in Lehigh Valley history. The beer is the ticket — the history is the destination.</div>
@@ -4787,11 +5066,11 @@ body.is-navigating .nav-btn:active {
     <!-- Card 3: The Experience -->
     <div class="taleshub-card" onclick="nav('scan')">
       <div class="taleshub-card-image">
-        <span class="taleshub-image-label">THE EXPERIENCE</span>
         <img src="assets/tales/tales-scan-unlock.png" alt="Scan, unlock, collect"
           loading="lazy" onerror="this.style.display='none'">
       </div>
       <div class="taleshub-card-content">
+        <span class="taleshub-image-label">THE EXPERIENCE</span>
         <div class="taleshub-card-title">TRACKSIDE TALES</div>
         <div class="taleshub-card-subtitle">Every pour has a route. Every can can unlock a story.</div>
         <div class="taleshub-card-body">Scan a Trackside can to unlock a history chapter, earn a passport stamp, and play a mini-game tied to each tale.</div>
@@ -9395,7 +9674,7 @@ try {
 // are populated (local or remote) before any list renders.
 (async () => {
 try {
-  console.log('[trackside] App version: 4.5.6');
+  console.log('[trackside] App version: 4.5.7');
 
   // v4.2 — ensure guest ID exists and log a shortened version
   const _gid = getOrCreateGuestId();
