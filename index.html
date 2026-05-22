@@ -1234,39 +1234,40 @@ body.is-navigating .nav-btn:active {
 
 /* ── Beers page jump strip (shared) ── */
 .menu-jump-strip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  margin: 0.75rem 1.25rem 0;
-  border: 1px solid var(--brass-line);
-  background: var(--iron);
-  border-radius: 2px;
-  overflow: hidden;
+  display: flex; align-items: stretch; justify-content: center;
+  gap: 0; margin: 0.85rem 1rem 0;
+  border: 1px solid rgba(201,130,63,0.38);
+  background: var(--iron-2);
+  border-radius: 3px; overflow: hidden;
+  position: relative;
+}
+/* Brass top hairline on the entire strip */
+.menu-jump-strip::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.5) 20%,
+    rgba(224,161,90,0.6) 50%, rgba(201,130,63,0.5) 80%, transparent);
+  z-index: 1;
 }
 .menu-jump-tab {
   flex: 1;
   font-family: 'Source Code Pro', monospace;
-  font-size: 0.48rem;
-  letter-spacing: 0.2em;
-  color: var(--aged);
-  background: transparent;
-  border: none;
-  border-right: 1px solid var(--brass-line-soft);
-  cursor: pointer;
-  padding: 0.55rem 0.25rem;
+  font-size: 0.48rem; letter-spacing: 0.2em;
+  color: var(--aged); background: transparent;
+  border: none; border-right: 1px solid rgba(201,130,63,0.16);
+  cursor: pointer; padding: 0.65rem 0.25rem;
   transition: background 0.15s, color 0.15s;
   text-align: center;
 }
 .menu-jump-tab:last-of-type { border-right: none; }
-.menu-jump-tab:hover { background: rgba(201,130,63,0.06); color: var(--gold); }
+.menu-jump-tab:hover {
+  background: rgba(201,130,63,0.08); color: #E0A15A;
+}
 .menu-jump-tab.active-tab {
-  background: rgba(201,130,63,0.1);
-  color: var(--ember);
+  background: rgba(201,130,63,0.12); color: var(--ember);
 }
-.menu-jump-sep {
-  display: none; /* separators replaced by dividing borders on tabs */
-}
+.menu-jump-sep { display: none; }
 
 /* Discreet demo-reset button — lives at the bottom of the Profile page.
    Intentionally low-contrast: useful for demos but not a primary action. */
@@ -2952,6 +2953,52 @@ body.is-navigating .nav-btn:active {
   text-shadow: 0 2px 0 rgba(0,0,0,0.65);
 }
 
+
+/* Story hero top row — v4.6.0 */
+.story-hero-top {
+  position: absolute; top: 0.75rem; left: 0.9rem; right: 0.9rem;
+  z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.story-back-btn {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.2em;
+  color: rgba(201,130,63,0.75); background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(201,130,63,0.28); border-radius: 1px;
+  padding: 0.28rem 0.6rem; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.story-back-btn:hover { color: #E0A15A; border-color: rgba(201,130,63,0.55); }
+.story-hero-badge-chip {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem; letter-spacing: 0.22em;
+  padding: 0.24rem 0.55rem; border-radius: 1px;
+}
+.story-hero-badge-chip.earned {
+  background: linear-gradient(135deg, var(--ember), var(--gold));
+  color: #191715;
+}
+.story-hero-badge-chip.locked {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(201,130,63,0.25);
+  color: rgba(201,130,63,0.55);
+}
+/* Beer can artifact in hero */
+.story-hero-artifact {
+  position: absolute; right: 1rem; bottom: 0.5rem; z-index: 5;
+  width: 60px; display: flex; align-items: flex-end;
+}
+.story-hero-can {
+  width: 100%; height: auto; object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6))
+    sepia(0.08) saturate(0.95);
+}
+/* Hero tagline */
+.story-hero-tagline {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.2em;
+  color: rgba(201,130,63,0.65); margin-top: 0.35rem;
+}
 /* Story body — plaque-framed sections */
 .story-body { padding: 1.1rem 1rem 1.5rem; }
 
@@ -4476,49 +4523,59 @@ body.is-navigating .nav-btn:active {
 #page-beers { display: none; }
 #page-beers.active { display: block; }
 .beers-page-hero {
-  padding: 1.6rem 1.25rem 1.25rem;
-  border-bottom: 1px solid var(--brass-line);
+  padding: 1.55rem 1.25rem 1.3rem;
+  border-bottom: 1px solid rgba(201,130,63,0.32);
   background:
-    linear-gradient(135deg, rgba(201,130,63,0.07) 0%, transparent 55%),
-    var(--coal);
-  position: relative;
-  overflow: hidden;
+    radial-gradient(ellipse at 30% 60%, rgba(201,130,63,0.09) 0%, transparent 60%),
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 14px,
+      rgba(201,130,63,0.022) 14px, rgba(201,130,63,0.022) 15px),
+    linear-gradient(160deg, #1c1814 0%, #131009 100%);
+  position: relative; overflow: hidden;
 }
-/* Decorative horizontal rail lines — matches home hero atmosphere */
+/* Top brass hairline */
+.beers-page-hero::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.6) 25%,
+    rgba(224,161,90,0.72) 50%, rgba(201,130,63,0.6) 75%, transparent);
+}
+/* Right-side vertical rail lines */
 .beers-page-hero::after {
   content: '';
   position: absolute;
-  top: 0; right: 0; bottom: 0;
-  width: 40%;
+  top: 0; right: 0; bottom: 0; width: 38%;
   background: repeating-linear-gradient(
     0deg,
-    transparent 0px, transparent 22px,
-    rgba(201,130,63,0.04) 22px, rgba(201,130,63,0.04) 23px
+    transparent 0px, transparent 24px,
+    rgba(201,130,63,0.04) 24px, rgba(201,130,63,0.04) 25px
   );
   pointer-events: none;
 }
 .beers-page-eyebrow {
   font-family: 'Source Code Pro', monospace;
-  font-size: 0.46rem;
-  letter-spacing: 0.38em;
-  color: var(--ember);
+  font-size: 0.45rem; letter-spacing: 0.36em; color: var(--ember);
   margin-bottom: 0.55rem;
+  display: flex; align-items: center; gap: 0.5rem;
+  position: relative; z-index: 1;
+}
+.beers-page-eyebrow::before {
+  content: ''; width: 14px; height: 1px; flex-shrink: 0;
+  background: linear-gradient(to right, transparent, var(--ember));
 }
 .beers-page-title {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.2rem;
-  letter-spacing: 0.05em;
-  color: var(--parchment);
-  line-height: 1;
-  margin-bottom: 0.4rem;
+  font-size: clamp(2rem, 8vw, 2.4rem);
+  letter-spacing: 0.05em; color: #F1E7D7;
+  line-height: 1; margin-bottom: 0.4rem;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.55);
+  position: relative; z-index: 1;
 }
 .beers-page-sub {
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-  font-size: 0.78rem;
-  color: var(--steam);
-  line-height: 1.55;
-  max-width: 320px;
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.78rem; color: var(--steam); line-height: 1.55;
+  max-width: 300px; position: relative; z-index: 1;
 }
 
 /* ── OUR STORY PAGE ── */
@@ -7940,19 +7997,23 @@ function renderStory(tale) {
   document.getElementById('story-content').innerHTML = `
     <div class="story-hero">
       <div class="story-hero-bg"></div>
-      <div class="story-hero-art">
-        <svg viewBox="0 0 400 220" style="width:100%;height:100%">
-          <line x1="20" y1="110" x2="380" y2="110" stroke="#a07808" stroke-width="0.5" stroke-dasharray="4,3"/>
-          <line x1="200" y1="20" x2="200" y2="200" stroke="#a07808" stroke-width="0.5" stroke-dasharray="4,3"/>
-          <circle cx="200" cy="110" r="25" fill="none" stroke="#a07808" stroke-width="0.5"/>
-          <circle cx="200" cy="110" r="50" fill="none" stroke="#a07808" stroke-width="0.3"/>
-          <circle cx="200" cy="110" r="75" fill="none" stroke="#a07808" stroke-width="0.2"/>
-        </svg>
+      <!-- Top row: back button left, badge status right -->
+      <div class="story-hero-top">
+        <button class="story-back-btn" onclick="nav('tales')">← TALES</button>
+        <div class="story-hero-badge-chip ${scanBadge ? 'earned' : 'locked'}">
+          ${scanBadge ? '✓ SCANNED' : '◈ LOCKED'}
+        </div>
       </div>
+      <!-- Ghosted year watermark -->
       <div class="story-hero-year">${tale.year}</div>
+      <!-- Beer artifact right side -->
+      ${tale.image ? `<div class="story-hero-artifact">
+        <img src="${tale.image}" alt="${tale.name}" class="story-hero-can" onerror="this.parentNode.style.display='none'">
+      </div>` : ''}
       <div class="story-hero-content">
         <div class="story-chapter">${tale.chapter}</div>
         <h1 class="story-title">${tale.title}</h1>
+        <div class="story-hero-tagline">${tale.person.name} · ${tale.person.dates}</div>
       </div>
     </div>
 
@@ -8136,7 +8197,7 @@ function renderStory(tale) {
         <div class="story-action-hint">Intro sets the scene — it doesn't reveal the full story.</div>
       </div>
 
-      <!-- 3. Next Action panel -->
+      <!-- Passport status — only shown when game is complete (no duplicate CTA) -->
       ${gameBadge
         ? `<div class="story-next-action complete">
             <div class="story-next-label">PASSPORT STATUS</div>
@@ -8147,15 +8208,7 @@ function renderStory(tale) {
               <button class="story-next-secondary" onclick="nav('scan')">SCAN ANOTHER TALE</button>
             </div>
           </div>`
-        : `<div class="story-next-action">
-            <div class="story-next-label">NEXT STEP</div>
-            <div class="story-next-title">Earn the second badge</div>
-            <div class="story-next-copy">Complete the mini-game to finish this Passport page.</div>
-            <div class="story-next-btns">
-              <button class="story-next-primary" onclick="openGame('${tale.id}')">PLAY MINI-GAME</button>
-              <button class="story-next-secondary" onclick="nav('passport')">VIEW PASSPORT</button>
-            </div>
-          </div>`
+        : ''
       }
 
     </div>
@@ -9547,9 +9600,14 @@ const gameConfigs = {
 let _quizWrongCount = 0; // per-quiz attempt counter
 
 function showGameQuiz() {
-  // Stop timers so they don't interfere with quiz
-  if (gameState.loop)      { clearTimeout(gameState.loop);    gameState.loop      = null; }
-  if (gameState.timerLoop) { clearInterval(gameState.timerLoop); gameState.timerLoop = null; }
+  // Guard: prevent double-call (e.g. race between spawn-end and timer-end)
+  if (gameState.quizShowing) return;
+  gameState.quizShowing = true;
+
+  // Stop ALL timers immediately
+  if (gameState.loop)       { clearTimeout(gameState.loop);      gameState.loop      = null; }
+  if (gameState.timerLoop)  { clearInterval(gameState.timerLoop); gameState.timerLoop = null; }
+  if (gameState.gridDimTimer){ clearTimeout(gameState.gridDimTimer); gameState.gridDimTimer = null; }
 
   // Hide play area and stats
   document.getElementById('game-play-area').style.display  = 'none';
@@ -9604,9 +9662,12 @@ function handleQuizAnswer(isCorrect, cfg, clickedBtn) {
     fb.textContent = cfg.correctFeedback;
     fb.className   = 'game-quiz-feedback show-correct';
     // Brief pause so user can read feedback, then award badge
+    // Prevent any additional click firing after correct answer
+    gameState.quizShowing = false;
+    gameState.winLocked   = true;
     setTimeout(() => {
       document.getElementById('game-quiz').classList.remove('active');
-      gameWin();
+      if (!gameState.winFired) { gameState.winFired = true; gameWin(); }
     }, 1800);
   } else {
     _quizWrongCount++;
@@ -9702,7 +9763,7 @@ function startCurrentGame() {
   document.getElementById('game-stats').style.display = 'flex';
   document.getElementById('game-progress-bar-wrap').style.display = '';
   document.getElementById('game-progress-bar-fill').style.width = '0%';
-  gameState = { score: 0, timer: 30, loop: null, timerLoop: null };
+  gameState = { score: 0, timer: 30, loop: null, timerLoop: null, quizShowing: false };
   document.getElementById('game-score').textContent = '0';
   document.getElementById('game-time').textContent = '30';
   document.getElementById('game-time').classList.remove('game-time-warn');
@@ -9743,6 +9804,8 @@ function gameWin() {
 }
 
 function gameLose() {
+  // Never fail the user after quiz has started
+  if (gameState.quizShowing) return;
   if (gameState.loop) { clearInterval(gameState.loop); gameState.loop = null; }
   if (gameState.timerLoop) { clearInterval(gameState.timerLoop); gameState.timerLoop = null; }
   document.getElementById('game-play-area').style.display = 'none';
@@ -9809,10 +9872,11 @@ function startGridGame() {
   highlightNextLot();
 
   gameState.timerLoop = setInterval(() => {
+    if (gameState.quizShowing) return; // quiz already running — do not tick
     gameState.timer--;
     const el = document.getElementById('game-time');
-    el.textContent = gameState.timer;
-    if (gameState.timer <= 8) el.classList.add('game-time-warn');
+    if (el) el.textContent = gameState.timer;
+    if (gameState.timer <= 8 && el) el.classList.add('game-time-warn');
     if (gameState.timer <= 0) {
       clearInterval(gameState.timerLoop); gameState.timerLoop = null;
       gameLose();
@@ -9963,6 +10027,7 @@ function startSpikeGame() {
     const el = document.getElementById('game-time');
     el.textContent = gameState.timer;
     if (gameState.timer <= 6) el.classList.add('game-time-warn');
+    if (gameState.quizShowing) return;
     if (gameState.timer <= 0) {
       clearInterval(gameState.timerLoop); gameState.timerLoop = null;
       if (gameState.loop) { clearTimeout(gameState.loop); gameState.loop = null; }
@@ -10196,6 +10261,7 @@ function startMatchGame() {
     const el = document.getElementById('game-time');
     el.textContent = gameState.timer;
     if (gameState.timer <= 8) el.classList.add('game-time-warn');
+    if (gameState.quizShowing) return;
     if (gameState.timer <= 0) {
       clearInterval(gameState.timerLoop); gameState.timerLoop = null;
       if (gameState.matchesStruck >= gameState.matchesNeeded) showGameQuiz();
