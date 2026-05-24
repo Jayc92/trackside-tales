@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+<!-- Favicon — inline SVG data URI -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzBjMGEwNyIvPgogIDx0ZXh0IHg9IjE2IiB5PSIyMyIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICAgICAgZm9udC1zaXplPSIyMCIgZmlsbD0iI2EwNzgwOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgbGV0dGVyLXNwYWNpbmc9Ii0wLjUiPlQ8L3RleHQ+CiAgPGxpbmUgeDE9IjYiIHkxPSIyNyIgeDI9IjI2IiB5Mj0iMjciIHN0cm9rZT0iIzZiNGUyMiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8bGluZSB4MT0iNiIgeTE9IjI5LjUiIHgyPSIyNiIgeTI9IjI5LjUiIHN0cm9rZT0iIzZiNGUyMiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8bGluZSB4MT0iMTAiIHkxPSIyNi4yIiB4Mj0iMTAiIHkyPSIzMC4zIiBzdHJva2U9IiM2YjRlMjIiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPGxpbmUgeDE9IjE2IiB5MT0iMjYuMiIgeDI9IjE2IiB5Mj0iMzAuMyIgc3Ryb2tlPSIjNmI0ZTIyIiBzdHJva2Utd2lkdGg9IjEuNSIvPgogIDxsaW5lIHgxPSIyMiIgeTE9IjI2LjIiIHgyPSIyMiIgeTI9IjMwLjMiIHN0cm9rZT0iIzZiNGUyMiIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPC9zdmc+">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj4KICA8cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjM2IiBmaWxsPSIjMGMwYTA3Ii8+CiAgPHRleHQgeD0iOTAiIHk9IjEyOCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICAgICAgZm9udC1zaXplPSIxMTAiIGZpbGw9IiNhMDc4MDgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGxldHRlci1zcGFjaW5nPSItMiI+VDwvdGV4dD4KPC9zdmc+">
+<link rel="manifest" href="manifest.webmanifest">
+
+<meta name="description" content="A guest-facing taproom app concept built around beer, local rail history, passport stamps, and collectible Trackside Tales.">
+<meta name="author" content="Trackside Brewing Co.">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Trackside Tales at The Wooden Match">
+<meta property="og:description" content="A guest-facing taproom app concept built around beer, local rail history, passport stamps, and collectible Trackside Tales.">
+<meta property="og:site_name" content="Trackside Brewing Co.">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trackside Tales">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Trackside Tales">
+<meta name="theme-color" content="#0c0a07">
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Source+Code+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- html5-qrcode CDN — loaded before app so scanner is available globally -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
+  onerror="try{console.warn('[trackside] html5-qrcode CDN load failed — demo-only mode')}catch(_){}">
+</script>
+
+<title>Trackside Tales at The Wooden Match</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

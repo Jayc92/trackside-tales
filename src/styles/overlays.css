@@ -1,0 +1,390 @@
+/* ============ TALE INTRO OVERLAY ============
+   Cinematic intro moment for each unlocked Tale. Shown on-demand
+   via WATCH INTRO / REPLAY INTRO button. Never during scan unlock.
+   z-index: 10000 — above stamp (9999) and transition (9998).      */
+#tale-intro-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: #060402;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  overflow: hidden;
+}
+#tale-intro-overlay.active { display: flex; }
+
+/* Skip button */
+.tale-intro-skip {
+  position: absolute; top: 1.1rem; right: 1.1rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.48rem; letter-spacing: 0.22em;
+  color: rgba(160,120,8,0.45);
+  background: transparent;
+  border: 1px solid rgba(160,120,8,0.18);
+  padding: 0.3rem 0.65rem; border-radius: 2px;
+  cursor: pointer; z-index: 2;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tale-intro-skip:hover { color: rgba(200,144,16,0.8); border-color: rgba(160,120,8,0.4); }
+
+/* Stage — where the SVG animation lives */
+.tale-intro-stage {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.tale-intro-stage svg { width: 100%; height: 100%; }
+
+/* End title card — fades in at the end of the animation */
+.tale-intro-title-card {
+  position: absolute; bottom: 3.5rem; left: 0; right: 0;
+  text-align: center;
+  opacity: 0;
+  animation: none;
+}
+.tale-intro-title-card.show {
+  animation: introTitleFadeIn 0.8s ease forwards;
+}
+@keyframes introTitleFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tale-intro-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.45rem; letter-spacing: 0.35em;
+  color: var(--ember); margin-bottom: 0.4rem;
+}
+.tale-intro-beer-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem; letter-spacing: 0.1em;
+  color: #e8d098; line-height: 1;
+}
+
+/* ── W.A. LAGER INTRO — 1762 Allentown grid ── */
+@keyframes waGridFadeIn    { from{opacity:0} to{opacity:0.18} }
+@keyframes waAxisH         { from{stroke-dashoffset:400} to{stroke-dashoffset:0} }
+@keyframes waAxisV         { from{stroke-dashoffset:300} to{stroke-dashoffset:0} }
+@keyframes waSquareGlow    { 0%{opacity:0} 60%{opacity:0} 100%{opacity:0.7} }
+@keyframes waStampFadeIn   { 0%{opacity:0} 70%{opacity:0} 100%{opacity:0.5} }
+
+/* ── PACKER PILSNER INTRO — river + rail ── */
+@keyframes pkRiverDraw  { from{stroke-dashoffset:600} to{stroke-dashoffset:0} }
+@keyframes pkRailDraw   { from{stroke-dashoffset:500} to{stroke-dashoffset:0} }
+@keyframes pkLightMove  { 0%{cx:60} 100%{cx:600} }
+@keyframes pkFadeIn     { from{opacity:0} to{opacity:1} }
+
+/* ── WOODEN MATCH AMBER INTRO — station lights ── */
+@keyframes wmStationFade { from{opacity:0} to{opacity:0.9} }
+@keyframes wmWinLight1   { 0%{opacity:0} 40%{opacity:0} 42%{opacity:0.9} 100%{opacity:0.9} }
+@keyframes wmWinLight2   { 0%{opacity:0} 52%{opacity:0} 54%{opacity:0.9} 100%{opacity:0.9} }
+@keyframes wmWinLight3   { 0%{opacity:0} 64%{opacity:0} 66%{opacity:0.9} 100%{opacity:0.9} }
+@keyframes wmWinLight4   { 0%{opacity:0} 76%{opacity:0} 78%{opacity:0.9} 100%{opacity:0.9} }
+@keyframes wmAmberFill   { 0%{opacity:0} 60%{opacity:0} 100%{opacity:0.12} }
+@keyframes wmPlatformGlow{ from{opacity:0} to{opacity:0.55} }
+
+@media (prefers-reduced-motion: reduce) {
+  .tale-intro-title-card.show { animation: none; opacity: 1; }
+  #tale-intro-overlay { transition: none; }
+}
+
+/* ============ STORY TRANSITION OVERLAY ============
+   A brief branded screen shown when entering an already-unlocked story.
+   Only used for openTale() — never during simulateScan() / stamp unlock.
+   ~600ms total. Bottom-nav taps stay instant.    */
+#story-transition {
+  position: fixed; inset: 0; z-index: 9998;
+  background: #0c0a07;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0.6rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+#story-transition.visible { opacity: 1; pointer-events: auto; }
+.story-transition-rail {
+  width: 48px; height: 2px;
+  background: linear-gradient(to right, transparent, #a07808, transparent);
+  margin-bottom: 0.5rem;
+}
+.story-transition-mark {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.2rem;
+  letter-spacing: 0.3em;
+  color: #c89010;
+  opacity: 0.9;
+}
+.story-transition-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.75rem;
+  color: rgba(192,176,128,0.5);
+  letter-spacing: 0.04em;
+}
+@media (prefers-reduced-motion: reduce) {
+  #story-transition { transition: none; }
+}
+
+/* ============ PASSPORT STAMP UNLOCK ============
+   A tactile "passport stamped" moment. The page softens into a dark vignette,
+   a parchment passport-page slides up, and the official stamp lands on it
+   with a single firm strike (audio + haptic synced to impact frame).
+   No more flashy seals/pulses — this should feel like an archive, not a slot. */
+#unlock-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(12, 10, 7, 0);
+  display: none; align-items: center; justify-content: center; flex-direction: column;
+  transition: background 0.5s ease;
+  padding: 1.25rem;
+}
+#unlock-overlay.active { display: flex; background: rgba(12, 10, 7, 0.88); }
+
+/* The passport page itself — a warm parchment card */
+.passport-page {
+  position: relative;
+  width: 100%; max-width: 360px;
+  background: linear-gradient(165deg, #ede0c0 0%, #e0d2ae 60%, #d4c498 100%);
+  border-radius: 4px;
+  padding: 2.4rem 1.6rem 1.6rem;
+  box-shadow:
+    0 30px 60px rgba(0,0,0,0.55),
+    0 6px 16px rgba(0,0,0,0.35),
+    inset 0 0 60px rgba(120, 80, 30, 0.08);
+  opacity: 0; transform: translateY(24px) scale(0.96);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 0.8, 0.32, 1);
+}
+#unlock-overlay.active .passport-page {
+  opacity: 1; transform: translateY(0) scale(1);
+}
+/* Paper grain — subtle dotted noise via radial gradients */
+.passport-page::before {
+  content: ''; position: absolute; inset: 0; border-radius: 4px; pointer-events: none;
+  background-image:
+    radial-gradient(rgba(80,55,20,0.08) 1px, transparent 1.5px),
+    radial-gradient(rgba(80,55,20,0.05) 1px, transparent 1.5px);
+  background-size: 7px 7px, 13px 13px;
+  background-position: 0 0, 3px 4px;
+  opacity: 0.6; mix-blend-mode: multiply;
+}
+/* Page header line — like the top of a real passport entry */
+.passport-page-header {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.48rem; letter-spacing: 0.32em; color: rgba(80,55,20,0.55);
+  text-align: center; padding-bottom: 0.6rem;
+  border-bottom: 1px dashed rgba(80,55,20,0.25);
+  margin-bottom: 1.6rem;
+}
+
+/* The stamp — sits over the parchment */
+.stamp-wrap {
+  position: relative;
+  display: flex; justify-content: center;
+  margin: 0 auto 1.4rem;
+  height: 168px;
+}
+.passport-stamp-mark-big {
+  position: relative;
+  width: 168px; height: 168px;
+  display: flex; align-items: center; justify-content: center;
+  /* Ember/ink color, slightly desaturated to feel like real stamp ink */
+  color: #a83a14;
+  /* Stamp starts oversized, raised, rotated — like a hand winding up */
+  opacity: 0;
+  transform: scale(2.4) rotate(-18deg) translateY(-30px);
+  transform-origin: center center;
+  transition: none;
+}
+/* On strike, the stamp slams down with a slight overshoot then settles
+   at a casual ~6° angle — real stamps are never perfectly aligned */
+#unlock-overlay.active .passport-stamp-mark-big {
+  animation: stampStrike 0.55s cubic-bezier(0.32, 0.72, 0.24, 1.05) 0.45s forwards;
+}
+@keyframes stampStrike {
+  0%   { opacity: 0;    transform: scale(2.4) rotate(-18deg) translateY(-30px); }
+  /* Mid-air, tilting toward landing angle */
+  50%  { opacity: 0.65; transform: scale(1.5) rotate(-10deg) translateY(-10px); }
+  /* IMPACT — slight overshoot below 1.0 */
+  72%  { opacity: 1;    transform: scale(0.94) rotate(-5deg) translateY(0); }
+  /* Settle into final resting tilt */
+  100% { opacity: 1;    transform: scale(1) rotate(-6deg) translateY(0); }
+}
+
+/* Stamp circles — outer thicker, inner thinner. Both with imperfect ink edges
+   via a subtle inset shadow so it doesn't look like a vector logo. */
+.stamp-circle-outer,
+.stamp-circle-inner {
+  position: absolute; border-radius: 50%; pointer-events: none;
+}
+.stamp-circle-outer {
+  inset: 0;
+  border: 4px solid currentColor;
+  /* Slight ink imperfection — uneven edge via box-shadow */
+  box-shadow:
+    inset 0 0 0 0.5px rgba(168,58,20,0.4),
+    0 0 0 0.5px rgba(168,58,20,0.2);
+  opacity: 0.92;
+}
+.stamp-circle-inner {
+  inset: 12px;
+  border: 1.5px solid currentColor;
+  opacity: 0.7;
+}
+
+/* Stamp center icon — wraps the unlock SVG. Color is the stamp's ink
+   tone (warm ember) and inherits down through .ts-icon → SVG stroke. */
+.stamp-icon {
+  color: var(--ember);
+  font-size: 2.4rem;          /* legacy fallback; SVG sizes via .ts-icon-stamp */
+  filter: saturate(0.85) brightness(0.95);
+  opacity: 0.95;
+  z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Seal image system — used ONLY at the unlock stamp center. The
+   approved heritage seal artwork is dark ink on (formerly) cream
+   paper; we removed the paper, leaving the inked seal on transparent.
+   The seal sits on the parchment passport-page surface where it reads
+   exactly like a real stamp impression. */
+.ts-seal-img {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.ts-seal-stamp {
+  /* Sized to fit inside the existing arc-text rings so the curved
+     "TRACKSIDE TALES" (top) and date (bottom) arcs remain visible
+     around the seal. The seal artwork's own ring becomes a nested
+     inner frame inside the live arc-text frame. */
+  width: 100px; height: 100px;
+}
+
+/* When a seal is rendered, hide the existing inner ink ring — the seal
+   has its own ring inside, so the original .stamp-circle-inner becomes
+   redundant and would create a noisy nested-ring effect. The OUTER ring
+   stays because it carries the live arc text (TRACKSIDE TALES + date). */
+.passport-stamp-mark-big.has-seal .stamp-circle-inner {
+  display: none;
+}
+
+/* ============ TRACKSIDE ICON SYSTEM ============ */
+/* Shared base for every inline-SVG icon emitted by renderIcon().
+   Inherits color from the surrounding text, so we can tint stamps,
+   badges, and locked variants by setting `color` on a parent. The
+   inks should feel like a hand-stamp impression — a touch of warm
+   saturation drift, never a flat pictogram. */
+.ts-icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1em; height: 1em;     /* default sizing keys off font-size */
+  color: inherit;
+  flex-shrink: 0;
+}
+.ts-icon-sm    { width: 16px; height: 16px; }
+.ts-icon-md    { width: 24px; height: 24px; }
+.ts-icon-lg    { width: 36px; height: 36px; }
+.ts-icon-mini-badge { width: 26px; height: 26px; }   /* home Tales-card scan/game mini badges */
+.ts-icon-stamp {
+  width: 38px; height: 38px;
+  /* Soft ink-bleed on the large unlock stamp icon so it sits inside
+     the stamp circle like a real impression, not a sticker. */
+  filter: saturate(0.8) drop-shadow(0 0 0.5px currentColor);
+}
+/* Locked badge variant — desaturates the icon so the brass tone reads
+   as "not yet earned" without losing the line drawing. Pairs with the
+   existing .collectible-badge.locked / .passport-entry.locked rules. */
+.ts-icon-locked { opacity: 0.5; }
+
+
+/* Curved text rings inside the stamp (top arc + bottom arc) */
+.stamp-arc {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.stamp-arc text {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 9.5px; letter-spacing: 2.5px;
+  fill: currentColor; font-weight: 600;
+}
+
+/* Faint ink-bleed/blur overlay on the stamp for authenticity */
+.passport-stamp-mark-big::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 50%;
+  background: radial-gradient(ellipse at 30% 30%,
+    rgba(168,58,20,0.05) 0%,
+    transparent 55%);
+  pointer-events: none;
+}
+
+/* Caption block under the stamp */
+.passport-caption {
+  text-align: center;
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 0.4s ease 1.0s, transform 0.4s ease 1.0s;
+}
+#unlock-overlay.active .passport-caption {
+  opacity: 1; transform: translateY(0);
+}
+.passport-caption-tag {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.5rem; letter-spacing: 0.4em;
+  color: rgba(80,55,20,0.65);
+  margin-bottom: 0.5rem;
+}
+.passport-caption-title {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-weight: 600;
+  font-size: 1.1rem; line-height: 1.25;
+  color: #3a2812;
+  margin-bottom: 0.35rem;
+}
+.passport-caption-person {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem; letter-spacing: 0.08em;
+  color: #5a3a18;
+  margin-bottom: 0.7rem;
+}
+.passport-caption-meta {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.5rem; letter-spacing: 0.22em;
+  color: rgba(80,55,20,0.55);
+  display: flex; justify-content: center; gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.passport-caption-meta span { white-space: nowrap; }
+.passport-caption-meta .dot { opacity: 0.4; }
+
+/* Contextual hint lines below the unlock caption meta */
+.unlock-hint-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(80,55,20,0.18);
+}
+.unlock-hint-line {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  color: rgba(80,55,20,0.65);
+  text-align: center;
+  line-height: 1.45;
+}
+.unlock-hint-game {
+  color: rgba(120,70,20,0.75);
+}
+
+/* Reduced motion — keep the moment but skip the dramatic strike */
+@media (prefers-reduced-motion: reduce) {
+  #unlock-overlay.active .passport-stamp-mark-big {
+    animation: none;
+    opacity: 1;
+    transform: scale(1) rotate(-6deg);
+    transition: opacity 0.4s ease 0.3s;
+  }
+  .passport-page,
+  #unlock-overlay.active .passport-page {
+    transition: opacity 0.3s ease;
+    transform: none;
+  }
+}
+

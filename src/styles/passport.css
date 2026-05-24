@@ -1,0 +1,293 @@
+/* ============ PROFILE PAGE ============ */
+#page-profile { display: none; }
+#page-profile.active { display: block; }
+
+/* ════ Profile page — v4.5.11 passport ledger ════ */
+.profile-hero {
+  padding: 1.65rem 1.25rem 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(201,130,63,0.28);
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(201,130,63,0.10), transparent 62%),
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 16px,
+      rgba(201,130,63,0.022) 16px, rgba(201,130,63,0.022) 17px),
+    linear-gradient(180deg, #1a1714 0%, #131109 100%);
+}
+/* Brass hairline top of hero */
+.profile-hero::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.6) 25%,
+    rgba(224,161,90,0.72) 50%, rgba(201,130,63,0.6) 75%, transparent);
+}
+
+/* Identity medallion — rail-passport seal */
+.profile-avatar-big {
+  width: 84px; height: 84px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(201,130,63,0.18), transparent 62%),
+    linear-gradient(135deg, #3a1e08, #1a0f04);
+  border: 2px solid rgba(201,130,63,0.65);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 0.85rem;
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem;
+  color: #E0A15A; letter-spacing: 0.05em;
+  box-shadow:
+    0 0 20px rgba(201,130,63,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  position: relative;
+}
+.profile-avatar-big::after {
+  content: '';
+  position: absolute; inset: -6px; border-radius: 50%;
+  border: 1px dashed rgba(201,130,63,0.32);
+  pointer-events: none;
+}
+
+.profile-name {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.55rem;
+  color: #F1E7D7; letter-spacing: 0.05em; margin-bottom: 0.3rem;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.55);
+}
+.profile-tier {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem; letter-spacing: 0.32em; color: var(--ember);
+}
+
+/* Guest enrollment / passport registration card */
+.guest-prompt {
+  margin: 1rem;
+  padding: 1.25rem 1.1rem;
+  text-align: center;
+  border: 1px solid rgba(201,130,63,0.28);
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 14px,
+      rgba(201,130,63,0.018) 14px, rgba(201,130,63,0.018) 15px),
+    var(--iron-2);
+  position: relative;
+}
+.guest-prompt::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.5) 30%,
+    rgba(224,161,90,0.6) 50%, rgba(201,130,63,0.5) 70%, transparent);
+}
+.guest-prompt-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.35rem;
+  color: #F1E7D7; margin-bottom: 0.5rem;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+}
+.guest-prompt-desc {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.82rem; color: var(--steam); line-height: 1.6;
+  margin-bottom: 1.35rem; max-width: 300px;
+  margin-left: auto; margin-right: auto;
+}
+
+/* Signup form — archival registration fields */
+.signup-form { display: flex; flex-direction: column; gap: 0.6rem; max-width: 300px; margin: 0 auto; }
+.signup-input {
+  background: #1a1512;
+  border: 1px solid rgba(201,130,63,0.35);
+  border-radius: 1px;
+  padding: 0.72rem 1rem;
+  color: var(--parchment);
+  font-family: 'Source Code Pro', monospace; font-size: 0.78rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.signup-input:focus { border-color: rgba(201,130,63,0.7); }
+.signup-input::placeholder { color: var(--aged); }
+.signup-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.56rem; letter-spacing: 0.24em;
+  color: #EEE0C8;
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.20), rgba(130,52,18,0.16)),
+    #2A1F17;
+  border: 1px solid rgba(201,130,63,0.62);
+  border-radius: 2px;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 6px rgba(0,0,0,0.35);
+  transition: background 0.15s, border-color 0.15s;
+}
+.signup-btn:hover {
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.32), rgba(130,52,18,0.24)),
+    #33251D;
+  border-color: rgba(224,161,90,0.78);
+}
+.signup-skip {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.48rem; letter-spacing: 0.2em; color: var(--aged);
+  text-align: center; margin-top: 0.75rem; cursor: pointer;
+  transition: color 0.15s;
+}
+.signup-skip:hover { color: var(--steam); }
+
+/* Stamped ledger stat strip */
+.stats-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px; margin: 1.1rem 1rem 0;
+  border: 1px solid rgba(201,130,63,0.28);
+  border-radius: 2px; overflow: hidden;
+  background: rgba(201,130,63,0.2);
+}
+.stat-cell {
+  padding: 1rem 0.5rem; text-align: center;
+  background: var(--iron-2);
+  transition: background 0.18s;
+  position: relative;
+}
+.stat-cell:hover { background: #252019; }
+.stat-num {
+  font-family: 'Bebas Neue', sans-serif; font-size: 2.1rem;
+  color: #E0A15A; letter-spacing: 0.04em; line-height: 1;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+}
+.stat-lbl {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.22em; color: var(--aged); margin-top: 0.32rem;
+}
+
+/* ============ PASSPORT ============ */
+/* ── 5-tab bottom nav — slightly smaller labels to fit ── */
+/* nav compact sizing — used at narrow widths */
+.bottom-nav { display: flex; gap: 0; }
+.nav-btn { flex: 1; font-size: 0.48rem; letter-spacing: 0.12em; padding: 0.55rem 0.1rem 0.5rem; }
+
+.food-helper {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  color: rgba(160,120,8,0.4);
+  line-height: 1.5;
+  padding: 0 1.25rem 0.6rem;
+}
+
+/* ── HOW IT WORKS PAGE (within STORY tab) ── */
+#page-howitworks { display: none; }
+#page-howitworks.active { display: block; }
+.hiw-hero {
+  padding: 1.1rem 1.25rem 1.25rem;
+  border-bottom: 1px solid rgba(160,120,8,0.12);
+  position: relative;
+}
+.hiw-back-btn {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem; letter-spacing: 0.2em;
+  color: rgba(160,120,8,0.5);
+  background: transparent; border: none; cursor: pointer;
+  padding: 0 0 0.75rem; display: block;
+  transition: color 0.15s;
+}
+.hiw-back-btn:hover { color: var(--gold); }
+.hiw-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.1rem; letter-spacing: 0.06em;
+  color: var(--steam); line-height: 1;
+  margin: 0.3rem 0 0.5rem;
+}
+.hiw-sub {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.52rem; letter-spacing: 0.28em;
+  color: var(--ember);
+}
+.hiw-steps {
+  padding: 1.25rem 1.25rem 0.5rem;
+  display: flex; flex-direction: column; gap: 0;
+}
+.hiw-step {
+  display: flex; gap: 1rem; align-items: flex-start;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(160,120,8,0.08);
+}
+.hiw-step:last-child { border-bottom: none; }
+.hiw-step-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem; letter-spacing: 0.06em;
+  color: rgba(192,78,24,0.25);
+  line-height: 1; flex-shrink: 0; width: 36px;
+  padding-top: 0.1rem;
+}
+.hiw-step-body { flex: 1; }
+.hiw-step-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.95rem; letter-spacing: 0.08em;
+  color: var(--aged); margin-bottom: 0.35rem; line-height: 1.1;
+}
+.hiw-step-copy {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 0.72rem;
+  color: rgba(160,120,8,0.5); line-height: 1.55;
+}
+.hiw-cta-row {
+  display: flex; flex-direction: column; gap: 0.6rem;
+  padding: 1.25rem 1.25rem 2.5rem;
+}
+.hiw-cta-primary {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.95rem; letter-spacing: 0.15em;
+  color: #0c0a07; background: var(--ember);
+  border: none; padding: 0.75rem 1rem;
+  border-radius: 2px; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.hiw-cta-primary:hover  { background: #d45a1e; }
+.hiw-cta-primary:active { transform: scale(0.98); }
+.hiw-cta-secondary {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.52rem; letter-spacing: 0.22em;
+  color: rgba(160,120,8,0.5); background: transparent;
+  border: 1px solid rgba(160,120,8,0.18);
+  padding: 0.6rem 1rem; border-radius: 2px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.hiw-cta-secondary:hover { color: var(--gold); border-color: rgba(160,120,8,0.4); }
+#page-beers { display: none; }
+#page-beers.active { display: block; }
+.beers-page-hero {
+  padding: 1.55rem 1.25rem 1.3rem;
+  border-bottom: 1px solid rgba(201,130,63,0.32);
+  background:
+    radial-gradient(ellipse at 30% 60%, rgba(201,130,63,0.09) 0%, transparent 60%),
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 14px,
+      rgba(201,130,63,0.022) 14px, rgba(201,130,63,0.022) 15px),
+    linear-gradient(160deg, #1c1814 0%, #131009 100%);
+  position: relative; overflow: hidden;
+}
+/* Top brass hairline */
+.beers-page-hero::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.6) 25%,
+    rgba(224,161,90,0.72) 50%, rgba(201,130,63,0.6) 75%, transparent);
+}
+/* Right-side vertical rail lines */
+.beers-page-hero::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; width: 38%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px, transparent 24px,
+    rgba(201,130,63,0.04) 24px, rgba(201,130,63,0.04) 25px
+  );
+  pointer-events: none;
+}
+.beers-page-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.45rem; letter-spacing: 0.36em; color: var(--ember);
+  margin-bottom: 0.55rem;
+  display: flex; align-items: center; gap: 0.5rem;
+  position: relative; z-index: 1;

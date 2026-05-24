@@ -1,0 +1,826 @@
+/* ============ MINI GAME SECTION ============ */
+.minigame-section {
+  margin: 1rem 0 1rem;
+  border: 1px solid rgba(201,130,63,0.45);
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 12px,
+      rgba(201,130,63,0.022) 12px, rgba(201,130,63,0.022) 13px),
+    linear-gradient(135deg, rgba(201,130,63,0.07), transparent 55%),
+    var(--iron-2);
+  padding: 1.1rem 1.1rem 1.1rem;
+  position: relative; overflow: hidden;
+}
+/* Gradient accent top bar */
+.minigame-section::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--ember) 0%, var(--gold) 50%, var(--ember) 100%);
+}
+.minigame-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.34em; color: var(--ember);
+  margin-bottom: 0.45rem;
+  display: flex; align-items: center; gap: 0.45rem;
+}
+.minigame-label::before {
+  content: ''; width: 12px; height: 1px; flex-shrink: 0;
+  background: linear-gradient(to right, transparent, var(--ember));
+}
+.minigame-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(1.35rem, 5vw, 1.65rem);
+  color: #F1E7D7; letter-spacing: 0.04em; line-height: 1;
+  margin-bottom: 0.35rem;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.65);
+}
+.minigame-sub {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.78rem; color: var(--steam); line-height: 1.55;
+  margin-bottom: 0.9rem;
+}
+.minigame-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 100%;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.54rem; letter-spacing: 0.24em;
+  color: #EEE0C8;
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.22), rgba(130,52,18,0.16)),
+    #2A1F17;
+  border: 1px solid rgba(201,130,63,0.65);
+  border-radius: 2px;
+  padding: 0.7rem 1.5rem;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 8px rgba(0,0,0,0.4);
+  transition: background 0.15s, border-color 0.15s;
+}
+.minigame-btn:hover {
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.35), rgba(130,52,18,0.24)),
+    #33251D;
+  border-color: rgba(224,161,90,0.78);
+}
+.minigame-btn.completed {
+  background: transparent; color: var(--gold);
+  border: 1px solid rgba(201,130,63,0.35);
+  cursor: default; opacity: 0.8;
+}
+
+/* Collectible / badge reward panels — plaque system */
+.collectible {
+  margin: 1rem 0;
+  padding: 1.25rem 1.1rem;
+  border: 1px solid rgba(201,130,63,0.38);
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 14px,
+      rgba(201,130,63,0.018) 14px, rgba(201,130,63,0.018) 15px),
+    var(--iron-2);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.collectible::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.55) 30%,
+    rgba(224,161,90,0.65) 50%, rgba(201,130,63,0.55) 70%, transparent);
+}
+.collectible-icon {
+  font-size: 2.6rem; display: block; margin-bottom: 0.55rem;
+  color: #E0A15A;
+  filter: drop-shadow(0 0 8px rgba(201,130,63,0.4));
+}
+.collectible-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem;
+  color: #F1E7D7; letter-spacing: 0.05em; margin-bottom: 0.3rem;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+}
+.collectible-desc {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.72rem; line-height: 1.55; color: var(--steam); margin-bottom: 1rem;
+}
+/* Engraved metal button */
+.collectible-btn {
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.15), rgba(130,52,18,0.12)),
+    #2A1F17;
+  color: #EEE0C8;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.52rem; letter-spacing: 0.22em;
+  padding: 0.58rem 1.4rem;
+  border: 1px solid rgba(201,130,63,0.6);
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 6px rgba(0,0,0,0.35);
+  transition: background 0.15s, border-color 0.15s;
+}
+.collectible-btn:hover {
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.28), rgba(130,52,18,0.20)),
+    #33251D;
+  border-color: rgba(224,161,90,0.78);
+}
+.collectible-btn.claimed {
+  background: linear-gradient(135deg, rgba(201,130,63,0.25), rgba(130,52,18,0.18)), #2A1F17;
+  border-color: rgba(201,130,63,0.5);
+  color: #E0A15A; cursor: default;
+}
+.collectible-btn.locked {
+  background: transparent; color: var(--aged);
+  border-color: rgba(160,120,8,0.2);
+}
+.collectible-btn.locked:hover { color: var(--ember); border-color: rgba(201,130,63,0.4); background: transparent; }
+
+/* ============ MINI GAME MODAL ============ */
+/* ════════════════════════════════════════════════════
+   MINI-GAME OVERLAY — v4.5.9 railroad puzzle board
+   ════════════════════════════════════════════════════ */
+#game-overlay {
+  position: fixed; top: 0; bottom: 0; z-index: 400;
+  left: var(--app-shell-left); right: auto;
+  width: var(--app-shell-width); max-width: 500px;
+  margin-left: 0; margin-right: 0;
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 18px,
+      rgba(201,130,63,0.018) 18px, rgba(201,130,63,0.018) 19px),
+    linear-gradient(180deg, #161210 0%, #0f0d0a 100%);
+  display: none;
+  flex-direction: column;
+}
+#game-overlay.active { display: flex; }
+
+/* Game header — title bar with brass border */
+.game-header {
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid rgba(201,130,63,0.35);
+  background:
+    linear-gradient(90deg, rgba(201,130,63,0.08), transparent),
+    #1a1612;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+.game-header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    rgba(201,130,63,0.6) 0%, rgba(224,161,90,0.7) 40%,
+    rgba(201,130,63,0.6) 80%, transparent 100%);
+}
+.game-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem; color: #F1E7D7;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+}
+.game-close {
+  background: transparent;
+  border: 1px solid rgba(201,130,63,0.4);
+  color: var(--steam);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.52rem; letter-spacing: 0.18em;
+  padding: 0.32rem 0.7rem;
+  cursor: pointer;
+  border-radius: 1px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.game-close:hover { border-color: rgba(201,130,63,0.7); color: var(--gold); }
+
+/* Objective parchment panel */
+.game-canvas-wrap {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 1rem 1.1rem;
+  position: relative;
+  overflow-y: auto;
+}
+
+/* Instructions framed as parchment objective panel */
+.game-instructions {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.84rem; color: var(--steam); line-height: 1.6;
+  text-align: center; max-width: 340px; margin-bottom: 1.2rem;
+  background:
+    linear-gradient(135deg, rgba(201,130,63,0.06), transparent),
+    var(--iron-2);
+  border: 1px solid rgba(201,130,63,0.25);
+  border-radius: 3px;
+  padding: 0.85rem 1rem;
+  width: 100%;
+  position: relative;
+}
+.game-instructions::before {
+  content: 'OBJECTIVE';
+  position: absolute; top: -0.55rem; left: 50%; transform: translateX(-50%);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.38rem; letter-spacing: 0.3em;
+  color: #191715; background: linear-gradient(135deg, var(--ember), var(--gold));
+  padding: 0.12rem 0.5rem; border-radius: 1px;
+}
+
+/* Brass stat strip */
+.game-stats {
+  display: flex; gap: 0; justify-content: center;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(201,130,63,0.3);
+  border-radius: 2px; overflow: hidden;
+  background: var(--iron-2);
+  width: 100%; max-width: 340px;
+}
+.game-stat {
+  text-align: center; flex: 1;
+  padding: 0.5rem 0.25rem;
+  border-right: 1px solid rgba(201,130,63,0.2);
+}
+.game-stat:last-child { border-right: none; }
+.game-stat-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem; letter-spacing: 0.25em; color: var(--aged);
+}
+.game-stat-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem; color: var(--gold);
+  line-height: 1; margin-top: 0.15rem; letter-spacing: 0.05em;
+}
+
+/* Start button — large brass plaque style */
+.game-start-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 200px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem; letter-spacing: 0.2em;
+  color: #F1E7D7;
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.22) 0%, rgba(130,52,18,0.18) 100%),
+    #2A1F17;
+  border: 1px solid rgba(201,130,63,0.65);
+  border-radius: 2px;
+  padding: 0.9rem 2rem;
+  cursor: pointer; margin-top: 1.2rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 3px 10px rgba(0,0,0,0.4);
+  transition: background 0.15s, border-color 0.15s;
+  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+}
+.game-start-btn:hover {
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.35) 0%, rgba(130,52,18,0.25) 100%),
+    #33251D;
+  border-color: rgba(224,161,90,0.8);
+}
+
+/* Progress bar — shows completion ratio during play */
+.game-progress-bar-wrap {
+  width: 100%; max-width: 360px;
+  height: 4px; background: rgba(160,120,8,0.1);
+  border-radius: 2px; margin-bottom: 0.75rem; overflow: hidden;
+}
+.game-progress-bar-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(to right, var(--ember), var(--gold));
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
+
+/* Timer warning pulse when low */
+@keyframes timerWarn {
+  0%,100% { color: var(--gold); }
+  50%     { color: var(--ember); }
+}
+.game-time-warn { animation: timerWarn 0.6s ease infinite; }
+
+/* Already earned state */
+.game-already-earned {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: 2rem 1.25rem;
+}
+.game-ae-icon { font-size: 2.5rem; color: var(--gold); margin-bottom: 0.75rem; opacity: 0.7; }
+.game-ae-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem;
+  letter-spacing: 0.08em; color: var(--gold); margin-bottom: 0.4rem;
+}
+.game-ae-sub {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.85rem; color: var(--steam); line-height: 1.6;
+  margin-bottom: 1.5rem; max-width: 300px;
+}
+.game-ae-btns { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.game-ae-passport-btn {
+  font-family: 'Source Code Pro', monospace; font-size: 0.5rem; letter-spacing: 0.2em;
+  color: rgba(160,120,8,0.55); background: transparent;
+  border: 1px solid rgba(160,120,8,0.2); padding: 0.45rem 1.2rem;
+  border-radius: 2px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.game-ae-passport-btn:hover { color: var(--gold); border-color: rgba(160,120,8,0.45); }
+
+/* Success state */
+.game-success {
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 1.75rem 1.25rem; text-align: center;
+  background:
+    radial-gradient(ellipse at center, rgba(201,130,63,0.08) 0%, transparent 68%),
+    var(--iron-2);
+}
+.game-success.active { display: flex; }
+.game-success-badge {
+  width: 90px; height: 90px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(201,130,63,0.2), transparent 65%),
+    linear-gradient(135deg, #2e1f0a, #1a1208);
+  border: 2px solid rgba(201,130,63,0.7);
+  display: flex; align-items: center; justify-content: center;
+  color: #E0A15A;
+  box-shadow: 0 0 30px rgba(201,130,63,0.35), inset 0 1px 0 rgba(255,255,255,0.07);
+  margin-bottom: 1rem;
+  animation: badgeAward 0.55s var(--ease-out-quart) both;
+}
+@keyframes badgeAward {
+  0%   { transform: scale(0.3); opacity: 0; }
+  65%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.game-success-eyebrow {
+  font-family: 'Source Code Pro', monospace; font-size: 0.44rem;
+  letter-spacing: 0.32em; color: var(--ember); margin-bottom: 0.3rem;
+}
+.game-success-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.7rem;
+  color: #E0A15A; letter-spacing: 0.06em; margin-bottom: 0.45rem;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.5);
+}
+.game-success-msg {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.82rem; color: var(--steam); line-height: 1.6;
+  margin-bottom: 1.2rem; max-width: 290px;
+}
+.game-success-btns { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.game-success-story-btn {
+  font-family: 'Source Code Pro', monospace; font-size: 0.5rem; letter-spacing: 0.2em;
+  color: rgba(201,130,63,0.65); background: transparent;
+  border: 1px solid rgba(201,130,63,0.28); padding: 0.45rem 1.2rem;
+  border-radius: 2px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.game-success-story-btn:hover { color: var(--gold); border-color: rgba(201,130,63,0.55); }
+
+/* Fail state */
+.game-fail {
+  display: none;
+  flex-direction: column; align-items: center; text-align: center;
+  padding: 2rem 1.25rem;
+  background:
+    radial-gradient(ellipse at center, rgba(192,78,24,0.06) 0%, transparent 65%),
+    var(--iron-2);
+}
+.game-fail.active { display: flex; }
+.game-fail-mark { font-size: 2.8rem; color: rgba(201,130,63,0.45); margin-bottom: 0.75rem; }
+.game-fail-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem;
+  color: var(--parchment); letter-spacing: 0.08em; margin-bottom: 0.4rem;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+}
+.game-fail-msg {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.82rem; color: var(--steam); margin-bottom: 1.5rem;
+  max-width: 290px; line-height: 1.6;
+}
+
+#game-play-area {
+  width: 100%; max-width: 360px; aspect-ratio: 1;
+  background:
+    repeating-linear-gradient(0deg,
+      transparent 0, transparent 29px,
+      rgba(201,130,63,0.06) 29px, rgba(201,130,63,0.06) 30px),
+    repeating-linear-gradient(90deg,
+      transparent 0, transparent 29px,
+      rgba(201,130,63,0.06) 29px, rgba(201,130,63,0.06) 30px),
+    linear-gradient(160deg, #1e1a13 0%, #13100b 100%);
+  border: 1px solid rgba(201,130,63,0.42);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 4px rgba(201,130,63,0.05), 0 4px 16px rgba(0,0,0,0.5);
+  position: relative; overflow: hidden;
+  touch-action: none;
+}
+
+/* ════ QUIZ PANEL — v4.6.0 ════ */
+.game-quiz-panel {
+  display: none;
+  flex-direction: column;
+  width: 100%; max-width: 360px;
+  animation: pageEnter 0.3s var(--ease-out-quart);
+}
+.game-quiz-panel.active { display: flex; }
+.game-quiz-question {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.88rem; line-height: 1.6; color: var(--steam);
+  text-align: center;
+  background:
+    linear-gradient(135deg, rgba(201,130,63,0.06), transparent),
+    var(--iron-2);
+  border: 1px solid rgba(201,130,63,0.28);
+  border-radius: 3px; padding: 1.1rem 1.1rem 0.9rem;
+  margin-bottom: 0.85rem; position: relative;
+}
+.game-quiz-question::before {
+  content: 'QUICK QUESTION';
+  position: absolute; top: -0.55rem; left: 50%; transform: translateX(-50%);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.38rem; letter-spacing: 0.3em;
+  color: #191715; background: linear-gradient(135deg, var(--ember), var(--gold));
+  padding: 0.12rem 0.5rem; border-radius: 1px;
+}
+.game-quiz-answers { display: flex; flex-direction: column; gap: 0.42rem; }
+.game-quiz-answer {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.55rem; letter-spacing: 0.12em;
+  color: var(--steam);
+  background: transparent;
+  border: 1px solid rgba(201,130,63,0.25);
+  border-radius: 2px; padding: 0.65rem 0.9rem;
+  cursor: pointer; text-align: left; width: 100%;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.game-quiz-answer:hover {
+  background: rgba(201,130,63,0.08);
+  border-color: rgba(201,130,63,0.5);
+  color: #E0A15A;
+}
+.game-quiz-answer.correct {
+  background:
+    linear-gradient(90deg, rgba(201,130,63,0.18), rgba(201,130,63,0.06)),
+    var(--iron-2);
+  border-color: rgba(201,130,63,0.7);
+  color: #E0A15A; pointer-events: none;
+}
+.game-quiz-answer.wrong {
+  background: rgba(192,78,24,0.07);
+  border-color: rgba(192,78,24,0.3);
+  color: rgba(192,78,24,0.55); pointer-events: none; opacity: 0.5;
+}
+.game-quiz-feedback {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.75rem; line-height: 1.55; text-align: center;
+  margin-top: 0.65rem; padding: 0.55rem 0.85rem;
+  border-radius: 2px; display: none;
+}
+.game-quiz-feedback.show-correct {
+  display: block;
+  background: rgba(201,130,63,0.08);
+  border: 1px solid rgba(201,130,63,0.28);
+  color: #E0A15A;
+}
+.game-quiz-feedback.show-wrong {
+  display: block;
+  background: rgba(192,78,24,0.07);
+  border: 1px solid rgba(192,78,24,0.25);
+  color: var(--steam);
+}
+
+/* ============ GAME ELEMENTS — themed per Tale ============ */
+
+/* ---------- Allen: town lots & street lines ---------- */
+/* Numbered lots arranged in a 3×3 town grid. Each is a small parchment
+   rectangle with a brass border; tapping in sequence "lays out" the
+   block and connects it to the previous with a street line. */
+.lot {
+  position: absolute;
+  width: 56px; height: 38px;
+  background: linear-gradient(135deg, #2a1f10 0%, #1c1409 100%);
+  border: 1.5px solid var(--brass);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.85rem; color: var(--gold);
+  letter-spacing: 0.05em;
+  transform: translate(-50%,-50%);
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out-quart);
+  user-select: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+.lot.next {
+  border-color: var(--ember);
+  box-shadow: 0 0 12px rgba(192,78,24,0.45), 0 2px 6px rgba(0,0,0,0.35);
+  animation: lotPulse 1.4s ease-in-out infinite;
+}
+/* After the brief reveal, the "next" lot fades to a dimmer hint state.
+   Number stays visible (still discoverable by reading), but the urgent
+   pulse is gone — adds a mild memory beat without becoming a memory game. */
+.lot.next-dim {
+  border-color: rgba(192, 78, 24, 0.55);
+  box-shadow: 0 0 5px rgba(192,78,24,0.18), 0 2px 6px rgba(0,0,0,0.35);
+  animation: none;
+  opacity: 0.78;
+}
+/* Wrong-tap penalty: brief ember flash, then back to normal. */
+.lot.wrong {
+  animation: lotWrong 0.45s ease-out;
+}
+@keyframes lotWrong {
+  0%   { background: linear-gradient(135deg, #2a1f10 0%, #1c1409 100%); }
+  35%  { background: linear-gradient(135deg, #c04e18 0%, #6b1a08 100%);
+         box-shadow: 0 0 14px rgba(192,78,24,0.7), 0 2px 6px rgba(0,0,0,0.35); }
+  100% { background: linear-gradient(135deg, #2a1f10 0%, #1c1409 100%); }
+}
+.lot.laid {
+  background: linear-gradient(135deg, #6b4810 0%, #4a3008 100%);
+  border-color: var(--gold);
+  color: var(--parchment);
+  box-shadow: 0 0 8px rgba(200,144,16,0.35);
+  animation: none;
+}
+@keyframes lotPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(192,78,24,0.30), 0 2px 6px rgba(0,0,0,0.35); }
+  50%      { box-shadow: 0 0 18px rgba(192,78,24,0.65), 0 2px 6px rgba(0,0,0,0.35); }
+}
+.street-line {
+  position: absolute;
+  height: 3px;
+  background: linear-gradient(to right,
+    rgba(200,144,16,0.0) 0%,
+    var(--gold) 12%,
+    var(--gold) 88%,
+    rgba(200,144,16,0.0) 100%);
+  transform-origin: left center;
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(200,144,16,0.4);
+  animation: streetDraw 0.45s ease-out;
+}
+@keyframes streetDraw {
+  0%   { transform-origin: left center; opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* ---------- Packer: rail track & spikes ---------- */
+/* A horizontal railway track stretches across the play area. Spikes
+   appear at the rail-tie positions; tap each before it slips by. */
+.rail-track {
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  height: 64px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.rail-track::before,
+.rail-track::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(to right,
+    rgba(160,120,8,0.0) 0%,
+    rgba(160,120,8,0.55) 8%,
+    rgba(160,120,8,0.55) 92%,
+    rgba(160,120,8,0.0) 100%);
+}
+.rail-track::before { top: 8px; }
+.rail-track::after  { bottom: 8px; }
+.rail-tie {
+  position: absolute;
+  width: 22px; height: 64px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(180deg, #1c1409, #100a06 50%, #1c1409);
+  border-left: 1px solid rgba(160,120,8,0.15);
+  border-right: 1px solid rgba(160,120,8,0.15);
+  pointer-events: none;
+}
+.rail-spike {
+  position: absolute;
+  width: 28px; height: 28px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  user-select: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  color: var(--brass);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  transition: filter 0.15s;
+}
+.rail-spike::before {
+  content: '';
+  position: absolute;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(192,78,24,0.35) 0%, transparent 70%);
+  animation: spikePulse 0.9s ease-out;
+  pointer-events: none;
+}
+@keyframes spikePulse {
+  0%   { opacity: 0.9; transform: scale(0.6); }
+  100% { opacity: 0;   transform: scale(1.6); }
+}
+.rail-spike.driven {
+  color: var(--gold);
+  animation: spikeDriven 0.35s ease-out forwards;
+}
+.rail-spike.driven::before { display: none; }
+@keyframes spikeDriven {
+  0%   { transform: translate(-50%, -50%) scale(1.0); }
+  40%  { transform: translate(-50%, -50%) scale(1.4); filter: drop-shadow(0 0 8px rgba(200,144,16,0.8)); }
+  100% { transform: translate(-50%, -50%) scale(1.0); filter: drop-shadow(0 0 4px rgba(200,144,16,0.5)); }
+}
+.rail-spike.missed {
+  color: var(--aged);
+  opacity: 0.25;
+}
+
+/* ---------- Wooden Match: striking surface, match, station lamps ---------- */
+/* The play area becomes a darkened station scene: silhouetted building
+   with a row of lamp windows along the top. A match sits at the bottom;
+   the user swipes UP across the strike strip to ignite it. Each successful
+   strike lights one lamp window. After all lamps light, the station
+   "comes alive" with a warm glow. */
+.station-scene {
+  position: absolute;
+  inset: 0;
+  background:
+    /* Faint stars / dust above the station */
+    radial-gradient(1px 1px at 18% 12%, rgba(192,180,144,0.4), transparent),
+    radial-gradient(1px 1px at 64% 18%, rgba(192,180,144,0.3), transparent),
+    radial-gradient(1px 1px at 82% 8%, rgba(192,180,144,0.35), transparent),
+    /* Night sky → ground */
+    linear-gradient(180deg, #07060a 0%, #0c0a07 60%, #1a1208 100%);
+  overflow: hidden;
+  pointer-events: none;
+}
+.station-roof {
+  position: absolute;
+  left: 8%; right: 8%;
+  top: 18%;
+  height: 30%;
+  background:
+    /* Mansard-style dark silhouette */
+    linear-gradient(180deg, #050405 0%, #0a0807 100%);
+  clip-path: polygon(
+    0% 100%, 0% 35%,
+    8% 18%, 14% 0%, 86% 0%, 92% 18%,
+    100% 35%, 100% 100%
+  );
+  box-shadow: 0 1px 0 rgba(160,120,8,0.18);
+}
+.station-body {
+  position: absolute;
+  left: 4%; right: 4%;
+  top: 48%;
+  bottom: 14%;
+  background: linear-gradient(180deg, #100c08 0%, #0a0706 100%);
+  border-top: 1px solid rgba(160,120,8,0.22);
+}
+.station-lamps {
+  position: absolute;
+  left: 12%; right: 12%;
+  top: 56%;
+  height: 14%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.station-lamp {
+  width: 14%;
+  aspect-ratio: 1 / 1.4;
+  background: linear-gradient(180deg, #050405 0%, #100c08 100%);
+  border: 1px solid rgba(160,120,8,0.25);
+  border-radius: 1px;
+  position: relative;
+  transition: all 0.6s var(--ease-out-quart);
+}
+.station-lamp.lit {
+  background: linear-gradient(180deg, #ffd17a 0%, #c89010 60%, #6b4810 100%);
+  border-color: var(--gold);
+  box-shadow:
+    0 0 14px rgba(255, 196, 100, 0.65),
+    0 0 28px rgba(192, 78, 24, 0.35),
+    inset 0 -3px 6px rgba(192, 78, 24, 0.5);
+}
+.station-lamp.lit::after {
+  content: '';
+  position: absolute;
+  left: 50%; bottom: -100%;
+  width: 240%;
+  height: 200%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at top,
+    rgba(255, 196, 100, 0.18) 0%,
+    rgba(192, 78, 24, 0.08) 40%,
+    transparent 70%);
+  pointer-events: none;
+}
+
+/* Strike strip — the surface the user swipes the match across */
+.strike-strip {
+  position: absolute;
+  left: 8%; right: 8%;
+  bottom: 8%;
+  height: 14%;
+  background:
+    /* Sandpaper-like striated surface */
+    repeating-linear-gradient(45deg,
+      rgba(160, 120, 8, 0.10) 0px, rgba(160, 120, 8, 0.10) 2px,
+      rgba(192, 78, 24, 0.08) 2px, rgba(192, 78, 24, 0.08) 4px),
+    linear-gradient(180deg, #2a1a0a 0%, #1a1208 100%);
+  border: 1px solid rgba(160, 120, 8, 0.4);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.3em;
+  color: var(--aged);
+  user-select: none;
+  cursor: grab;
+  touch-action: none;
+}
+.strike-strip:active { cursor: grabbing; }
+.strike-strip.armed {
+  border-color: var(--ember);
+  box-shadow: 0 0 14px rgba(192, 78, 24, 0.35);
+}
+
+/* The match — sits inside the strip at the start position; tracks the
+   pointer during a swipe; ignites when released past the threshold. */
+.match-stick {
+  position: absolute;
+  width: 44px; height: 6px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #c89060 0%, #8a6238 100%);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  transform-origin: center;
+}
+.match-stick::after {
+  content: '';
+  position: absolute;
+  right: -4px; top: -3px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d04020 0%, #6b1a08 100%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+}
+.match-stick.lit::after {
+  background: radial-gradient(circle at 50% 30%,
+    #ffe28a 0%, #ffae3a 30%, #d04020 65%, #6b1a08 100%);
+  box-shadow: 0 0 16px rgba(255, 174, 58, 0.85), 0 0 32px rgba(192, 78, 24, 0.45);
+  animation: matchFlicker 0.45s ease-out infinite alternate;
+}
+/* Bad-strike feedback: brief ember flicker on the match head, no lamp lit.
+   Used when the swipe is too short/slow OR a single tap fires (double-tap
+   within 500ms is required for the tap fallback to count). */
+.match-stick.bad-strike::after {
+  animation: matchBadStrike 0.5s ease-out;
+}
+@keyframes matchBadStrike {
+  0%   { box-shadow: 0 0 0 0 rgba(192,78,24,0); }
+  35%  { box-shadow: 0 0 10px 3px rgba(192,78,24,0.8); transform: scale(1.1); }
+  100% { box-shadow: 0 0 0 0 rgba(192,78,24,0); transform: scale(1); }
+}
+@keyframes matchFlicker {
+  0%   { transform: scale(1.0); }
+  100% { transform: scale(1.15); }
+}
+
+/* The flying flame that arcs from the match to the next lamp on a successful strike */
+.spark {
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe28a 0%, #ff9020 60%, transparent 100%);
+  box-shadow: 0 0 10px rgba(255, 174, 58, 0.9);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+/* Strike-counter chip in the upper corner */
+.strike-counter {
+  position: absolute;
+  top: 8px; left: 8px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: var(--ember);
+  background: rgba(12, 10, 7, 0.6);
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgba(192, 78, 24, 0.4);
+  border-radius: 2px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* When the station is fully lit, the whole scene gets a warm wash */
+.station-scene.fully-lit {
+  animation: stationGlow 1.2s ease-out forwards;
+}
+@keyframes stationGlow {
+  0%   { filter: brightness(1.0); }
+  100% { filter: brightness(1.15) saturate(1.1); }
+}
+

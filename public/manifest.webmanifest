@@ -1,0 +1,9 @@
+{
+  "name": "Trackside Tales",
+  "short_name": "Trackside",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#151210",
+  "theme_color": "#151210",
+  "icons": []
+}

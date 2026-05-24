@@ -1,0 +1,27 @@
+:root {
+  /* Option B — Warm Charcoal (v4.5.2) */
+  --coal: #191715;
+  --iron: #24211E;
+  --iron-2: #2C2824;
+  --rust: #8a3a18;
+  --ember: #C9823F;
+  --ember-soft: rgba(201, 130, 63, 0.15);
+  --brass: #b07820;
+  --gold: #E0A15A;
+  --steam: #CBB9A0;
+  --parchment: #F5ECDD;
+  --aged: #9a8870;
+  --success: #4a8060;
+  /* Extended tokens for refined hierarchy */
+  --coal-deep: #111009;
+  --ink-overlay: rgba(25, 23, 21, 0.94);
+  --brass-line: rgba(201, 130, 63, 0.22);
+  --brass-line-soft: rgba(201, 130, 63, 0.1);
+  --gold-glow: 0 0 24px rgba(224, 161, 90, 0.28);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  /* v4.1.5 — shared shell geometry so every shell piece resolves to the
+     exact same pixel values from the exact same calculation. */
+  --app-shell-width: min(100vw, 500px);
+  --app-shell-left: max(0px, calc((100vw - 500px) / 2));
+}

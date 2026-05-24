@@ -1,0 +1,221 @@
+:root {
+  /* Option B — Warm Charcoal (v4.5.2) */
+  --coal: #191715;
+  --iron: #24211E;
+  --iron-2: #2C2824;
+  --rust: #8a3a18;
+  --ember: #C9823F;
+  --ember-soft: rgba(201, 130, 63, 0.15);
+  --brass: #b07820;
+  --gold: #E0A15A;
+  --steam: #CBB9A0;
+  --parchment: #F5ECDD;
+  --aged: #9a8870;
+  --success: #4a8060;
+  /* Extended tokens for refined hierarchy */
+  --coal-deep: #111009;
+  --ink-overlay: rgba(25, 23, 21, 0.94);
+  --brass-line: rgba(201, 130, 63, 0.22);
+  --brass-line-soft: rgba(201, 130, 63, 0.1);
+  --gold-glow: 0 0 24px rgba(224, 161, 90, 0.28);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  /* v4.1.5 — shared shell geometry so every shell piece resolves to the
+     exact same pixel values from the exact same calculation. */
+  --app-shell-width: min(100vw, 500px);
+  --app-shell-left: max(0px, calc((100vw - 500px) / 2));
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html {
+  width: 100%;
+  min-height: 100%;
+  background: var(--coal);
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+body {
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--coal);
+  color: var(--parchment);
+  font-family: 'Source Code Pro', monospace;
+  overflow-x: hidden;
+  /* position: relative removed — it creates a containing block that traps
+     position:fixed children in WebKit, causing the nav to scroll away. */
+  user-select: none;
+}
+/* Subtle film-grain overlay for atmosphere — covers the whole app */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/></svg>");
+  mix-blend-mode: overlay;
+}
+
+/* APP BAR */
+/* v4.1.2 — width cap moved off body onto individual shell pieces so html/body
+   stay full viewport width and don't trigger iframe layout recalculations. */
+.app-bar,
+.page {
+  width: var(--app-shell-width);
+  max-width: 500px;
+  margin-left: 0;
+  margin-right: 0;
+  position: relative;
+  left: var(--app-shell-left);
+}
+
+.app-bar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(25,23,21,0.97);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--brass-line);
+  padding: env(safe-area-inset-top, 0) 1rem 0;
+}
+/* Three-column layout: left action | centered logo | right action */
+.app-bar-inner {
+  display: grid;
+  grid-template-columns: 88px 1fr 88px;
+  align-items: center;
+  padding: 0.65rem 0;
+  min-height: 118px;
+  gap: 0.25rem;
+}
+@media (max-width: 390px) {
+  .app-bar-inner {
+    grid-template-columns: 82px 1fr 82px;
+    min-height: 100px;
+  }
+}
+/* Left slot — Now Pouring */
+.app-bar-left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+/* Center slot — logo */
+.app-bar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+/* Right slot — profile */
+.app-bar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+/* Logo image */
+.header-logo-img {
+  height: 112px;
+  width: auto;
+  max-width: 300px;
+  display: block;
+  object-fit: contain;
+}
+@media (max-width: 390px) {
+  .header-logo-img {
+    height: 90px;
+    max-width: 240px;
+  }
+}
+/* Text fallback shown when logo image fails */
+.header-logo-text {
+  display: none;
+  flex-direction: column;
+  line-height: 1;
+}
+.header-logo-text .logo-main { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.22em; color: var(--gold); }
+.header-logo-text .logo-sub  { font-size: 0.5rem; letter-spacing: 0.22em; color: var(--aged); margin-top: 0.15rem; }
+.header-logo-text .logo-sub span { color: var(--ember); }
+/* Keep old .logo-block for any back-compat references */
+.logo-block { display: flex; flex-direction: column; line-height: 1; cursor: pointer; }
+.logo-main { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.22em; color: var(--gold); }
+.logo-sub { font-size: 0.5rem; letter-spacing: 0.22em; color: var(--aged); margin-top: 0.15rem; }
+.logo-sub span { color: var(--ember); }
+
+/* Live indicator — glowing dot + label, center-right of app bar */
+.live-indicator {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.2rem 0.35rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.14em;
+  color: var(--gold);
+  border: 1px solid rgba(201, 130, 63, 0.25);
+  background: rgba(201, 130, 63, 0.04);
+  white-space: nowrap;
+  margin-left: 0;
+  margin-right: 0;
+}
+.live-indicator-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 6px rgba(192, 78, 24, 0.8), 0 0 12px rgba(192, 78, 24, 0.4);
+  animation: liveDotPulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes liveDotPulse {
+  0%, 100% {
+    background: var(--ember);
+    box-shadow: 0 0 6px rgba(192, 78, 24, 0.8), 0 0 12px rgba(192, 78, 24, 0.4);
+  }
+  50% {
+    background: #d86020;
+    box-shadow: 0 0 10px rgba(192, 78, 24, 1), 0 0 20px rgba(192, 78, 24, 0.5);
+  }
+}
+
+.profile-btn {
+  /* Container — no visible border/circle; just sizes and positions the icon */
+  width: 40px; height: 40px;
+  background: transparent; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; padding: 0;
+}
+.profile-btn.guest { opacity: 0.75; }
+.profile-btn:hover { opacity: 1; }
+.profile-icon-img {
+  /* Icon fills the button; no circular crop */
+  width: 40px; height: 40px;
+  object-fit: contain; object-position: center;
+  display: block;
+}
+
+/* PAGES */
+.page { display: none; min-height: 100dvh; padding-bottom: 7.5rem; }
+.page.active {
+  display: block;
+  animation: pageEnter 0.4s var(--ease-out-quart);
+}
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* v4.1.1 — suppress entrance animation during direct tab navigation so
+   Safari doesn't paint the translateY(12px) start frame on tab switches. */
+body.is-navigating .page.active {
+  animation: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+/* v4.1.3 — prevent nav button press transform from causing perceived jitter
+   during the two-rAF window while is-navigating is active. */
+body.is-navigating .nav-btn,
+body.is-navigating .nav-btn:active {
+  transform: none !important;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+

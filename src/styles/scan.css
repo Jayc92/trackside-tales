@@ -1,0 +1,316 @@
+/* ============ SCAN PAGE ============ */
+#page-scan {
+  display: none;
+  flex-direction: column; align-items: center; justify-content: flex-start;
+  padding: 3rem 1.25rem 7rem; text-align: center; min-height: 100dvh;
+  overflow-y: auto;
+  /* v4.5.7: background updated in shared system block */
+}
+#page-scan.active { display: flex; }
+
+.scan-viewport {
+  width: min(82vw, 340px);
+  max-width: 340px;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  position: relative;
+  margin: 0 auto 1.75rem;
+  overflow: hidden;
+  /* Brass inspection frame */
+  border: 1px solid rgba(201,130,63,0.50);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 5px rgba(201,130,63,0.06) inset,
+    0 6px 28px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(201,130,63,0.15);
+}
+/* Live camera container fills the square scan viewport */
+#qr-reader {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden;
+  border-radius: 2px;
+}
+/* html5-qrcode internal scan region — force square fill */
+#qr-reader__scan_region {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  display: block !important;
+  background: transparent !important;
+}
+/* Camera video — cover the square, no letterbox */
+#qr-reader__scan_region video,
+#qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  display: block !important;
+}
+/* Any extra injected div wrapper from html5-qrcode */
+#qr-reader > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+/* Prevent injected canvas/img from overflowing the frame */
+#qr-reader canvas,
+#qr-reader img {
+  max-width: none !important;
+}
+/* Hide html5-qrcode's default UI chrome — we use our own overlay */
+/* Note: only hiding dashboard and header; keeping scan_region img rule
+   narrow to avoid impacting video layout */
+#qr-reader__dashboard,
+#qr-reader__header_message { display: none !important; }
+#qr-reader__scan_region img { display: none !important; }
+.scan-live-chip {
+  position: absolute;
+  top: -24px; left: 50%; transform: translateX(-50%);
+  font-size: 0.5rem; letter-spacing: 0.3em; color: var(--ember);
+  display: none; align-items: center; gap: 0.3rem;
+  white-space: nowrap;
+}
+.scan-live-chip.active { display: flex; }
+.scan-live-chip::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--ember); animation: pulse 1.5s infinite;
+}
+.camera-error {
+  margin-top: 1rem;
+  padding: 1.1rem 1rem 1rem;
+  border: 1px solid rgba(201,130,63,0.38);
+  border-left: 3px solid rgba(201,130,63,0.6);
+  border-radius: 2px;
+  background:
+    linear-gradient(135deg, rgba(201,130,63,0.06), transparent),
+    var(--iron-2);
+  font-size: 0.65rem; color: var(--steam);
+  line-height: 1.55; max-width: 340px; text-align: center;
+  position: relative;
+}
+.camera-error strong { color: var(--ember); letter-spacing: 0.12em; }
+.camera-retry-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-top: 0.7rem;
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.15), rgba(130,52,18,0.12)),
+    #2A1F17;
+  color: #EEE0C8;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.5rem; letter-spacing: 0.22em;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid rgba(201,130,63,0.55);
+  border-radius: 2px; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+  transition: background 0.15s, border-color 0.15s;
+}
+.camera-retry-btn:hover {
+  background:
+    linear-gradient(180deg, rgba(224,161,90,0.28), rgba(130,52,18,0.20)),
+    #33251D;
+  border-color: rgba(224,161,90,0.72);
+}
+.scan-corners::before, .scan-corners::after, .scan-corners-b::before, .scan-corners-b::after {
+  content: ''; position: absolute;
+  width: 40px; height: 40px;
+  border-color: var(--ember); border-style: solid;
+}
+.scan-corners::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
+.scan-corners::after { top: 0; right: 0; border-width: 3px 3px 0 0; }
+.scan-corners-b::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
+.scan-corners-b::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+.scan-line {
+  position: absolute; left: 10%; right: 10%; height: 2px;
+  background: linear-gradient(to right, transparent, var(--ember), transparent);
+  animation: scanSweep 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(192,78,24,0.5);
+}
+@keyframes scanSweep { 0%,100%{top:15%;opacity:0.3} 50%{top:80%;opacity:1} }
+.scan-can {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 88px; height: 140px;
+  background:
+    /* Vertical metallic curvature */
+    linear-gradient(90deg,
+      rgba(0,0,0,0.4) 0%,
+      rgba(255,255,255,0.05) 30%,
+      rgba(255,255,255,0.1) 50%,
+      rgba(255,255,255,0.05) 70%,
+      rgba(0,0,0,0.4) 100%),
+    linear-gradient(180deg,
+      #3d2e18 0%,
+      #3d2e18 8%,
+      #2a1f10 12%,
+      #3d2e18 92%,
+      #2a1a10 100%);
+  border-radius: 10px 10px 4px 4px;
+  border: 1px solid rgba(160,120,8,0.5);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0.82;
+  box-shadow:
+    inset 3px 0 5px rgba(255,255,255,0.06),
+    inset -3px 0 5px rgba(0,0,0,0.35),
+    inset 0 -3px 4px rgba(0,0,0,0.3),
+    0 6px 16px rgba(0,0,0,0.5);
+  animation: canFloat 3s ease-in-out infinite;
+  overflow: hidden;
+}
+@keyframes canFloat {
+  0%, 100% { transform: translate(-50%, -50%); }
+  50% { transform: translate(-50%, calc(-50% - 4px)); }
+}
+/* Refined top rim — two-tone for more realism */
+.scan-can::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 8px;
+  background:
+    linear-gradient(to bottom,
+      rgba(200, 144, 16, 0.55) 0%,
+      rgba(160, 120, 8, 0.4) 40%,
+      rgba(12, 10, 7, 0.7) 100%);
+  border-radius: 10px 10px 0 0;
+  border-bottom: 0.5px solid rgba(0,0,0,0.5);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+}
+/* Label band */
+.scan-can::after {
+  content: '';
+  position: absolute; left: 6px; right: 6px;
+  top: 32%; bottom: 22%;
+  background:
+    linear-gradient(90deg,
+      rgba(8, 6, 3, 0.9) 0%,
+      rgba(20, 14, 8, 0.7) 50%,
+      rgba(8, 6, 3, 0.9) 100%);
+  border-top: 0.5px solid rgba(200,144,16,0.35);
+  border-bottom: 0.5px solid rgba(200,144,16,0.35);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
+}
+/* Light sweep — diagonal highlight that glides across the can every 4s */
+.scan-can-sweep {
+  position: absolute;
+  top: -20%;
+  left: -30%;
+  width: 40%;
+  height: 140%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 70%
+  );
+  transform: rotate(8deg);
+  animation: canSweep 4.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+@keyframes canSweep {
+  0% { left: -40%; opacity: 0; }
+  15% { opacity: 1; }
+  45% { left: 110%; opacity: 1; }
+  50%, 100% { left: 110%; opacity: 0; }
+}
+.scan-can-name {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.6rem;
+  color: var(--gold); letter-spacing: 0.15em; text-align: center;
+  position: relative; z-index: 2;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  line-height: 1.1;
+}
+/* ════ Scan page — v4.5.11 inspection station ════ */
+.scan-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(1.7rem, 7vw, 2.1rem);
+  color: #F1E7D7; letter-spacing: 0.05em;
+  margin-bottom: 0.45rem; line-height: 1;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.6), 0 0 18px rgba(201,130,63,0.1);
+}
+.scan-sub {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.88rem; color: var(--steam); line-height: 1.55;
+  max-width: 320px; margin-bottom: 1.75rem;
+}
+
+/* Demo dispatch board — rigid plaque */
+.demo-quick-scan {
+  margin-top: 2rem;
+  padding: 0;
+  border: 1px solid rgba(201,130,63,0.4);
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 12px,
+      rgba(201,130,63,0.02) 12px, rgba(201,130,63,0.02) 13px),
+    var(--iron-2);
+  width: 100%; max-width: 340px;
+  overflow: hidden;
+  position: relative;
+}
+/* Brass hairline top */
+.demo-quick-scan::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.55) 30%,
+    rgba(224,161,90,0.65) 50%, rgba(201,130,63,0.55) 70%, transparent);
+  z-index: 1;
+}
+
+/* Dispatch label header row */
+.demo-quick-scan-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.3em; color: var(--ember);
+  padding: 0.65rem 1rem 0.55rem;
+  border-bottom: 1px solid rgba(201,130,63,0.18);
+  text-align: left;
+  display: flex; align-items: center; gap: 0.5rem;
+  background: linear-gradient(90deg, rgba(201,130,63,0.06), transparent);
+}
+.demo-quick-scan-label::before {
+  content: ''; width: 12px; height: 1px; flex-shrink: 0;
+  background: linear-gradient(to right, transparent, var(--ember));
+}
+.demo-quick-scan-buttons {
+  display: flex; flex-direction: column; gap: 0;
+}
+
+/* Engraved dispatch entries */
+.demo-quick-btn {
+  background: transparent;
+  color: var(--steam);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.62rem; letter-spacing: 0.1em;
+  padding: 0.72rem 1rem;
+  border: none;
+  border-bottom: 1px solid rgba(201,130,63,0.12);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  text-align: left;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.demo-quick-btn:last-child { border-bottom: none; }
+.demo-quick-btn:hover {
+  color: #E0A15A;
+  background: rgba(201,130,63,0.07);
+}
+.demo-quick-btn:active { opacity: 0.82; }
+.demo-quick-btn-arrow {
+  color: var(--ember); font-size: 0.7rem;
+  transition: transform 0.18s;
+  flex-shrink: 0;
+}
+.demo-quick-btn:hover .demo-quick-btn-arrow { transform: translateX(3px); }
+
+/* Preview hint */
+.demo-preview-hint {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.7rem; color: var(--steam); opacity: 0.7;
+  text-align: center; margin: 0 0 0.65rem; padding: 0;
+}
+

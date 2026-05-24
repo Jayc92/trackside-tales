@@ -1,0 +1,377 @@
+  border-bottom: 1px solid rgba(160,120,8,0.15);
+  padding-bottom: 1px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.feedback-btn:hover {
+  color: rgba(200,144,16,0.7);
+  border-color: rgba(160,120,8,0.35);
+}
+
+/* BEER CARDS */
+.beer-list { padding: 0 0.9rem; }
+.beer-card {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 12px,
+      rgba(201,130,63,0.018) 12px, rgba(201,130,63,0.018) 13px),
+    var(--iron-2);
+  border: 1px solid rgba(201,130,63,0.28);
+  border-radius: 3px;
+  padding: 0.9rem; margin-bottom: 0.65rem;
+  display: flex; gap: 0.85rem; align-items: flex-start;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3),
+              inset 0 0 0 1px rgba(201,130,63,0.04);
+}
+.beer-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    rgba(201,130,63,0.5) 0%, rgba(224,161,90,0.6) 35%,
+    rgba(201,130,63,0.5) 70%, transparent 100%);
+  pointer-events: none;
+}
+.beer-card:hover {
+  border-color: rgba(201,130,63,0.52);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4),
+              inset 0 0 0 1px rgba(201,130,63,0.08);
+}
+.beer-card:active { opacity: 0.9; }
+.beer-card.tales {
+  /* Stronger background: parchment-warm, slightly ember-tinted */
+  background:
+    /* Subtle parchment-grain crosshatch — only on Tales cards */
+    repeating-linear-gradient(45deg,
+      transparent 0px, transparent 6px,
+      rgba(192, 78, 24, 0.018) 6px, rgba(192, 78, 24, 0.018) 7px),
+    repeating-linear-gradient(-45deg,
+      transparent 0px, transparent 9px,
+      rgba(160, 120, 8, 0.022) 9px, rgba(160, 120, 8, 0.022) 10px),
+    linear-gradient(135deg, rgba(192, 78, 24, 0.06) 0%, transparent 45%),
+    linear-gradient(135deg, #1c1409 0%, #150e08 100%);
+  /* Thicker, warmer border than regular beers */
+  border: 1px solid rgba(160, 120, 8, 0.4);
+  /* Larger right-side padding so the corner chip has room */
+  padding-right: 1.4rem;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(201,130,63,0.06);
+  /* Soft ember glow at rest, never on regular beers */
+  box-shadow:
+    0 0 0 1px rgba(192, 78, 24, 0.06) inset,
+    0 4px 18px -8px rgba(192, 78, 24, 0.35);
+}
+.beer-card.tales:hover {
+  border-color: rgba(200, 144, 16, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(192, 78, 24, 0.12) inset,
+    0 6px 22px -6px rgba(192, 78, 24, 0.55);
+}
+
+/* Left rail: thicker, gradient, with a ticket-stub notch silhouette.
+   The notch is implemented by stacking a radial-gradient cutout over the
+   bottom of the rail strip, evoking a perforated ticket edge. */
+.beer-card.tales::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 5px;
+  height: 100%;
+  background:
+    /* Two ticket-stub cutouts at 1/3 and 2/3 height */
+    radial-gradient(circle 4px at -1px 33%, var(--coal) 0 4px, transparent 5px),
+    radial-gradient(circle 4px at -1px 67%, var(--coal) 0 4px, transparent 5px),
+    linear-gradient(to bottom, var(--ember) 0%, var(--brass) 50%, var(--ember) 100%);
+  box-shadow: 0 0 6px rgba(192, 78, 24, 0.25);
+}
+
+/* Push the action area (scan-indicator + badges) to the bottom-right on
+   Tales cards so it doesn't compete with the top-right corner chip. The
+   parent .beer-card has align-items: flex-start; setting this overrides
+   the alignment for the action column only. Regular beers are unaffected. */
+.beer-card.tales .beer-action {
+  align-self: flex-end;
+}
+
+/* Corner chip — parchment-style "SCAN STORY" / "TALE" tag at top-right.
+   Uses a data attribute so we can change the label without changing CSS,
+   and it's text (not just color) so it satisfies the accessibility ask.
+   Positioned fully inside the card because .beer-card has overflow:hidden. */
+.beer-card.tales::after {
+  content: attr(data-tale-tag);
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform-origin: top right;
+  background: linear-gradient(135deg, var(--ember) 0%, #8a3811 100%);
+  color: var(--parchment);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  padding: 0.28rem 0.6rem 0.28rem 0.55rem;
+  /* Forked-banner end-cap — slight notch on the LEFT side facing inward */
+  clip-path: polygon(
+    0% 0%,
+    100% 0%,
+    100% 100%,
+    0% 100%,
+    7% 50%
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Collected state: replace the previous radial-glow ::after with the chip
+   text "TALE" (chip already exists for all Tales — collected ones just get
+   a more golden treatment). The earlier .collected::after rule is now
+   superseded. */
+.beer-card.tales.collected::after {
+  content: attr(data-tale-tag);
+  /* Same positioning as the base ::after above, just re-asserted */
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform-origin: top right;
+  /* Gold gradient for the collected state */
+  background: linear-gradient(135deg, var(--gold) 0%, var(--brass) 100%);
+  color: var(--coal);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  padding: 0.28rem 0.6rem 0.28rem 0.55rem;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 7% 50%);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.4),
+    0 0 8px rgba(200, 144, 16, 0.4);
+  width: auto; height: auto;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.beer-icon {
+  width: 58px; height: 72px; flex-shrink: 0;
+  background:
+    /* Metallic vertical highlight for can curvature */
+    linear-gradient(90deg,
+      rgba(0,0,0,0.35) 0%,
+      rgba(255,255,255,0.04) 35%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0.04) 65%,
+      rgba(0,0,0,0.35) 100%),
+    linear-gradient(135deg, #2a1f10, #0d0a05);
+  border: 1px solid rgba(160,120,8,0.4);
+  border-radius: 3px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(200,144,16,0.18),
+    inset 0 -2px 3px rgba(0,0,0,0.4),
+    0 2px 6px rgba(0,0,0,0.35);
+}
+/* Real can image — centered, proportional, never cropped */
+.beer-icon-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  z-index: 4;
+  /* soft lift so the can sits on the surface, not on a hard rectangle */
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out-quart);
+  pointer-events: none;
+}
+.beer-icon-img.loaded { opacity: 1; }
+/* Subtle warm backdrop behind can art — visible only when real image is present */
+.beer-icon.has-image {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(200, 144, 16, 0.08), transparent 70%),
+    linear-gradient(180deg, #1a1208 0%, #0d0a05 100%);
+  border-color: rgba(160, 120, 8, 0.25);
+}
+/* When a real image is loaded, hide every placeholder layer */
+.beer-icon.has-image .beer-icon-label,
+.beer-icon.has-image .beer-icon-mark,
+.beer-icon.has-image .beer-icon-rim,
+.beer-icon.has-image::before,
+.beer-icon.has-image::after { display: none; }
+
+/* Metallic top highlight — like a printed can top (fallback only) */
+.beer-icon::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 10px;
+  background: linear-gradient(to bottom, rgba(200, 144, 16, 0.4), transparent);
+  z-index: 1;
+}
+/* Printed "label" band with subtle noise (fallback only) */
+.beer-icon::after {
+  content: '';
+  position: absolute; left: 0; right: 0;
+  top: 38%; bottom: 30%;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><filter id='n'><feTurbulence baseFrequency='1.4' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/></svg>"),
+    linear-gradient(90deg,
+      rgba(8, 6, 3, 0.85) 0%,
+      rgba(18, 12, 6, 0.65) 50%,
+      rgba(8, 6, 3, 0.85) 100%);
+  background-blend-mode: overlay, normal;
+  border-top: 0.5px solid rgba(200,144,16,0.28);
+  border-bottom: 0.5px solid rgba(200,144,16,0.28);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.3);
+  z-index: 0;
+}
+.beer-icon-label {
+  position: absolute;
+  top: 47%;
+  left: 0; right: 0;
+  transform: translateY(-50%);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  text-align: center;
+  z-index: 2;
+  line-height: 1;
+  padding: 0 3px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.7), 0 0 4px rgba(200,144,16,0.15);
+}
+/* Tiny brewery mark underneath the label — the "◈" diamond signature */
+.beer-icon-mark {
+  position: absolute;
+  bottom: 11%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.4rem;
+  color: var(--brass);
+  opacity: 0.7;
+  letter-spacing: 0.2em;
+  z-index: 2;
+}
+/* Bottom rim shadow (fallback) */
+.beer-icon > .beer-icon-rim {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Tales beers get a warmer label treatment */
+.beer-card.tales .beer-icon {
+  background:
+    linear-gradient(90deg,
+      rgba(0,0,0,0.35) 0%,
+      rgba(255,255,255,0.05) 35%,
+      rgba(255,255,255,0.1) 50%,
+      rgba(255,255,255,0.05) 65%,
+      rgba(0,0,0,0.35) 100%),
+    linear-gradient(135deg, #3a2615, #1a0d05);
+  border-color: rgba(200,144,16,0.55);
+}
+.beer-card.tales .beer-icon-label { color: var(--ember); }
+
+/* Regular beers get cooler/darker band */
+.beer-card:not(.tales) .beer-icon {
+  background:
+    linear-gradient(90deg,
+      rgba(0,0,0,0.35) 0%,
+      rgba(255,255,255,0.03) 35%,
+      rgba(255,255,255,0.06) 50%,
+      rgba(255,255,255,0.03) 65%,
+      rgba(0,0,0,0.35) 100%),
+    linear-gradient(135deg, #1f1810, #0a0805);
+}
+.beer-card:not(.tales) .beer-icon-label { color: var(--steam); }
+
+/* Label glow on card hover */
+.beer-card:hover .beer-icon-label {
+  text-shadow: 0 1px 1px rgba(0,0,0,0.7), 0 0 8px rgba(200,144,16,0.5);
+  transition: text-shadow 0.25s var(--ease-out-quart);
+}
+.beer-info { flex: 1; min-width: 0; }
+.beer-name {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem;
+  color: #F1E7D7; letter-spacing: 0.04em; line-height: 1.1;
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.45);
+}
+.beer-card.tales .beer-name { color: #E0A15A; }
+.tales-badge {
+  font-size: 0.5rem; letter-spacing: 0.2em; color: var(--ember);
+  border: 1px solid rgba(192,78,24,0.4); padding: 0.15rem 0.4rem;
+  display: inline-flex; align-items: center; gap: 0.25rem; line-height: 1;
+}
+.tales-badge::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--ember); }
+.beer-style {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.74rem; color: var(--steam); margin: 0.2rem 0;
+}
+.beer-detail { font-size: 0.68rem; color: var(--aged); line-height: 1.55; margin-top: 0.25rem; }
+.beer-abv {
+  display: inline-block; font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem; color: var(--aged); letter-spacing: 0.18em; margin-top: 0.4rem;
+}
+.beer-action { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; flex-shrink: 0; }
+.scan-indicator { font-size: 0.5rem; letter-spacing: 0.2em; color: var(--ember); }
+.scan-indicator.collected { color: var(--gold); }
+.scan-indicator.collected::before { content: '✓ '; }
+.beer-badges { display: flex; gap: 0.3rem; margin-top: 0.3rem; }
+.beer-badge-mini { font-size: 0.7rem; opacity: 0.4; color: var(--brass); display: inline-flex; align-items: center; }
+.beer-badge-mini.earned { opacity: 1; color: var(--gold); filter: drop-shadow(0 0 4px rgba(200,144,16,0.5)); }
+
+/* Readable STORY ✓ / GAME ✓ progress chips on unlocked Tales cards.
+   Replaces icon-only mini-badges so a guest can instantly see status. */
+.beer-badge-chip {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.45rem;
+  letter-spacing: 0.14em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 2px;
+  border: 1px solid rgba(160,120,8,0.25);
+  color: var(--aged);
+  background: transparent;
+  white-space: nowrap;
+}
+.beer-badge-chip.earned {
+  color: var(--gold);
+  border-color: rgba(200,144,16,0.55);
+  background: rgba(200,144,16,0.08);
+}
+
+/* FOOD */
+.food-note { padding: 0 1.25rem; margin-bottom: 0.75rem; }
+.food-note-inner {
+  background: rgba(160,120,8,0.06); border: 1px solid rgba(160,120,8,0.15);
+  padding: 0.75rem 1rem; font-size: 0.7rem; color: var(--steam); line-height: 1.5;
+}
+.food-note-inner strong { color: var(--gold); font-weight: 600; }
+.food-item {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 0.75rem 0.85rem; border-bottom: 1px solid rgba(201,130,63,0.12); gap: 1rem;
+  transition: background 0.15s;
+}
+.food-item:hover { background: rgba(201,130,63,0.04); }
+.food-item:last-child { border-bottom: none; }
+.food-info { flex: 1; }
+.food-name {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.05rem;
+  color: #F1E7D7; letter-spacing: 0.04em; line-height: 1.1;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.4);
+}
+.food-desc {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 0.7rem; color: var(--steam); margin-top: 0.25rem; line-height: 1.55;
+}
+.food-price {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1rem;
+  color: #E0A15A; letter-spacing: 0.1em; flex-shrink: 0;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.4);
+}
+

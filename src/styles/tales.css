@@ -1,0 +1,330 @@
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ── Rigid plaque card ──────────────────────────── */
+.taleshub-card {
+  display: grid;
+  grid-template-columns: 36% 64%;
+  min-height: 240px;
+  /* Dark iron texture base */
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 9px,
+      rgba(201,130,63,0.022) 9px, rgba(201,130,63,0.022) 10px),
+    linear-gradient(135deg, #2a2420 0%, #1e1b17 100%);
+  border: 1px solid rgba(201,130,63,0.5);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  box-shadow:
+    0 6px 22px rgba(0,0,0,0.45),
+    inset 0 0 0 1px rgba(224,161,90,0.06),
+    inset 0 1px 0 rgba(224,161,90,0.12);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+/* Inner frame — the key "plaque within a plaque" detail */
+.taleshub-card::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(224,161,90,0.20);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Four corner rivets */
+.taleshub-card::after {
+  content: '';
+  position: absolute;
+  /* Rivets sit at exactly the inner-frame corners */
+  inset: 3px;
+  pointer-events: none;
+  z-index: 6;
+  background:
+    /* top-left */
+    radial-gradient(circle 3.5px at 10px 10px, #D89A58, transparent),
+    /* top-right */
+    radial-gradient(circle 3.5px at calc(100% - 10px) 10px, #D89A58, transparent),
+    /* bottom-left */
+    radial-gradient(circle 3.5px at 10px calc(100% - 10px), #D89A58, transparent),
+    /* bottom-right */
+    radial-gradient(circle 3.5px at calc(100% - 10px) calc(100% - 10px), #D89A58, transparent);
+  opacity: 0.7;
+}
+
+.taleshub-card:hover {
+  border-color: rgba(224,161,90,0.7);
+  box-shadow:
+    0 10px 32px rgba(0,0,0,0.52),
+    inset 0 0 0 1px rgba(224,161,90,0.10);
+}
+.taleshub-card:hover .taleshub-card-title { color: #E0A15A; }
+.taleshub-card:active { opacity: 0.91; }
+
+/* ── Left image panel ─────────────────────────── */
+.taleshub-card-image {
+  /* Portrait slot — designed for 900×1200 px vertical assets */
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  border-right: 1px solid rgba(201,130,63,0.45);
+  position: relative;
+  overflow: hidden;
+  /* Placeholder: deep dark with warm radial glow */
+  background:
+    radial-gradient(ellipse at 50% 40%,
+      rgba(201,130,63,0.16) 0%, rgba(201,130,63,0.04) 45%, transparent 72%),
+    repeating-linear-gradient(160deg,
+      transparent 0, transparent 7px,
+      rgba(201,130,63,0.03) 7px, rgba(201,130,63,0.03) 8px),
+    linear-gradient(170deg, #211b16 0%, #131009 100%);
+}
+
+/* Monogram fallback — decorative 'T' brand mark */
+.taleshub-card-image::before {
+  content: 'T';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 4.5rem;
+  /* Double letter-press effect */
+  color: transparent;
+  text-shadow:
+    0 0 0 rgba(201,130,63,0.10),
+    1px 1px 0 rgba(0,0,0,0.5);
+  -webkit-text-stroke: 1px rgba(201,130,63,0.12);
+  z-index: 1;
+  pointer-events: none;
+  letter-spacing: 0.05em;
+}
+
+/* Real portrait image — fills slot with cover crop */
+.taleshub-card-image img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  /* Portrait images: keep upper portion visible */
+  object-position: center 20%;
+  display: block;
+  /* Subtle film treatment */
+  filter: sepia(0.10) saturate(0.92) contrast(1.06) brightness(0.80);
+  z-index: 2;
+}
+
+/* Vignette: darkens edges, keeps center clear */
+.taleshub-card-image::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at center,
+      transparent 30%, rgba(0,0,0,0.50) 100%),
+    linear-gradient(90deg,
+      rgba(0,0,0,0.12) 0%, transparent 40%,
+      transparent 60%, rgba(0,0,0,0.30) 100%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ── Label chip — normal-flow, never overlaps title ── */
+.taleshub-image-label {
+  /* Lives inside .taleshub-card-content as first flex child */
+  display: inline-block;
+  align-self: flex-start;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem;
+  letter-spacing: 0.30em;
+  color: #171410;
+  background: linear-gradient(135deg, #C9823F 0%, #E0A15A 100%);
+  padding: 0.22rem 0.62rem;
+  border-radius: 1px;
+  /* Fixed margin so title is always clear below */
+  margin-bottom: 0.52rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+  flex-shrink: 0;
+}
+
+/* ── Right content panel ─────────────────────────── */
+.taleshub-card-content {
+  padding: 1.1rem 1.2rem 1.1rem 1.0rem;
+  display: flex;
+  flex-direction: column;
+  /* flex-start so label always anchors to top, not floated center */
+  justify-content: flex-start;
+  /* Optical vertical padding via padding-top already set above */
+  position: relative;
+  z-index: 2;
+}
+
+.taleshub-card-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(1.55rem, 5.5vw, 2.05rem);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  color: #F1E7D7;
+  margin-bottom: 0.42rem;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.65);
+  transition: color 0.15s;
+}
+
+.taleshub-card-subtitle {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #D0BC9C;
+  margin-bottom: 0.6rem;
+}
+
+.taleshub-card-body {
+  font-size: 0.68rem;
+  line-height: 1.6;
+  color: #B8A88A;
+  margin-bottom: 0.85rem;
+  flex: 1;
+}
+
+/* Engraved metal CTA — stamped brass look */
+.taleshub-card-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 140px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.50rem;
+  letter-spacing: 0.24em;
+  color: #EEE0C8;
+  background:
+    linear-gradient(180deg,
+      rgba(224,161,90,0.20) 0%,
+      rgba(130,52,18,0.15) 100%),
+    #2A1F17;
+  border: 1px solid rgba(201,130,63,0.65);
+  border-radius: 2px;
+  padding: 0.58rem 1.0rem;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    inset 0 -1px 0 rgba(0,0,0,0.3),
+    0 2px 8px rgba(0,0,0,0.4);
+  transition: background 0.14s, border-color 0.14s;
+  flex-shrink: 0;
+}
+.taleshub-card-cta:hover {
+  background:
+    linear-gradient(180deg,
+      rgba(224,161,90,0.32) 0%,
+      rgba(130,52,18,0.22) 100%),
+    #321F14;
+  border-color: rgba(224,161,90,0.80);
+}
+.taleshub-card-cta:active { opacity: 0.80; }
+
+/* ── Narrow screen ──────────────────────────────── */
+@media (max-width: 390px) {
+  .taleshub-cards {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .taleshub-card {
+    grid-template-columns: 34% 66%;
+    min-height: 220px;
+  }
+  .taleshub-card-image { min-height: 220px; }
+  .taleshub-card-content { padding: 0.9rem 0.9rem 0.9rem 0.8rem; }
+  .taleshub-card-title { font-size: 1.45rem; }
+  .taleshub-card-subtitle { font-size: 0.74rem; }
+  .taleshub-card-body { font-size: 0.64rem; line-height: 1.55; }
+  .taleshub-card-cta { font-size: 0.46rem; min-width: 125px; padding: 0.5rem 0.75rem; }
+  .taleshub-image-label { font-size: 0.40rem; letter-spacing: 0.24em; }
+}
+
+/* ════════════════════════════════════════════════════
+   SHARED DESIGN SYSTEM — v4.5.7
+   Applied across Tales, Story, Passport, Scan pages.
+   These supplement (not replace) existing page CSS.
+   ════════════════════════════════════════════════════ */
+
+/* ── Page hero — shared header block ───────────────── */
+.page-hero {
+  padding: 1.6rem 1.25rem 1.35rem;
+  border-bottom: 1px solid var(--brass-line);
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(201,130,63,0.07) 0%, transparent 55%),
+    var(--coal);
+}
+.page-hero::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; width: 38%;
+  background: repeating-linear-gradient(0deg,
+    transparent 0px, transparent 22px,
+    rgba(201,130,63,0.04) 22px, rgba(201,130,63,0.04) 23px);
+  pointer-events: none;
+}
+.page-hero-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem;
+  letter-spacing: 0.36em;
+  color: var(--ember);
+  margin-bottom: 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.page-hero-eyebrow::before {
+  content: '';
+  width: 16px; height: 1px; flex-shrink: 0;
+  background: linear-gradient(to right, transparent, var(--ember));
+}
+.page-hero-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.1rem;
+  color: var(--parchment);
+  letter-spacing: 0.05em;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+.page-hero-sub {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  color: var(--steam);
+  line-height: 1.55;
+  max-width: 320px;
+}
+
+/* ── Plaque card — shared framed card ──────────────── */
+.plaque-card {
+  background: var(--iron-2);
+  border: 1px solid var(--brass-line);
+  border-radius: 3px;
+  padding: 1.1rem 1.2rem 1rem;
+  position: relative;
+  overflow: hidden;
+}
+.plaque-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.5) 40%,
+    rgba(224,161,90,0.6) 50%,
+    rgba(201,130,63,0.5) 60%, transparent);
+  pointer-events: none;
+}
+
+/* ── Brass label chip ───────────────────────────────── */
+.brass-label {
+  display: inline-block;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem;
+  letter-spacing: 0.28em;
+  color: #191715;
+  background: linear-gradient(135deg, var(--ember), var(--gold));

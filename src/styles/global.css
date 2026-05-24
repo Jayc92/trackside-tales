@@ -1,0 +1,101 @@
+  display: none;
+  flex-direction: column;
+  line-height: 1;
+}
+.header-logo-text .logo-main { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.22em; color: var(--gold); }
+.header-logo-text .logo-sub  { font-size: 0.5rem; letter-spacing: 0.22em; color: var(--aged); margin-top: 0.15rem; }
+.header-logo-text .logo-sub span { color: var(--ember); }
+/* Keep old .logo-block for any back-compat references */
+.logo-block { display: flex; flex-direction: column; line-height: 1; cursor: pointer; }
+.logo-main { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.22em; color: var(--gold); }
+.logo-sub { font-size: 0.5rem; letter-spacing: 0.22em; color: var(--aged); margin-top: 0.15rem; }
+.logo-sub span { color: var(--ember); }
+
+/* Live indicator — glowing dot + label, center-right of app bar */
+.live-indicator {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.2rem 0.35rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.14em;
+  color: var(--gold);
+  border: 1px solid rgba(201, 130, 63, 0.25);
+  background: rgba(201, 130, 63, 0.04);
+  white-space: nowrap;
+  margin-left: 0;
+  margin-right: 0;
+}
+.live-indicator-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 6px rgba(192, 78, 24, 0.8), 0 0 12px rgba(192, 78, 24, 0.4);
+  animation: liveDotPulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes liveDotPulse {
+  0%, 100% {
+    background: var(--ember);
+    box-shadow: 0 0 6px rgba(192, 78, 24, 0.8), 0 0 12px rgba(192, 78, 24, 0.4);
+  }
+  50% {
+    background: #d86020;
+    box-shadow: 0 0 10px rgba(192, 78, 24, 1), 0 0 20px rgba(192, 78, 24, 0.5);
+  }
+}
+
+.profile-btn {
+  /* Container — no visible border/circle; just sizes and positions the icon */
+  width: 40px; height: 40px;
+  background: transparent; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; padding: 0;
+}
+.profile-btn.guest { opacity: 0.75; }
+.profile-btn:hover { opacity: 1; }
+.profile-icon-img {
+  /* Icon fills the button; no circular crop */
+  width: 40px; height: 40px;
+  object-fit: contain; object-position: center;
+  display: block;
+}
+
+/* PAGES */
+.page { display: none; min-height: 100dvh; padding-bottom: 7.5rem; }
+.page.active {
+  display: block;
+  animation: pageEnter 0.4s var(--ease-out-quart);
+}
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* v4.1.1 — suppress entrance animation during direct tab navigation so
+   Safari doesn't paint the translateY(12px) start frame on tab switches. */
+body.is-navigating .page.active {
+  animation: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+/* v4.1.3 — prevent nav button press transform from causing perceived jitter
+   during the two-rAF window while is-navigating is active. */
+body.is-navigating .nav-btn,
+body.is-navigating .nav-btn:active {
+  transform: none !important;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+
+
+/* ── Vite migration: page baseline ──────────────────────────────────────────
+   Conditional rendering means only the active page mounts, so .page must
+   be visible by default. The original .page{display:none} + .page.active
+   class-toggle pattern no longer applies. We override it here so the
+   extracted app.css doesn't hide the mounted page.                          */
+#page-container > .page {
+  display: block !important;
+}
