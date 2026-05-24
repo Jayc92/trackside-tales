@@ -221,24 +221,41 @@ export function TaleDetailPage() {
             </button>
           </div>
 
+          {/* ─────────────────────────────────────────────────────────────
+             v5.0.1: mini-games are temporarily disabled in the public app
+             while the game mechanics are being rebuilt for v5.1. The section
+             keeps the same brass/plaque styling so it doesn't look broken —
+             we just swap the CTA for a polished "coming soon" placeholder.
+
+             Earned game badges from prior versions still display as ✓ EARNED
+             so we don't visually rewind anyone's passport progress.
+
+             openGame() is no longer reachable from Tale detail — if it ever
+             is invoked (e.g. via dev console), GameOverlay renders its own
+             graceful fallback panel rather than the broken game UI.
+             ───────────────────────────────────────────────────────────── */}
           {gameConfig && (
             <div className="minigame-section">
               <div className="minigame-label">INTERACTIVE · BADGE 2/2</div>
-              <h3 className="minigame-title">{tale.game.title}</h3>
+              <h3 className="minigame-title">
+                {hasGameBadge ? tale.game.title : 'Interactive Challenge'}
+              </h3>
               <p className="minigame-context">
                 {hasGameBadge
                   ? 'Both badges are now marked in your Trackside Passport.'
-                  : 'Complete this short challenge to earn the second badge for this Tale.'}
+                  : 'This Tale challenge is being rebuilt for the next preview.'}
               </p>
-              <p className="minigame-sub">{tale.game.instructions}</p>
+              {hasGameBadge && (
+                <p className="minigame-sub">{tale.game.instructions}</p>
+              )}
               <button
                 className={`minigame-btn${hasGameBadge ? ' completed' : ''}`}
-                onClick={() => setShowGame(true)}
-                disabled={hasGameBadge}
+                disabled
+                aria-disabled="true"
               >
                 {hasGameBadge
                   ? `✓ ${tale.gameBadge.title.toUpperCase()} — EARNED`
-                  : 'PLAY TO EARN'}
+                  : 'COMING SOON'}
               </button>
             </div>
           )}
@@ -246,6 +263,9 @@ export function TaleDetailPage() {
         </div>
       </div>
 
+      {/* v5.0.1: overlay never mounts from Tale detail. Kept here as a no-op
+         so the import isn't dead, and so a future re-enable is a one-line
+         change (flip showGame back to a state setter on the button). */}
       {showGame && gameConfig && (
         <GameOverlay
           config={gameConfig}
