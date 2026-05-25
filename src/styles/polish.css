@@ -48,3 +48,119 @@
   margin: 1.25rem 0 0.5rem;
   display: block;
 }
+
+
+/* =====================================================================
+   v5.1.1 — story badge plaques + narrow-mobile + food-list extraction
+   ===================================================================== */
+
+
+/* ── Badge plaque: give .collectible-section the missing container styling
+   The golden HTML uses .collectible-section as the outer wrapper but
+   app.css only styles .collectible (a different selector). Result: the
+   Founder's Deed card had no plaque frame and the icon/title/button
+   stacked with large default margins. Mirror the .collectible plaque so
+   the section renders correctly without touching app.css or the JSX.
+   ──────────────────────────────────────────────────────────────────── */
+#page-story .collectible-section {
+  margin: 1rem 0;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid rgba(201,130,63,0.38);
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 14px,
+      rgba(201,130,63,0.018) 14px, rgba(201,130,63,0.018) 15px),
+    var(--iron-2);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+#page-story .collectible-section::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.55) 30%,
+    rgba(224,161,90,0.65) 50%, rgba(201,130,63,0.55) 70%, transparent);
+}
+#page-story .collectible-section .collectible-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.44rem; letter-spacing: 0.34em; color: var(--ember);
+  margin-bottom: 0.55rem;
+  display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+}
+#page-story .collectible-section .collectible-title {
+  margin-bottom: 0.5rem;
+}
+/* Tighten the gap between icon and CTA — the prior layout had ~80px of
+   empty middle on mobile because nothing constrained the icon's box. */
+#page-story .collectible-section .collectible-icon {
+  margin: 0.25rem 0 0.7rem;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+#page-story .collectible-section .collectible-icon .ts-icon-lg {
+  width: 44px; height: 44px;
+}
+/* Helper line — surfaced from tale.scanBadge.desc */
+#page-story .collectible-section .collectible-desc {
+  margin: 0 0 0.85rem;
+}
+
+
+/* ── Mini-game plaque: trim vertical padding now that the COMING SOON
+   placeholder has less content than the full game CTA. Same brass frame,
+   tighter card.
+   ──────────────────────────────────────────────────────────────────── */
+#page-story .minigame-section {
+  padding: 0.95rem 1.05rem 1rem;
+}
+#page-story .minigame-section .minigame-sub {
+  margin-bottom: 0.7rem;
+}
+
+
+/* ── Narrow-mobile header polish (<420px) ─────────────────────────────
+   On the smallest phones the brand crest crowded the live indicator and
+   profile button. Shrink the crest's max width and tighten horizontal
+   padding so all three columns breathe.
+   ──────────────────────────────────────────────────────────────────── */
+@media (max-width: 420px) {
+  .app-bar-inner {
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+  .app-bar-center .header-logo-img {
+    max-width: 132px;
+  }
+  .live-indicator {
+    font-size: 0.45rem;
+    letter-spacing: 0.18em;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+
+/* ── Menu/Beers: food-list frame extracted from MenuPage inline styles
+   These rules replace the six-line inline `style` block on the food-list
+   wrapper. Same visual treatment, now declarative and overridable.
+   ──────────────────────────────────────────────────────────────────── */
+#page-beers .food-list-frame {
+  margin: 0 0.9rem 0.75rem;
+  border: 1px solid rgba(201,130,63,0.22);
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--iron-2);
+  position: relative;
+}
+#page-beers .food-list-frame::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.45) 40%, transparent);
+  z-index: 1; pointer-events: none;
+}
+#page-beers .food-list-frame .food-note {
+  border-bottom: 1px solid rgba(201,130,63,0.1);
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+}

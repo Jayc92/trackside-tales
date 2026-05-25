@@ -177,32 +177,11 @@ export function MenuPage() {
         <div className="section-label-text">WOODEN MATCH KITCHEN</div>
         <div className="section-count">MENU</div>
       </div>
-      <div
-        style={{
-          margin: '0 0.9rem 0.75rem',
-          border: '1px solid rgba(201,130,63,0.22)',
-          borderRadius: 3,
-          overflow: 'hidden',
-          background: 'var(--iron-2)',
-          position: 'relative',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 1,
-            background: 'linear-gradient(90deg, transparent, rgba(201,130,63,0.45) 40%, transparent)',
-            zIndex: 1,
-            pointerEvents: 'none',
-          }}
-        />
-        <div
-          className="food-note"
-          style={{ borderBottom: '1px solid rgba(201,130,63,0.1)', margin: 0, padding: '0.65rem 0.85rem' }}
-        >
+      {/* v5.1.1: inline JSX styles moved to polish.css under .food-list-frame.
+         The ::before pseudo-element now draws the brass accent strip that
+         used to be a sibling div. */}
+      <div className="food-list-frame">
+        <div className="food-note">
           <div className="food-note-inner">
             Food and full menu provided by <strong>The Wooden Match</strong>. Trackside Brewing's
             partnership is beer-focused — their kitchen is exceptional on its own.

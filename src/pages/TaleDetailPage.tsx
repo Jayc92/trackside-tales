@@ -216,6 +216,9 @@ export function TaleDetailPage() {
             <div className="collectible-icon">
               <TsIcon icon={tale.scanBadge.icon} className="ts-icon-lg" />
             </div>
+            {tale.scanBadge.desc && (
+              <p className="collectible-desc">{tale.scanBadge.desc}</p>
+            )}
             <button className={`collectible-btn${hasScanBadge ? ' claimed' : ''}`} disabled>
               {hasScanBadge ? '✓ IN YOUR PASSPORT' : 'SCAN BADGE PENDING'}
             </button>
