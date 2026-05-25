@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { GameConfig } from './gameConfigs';
-import { AllenTownGame } from './AllenTownGame';
+import { AllenTownPlanningGame } from './AllenTownPlanningGame';
 import { TsIcon } from '../components/TsIcon';
 
 // ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
@@ -113,8 +113,8 @@ export function GameOverlay({
   const renderPlaying = () => {
     if (config.type === 'grid') {
       return (
-        <div className="game-canvas-wrap">
-          <AllenTownGame
+        <div className="game-canvas-wrap game-canvas-planning">
+          <AllenTownPlanningGame
             onWin={handleGameWin}
             onLose={handleGameLose}
             quizShowing={quizShowingRef.current}
