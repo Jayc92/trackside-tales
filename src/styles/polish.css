@@ -1,0 +1,50 @@
+/* =====================================================================
+   v5.0.1+ POLISH PASS
+   ---------------------------------------------------------------------
+   Layered AFTER app.css in main.tsx. This file holds small, reversible
+   overrides from the v5.0.1 QA pass. No structural changes — every
+   rule here can be removed in one line if the underlying issue is
+   addressed in app.css later.
+
+   Keep this file short. If a rule grows past ~15 lines or starts
+   redefining sections, it probably belongs in app.css proper.
+   ===================================================================== */
+
+
+/* ── Story Detail: drop the duplicate top nav row ─────────────────────
+   The golden file emitted both a top .story-nav (with "Back to Tales"
+   + LOCKED/UNLOCKED text) AND a .story-hero-top (with the "← TALES"
+   pill + ✓ SCANNED chip) inside the hero. In v5.0.1 testing the top
+   row reads as redundant noise — same affordances, same state, ~50px
+   above the hero versions. Hide the top row; the hero's controls are
+   the canonical ones. Markup is untouched, so a future redesign can
+   resurface this by removing the override.
+   ──────────────────────────────────────────────────────────────────── */
+#page-story > .story-nav,
+#page-story #story-content > .story-nav {
+  display: none;
+}
+
+
+/* ── Tale identity strip: tighten spacing now that the top nav is gone ─
+   With the duplicate row removed, the .story-hero butts directly into
+   the .story-identity-strip. The default 0 margin sometimes reads tight
+   on the narrower phones. Add a hairline of breathing room.
+   ──────────────────────────────────────────────────────────────────── */
+#page-story .story-identity-strip {
+  margin-top: 0.25rem;
+}
+
+
+/* ── Story timeline label: ensure it always renders on mobile ─────────
+   The .timeline-label "A LIFE IN THE VALLEY" was occasionally lost in
+   the visual rhythm of plain-text timeline events. Bump its prominence
+   so it reads as a section heading even on a 375px screen.
+   ──────────────────────────────────────────────────────────────────── */
+#page-story .timeline-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--ember);
+  margin: 1.25rem 0 0.5rem;
+  display: block;
+}

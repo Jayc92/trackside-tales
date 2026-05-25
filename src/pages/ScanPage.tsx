@@ -118,20 +118,11 @@ export function ScanPage() {
       <h2 className="scan-title" id="scan-title">{scanTitle}</h2>
       <p className="scan-sub" id="scan-sub">{scanSub}</p>
 
-      {scannerError && (
-        <div className="camera-error" id="camera-error">
-          <strong>CAMERA UNAVAILABLE</strong><br />
-          <span>Using demo mode instead.</span>
-          <br />
-          <button
-            className="camera-retry-btn"
-            onClick={() => { setScanErr(false); startScanner(); }}
-          >
-            TRY CAMERA AGAIN
-          </button>
-        </div>
-      )}
-
+      {/* v5.0.1+ polish: demo dispatch comes BEFORE the camera-error
+         panel so mobile users on a 375px screen see a working CTA above
+         the fold even when permissions block the camera. The retry
+         affordance still sits below for users who actually want to grant
+         camera access. */}
       <div className="demo-quick-scan" id="demo-fallback">
         <div className="demo-quick-scan-label" id="demo-label">DEMO MODE · SELECT A STORY</div>
         <p className="demo-preview-hint">Preview mode: choose a Tale below to simulate a can scan.</p>
@@ -148,6 +139,20 @@ export function ScanPage() {
           ))}
         </div>
       </div>
+
+      {scannerError && (
+        <div className="camera-error" id="camera-error">
+          <strong>CAMERA UNAVAILABLE</strong><br />
+          <span>Try a Tale above, or grant camera access and retry.</span>
+          <br />
+          <button
+            className="camera-retry-btn"
+            onClick={() => { setScanErr(false); startScanner(); }}
+          >
+            TRY CAMERA AGAIN
+          </button>
+        </div>
+      )}
 
     </div>
   );
