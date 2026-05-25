@@ -225,56 +225,84 @@ export function TaleDetailPage() {
           </div>
 
           {/* ─────────────────────────────────────────────────────────────
-             v5.0.1: mini-games are temporarily disabled in the public app
-             while the game mechanics are being rebuilt for v5.1. The section
-             keeps the same brass/plaque styling so it doesn't look broken —
-             we just swap the CTA for a polished "coming soon" placeholder.
+             v5.1.2: W.A. Lager is the first playable mini-game. The CTA
+             is enabled only when tale.id === 'wa-lager' AND the user
+             hasn't already earned the game badge. Packer Pilsner and
+             Wooden Match continue to show the polished COMING SOON
+             placeholder from v5.0.1.
 
-             Earned game badges from prior versions still display as ✓ EARNED
-             so we don't visually rewind anyone's passport progress.
+             Earned game badges from any prior session keep their ✓
+             EARNED state — passport progress is never visually rewound.
 
-             openGame() is no longer reachable from Tale detail — if it ever
-             is invoked (e.g. via dev console), GameOverlay renders its own
-             graceful fallback panel rather than the broken game UI.
+             Award path: the game's quiz panel calls onBadgeAwarded only
+             after a correct answer. badge/localStorage keys are
+             unchanged.
              ───────────────────────────────────────────────────────────── */}
-          {gameConfig && (
-            <div className="minigame-section">
-              <div className="minigame-label">INTERACTIVE · BADGE 2/2</div>
-              <h3 className="minigame-title">
-                {hasGameBadge ? tale.game.title : 'Interactive Challenge'}
-              </h3>
-              <p className="minigame-context">
-                {hasGameBadge
-                  ? 'Both badges are now marked in your Trackside Passport.'
-                  : 'This Tale challenge is being rebuilt for the next preview.'}
-              </p>
-              {hasGameBadge && (
-                <p className="minigame-sub">{tale.game.instructions}</p>
-              )}
-              <button
-                className={`minigame-btn${hasGameBadge ? ' completed' : ''}`}
-                disabled
-                aria-disabled="true"
-              >
-                {hasGameBadge
-                  ? `✓ ${tale.gameBadge.title.toUpperCase()} — EARNED`
-                  : 'COMING SOON'}
-              </button>
-            </div>
-          )}
+          {gameConfig && (() => {
+            const gameEnabled = tale.id === 'wa-lager';
+            const showAsEarned = hasGameBadge;
+            const showAsActive = gameEnabled && !hasGameBadge;
+            const showAsComingSoon = !gameEnabled && !hasGameBadge;
+
+            return (
+              <div className="minigame-section">
+                <div className="minigame-label">INTERACTIVE · BADGE 2/2</div>
+                <h3 className="minigame-title">
+                  {showAsComingSoon ? 'Interactive Challenge' : tale.game.title}
+                </h3>
+                <p className="minigame-context">
+                  {showAsEarned && 'Both badges are now marked in your Trackside Passport.'}
+                  {showAsActive && 'Complete this short challenge to earn the second badge for this Tale.'}
+                  {showAsComingSoon && 'This Tale challenge is being rebuilt for the next preview.'}
+                </p>
+                {(showAsActive || showAsEarned) && (
+                  <p className="minigame-sub">{tale.game.instructions}</p>
+                )}
+                {showAsActive && (
+                  <button
+                    className="minigame-btn"
+                    onClick={() => setShowGame(true)}
+                  >
+                    PLAY TO EARN
+                  </button>
+                )}
+                {showAsEarned && (
+                  <button
+                    className="minigame-btn completed"
+                    disabled
+                    aria-disabled="true"
+                  >
+                    ✓ {tale.gameBadge.title.toUpperCase()} — EARNED
+                  </button>
+                )}
+                {showAsComingSoon && (
+                  <button
+                    className="minigame-btn"
+                    disabled
+                    aria-disabled="true"
+                  >
+                    COMING SOON
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
         </div>
       </div>
 
-      {/* v5.0.1: overlay never mounts from Tale detail. Kept here as a no-op
-         so the import isn't dead, and so a future re-enable is a one-line
-         change (flip showGame back to a state setter on the button). */}
+      {/* v5.1.2: overlay is now reachable from W.A. Lager only. For other
+         tales the CTA is still disabled, so this branch never fires for
+         them. onBadgeAwarded routes through AppContext.awardGameBadge,
+         which uses the existing 'game:<id>' badge-key contract. */}
       {showGame && gameConfig && (
         <GameOverlay
           config={gameConfig}
           onClose={() => setShowGame(false)}
           onBadgeAwarded={handleBadgeAwarded}
           alreadyEarned={hasGameBadge}
+          successBadgeIcon={tale.gameBadge.icon}
+          successBadgeTitle={tale.gameBadge.title}
         />
       )}
 
