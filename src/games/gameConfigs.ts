@@ -1,8 +1,22 @@
 // ================== GAME CONFIGURATIONS ==================
 // Per-tale game type and metadata.
 // Badge keys must match the values in tales.ts exactly.
+//
+// v5.1.7+: extended with `unlockQuestions` and `logicClues` to support
+// the interleaved unlock-quiz flow. The legacy single-question fields
+// (`quizQuestion`, `quizOptions`, `quizCorrectIndex`) are kept for any
+// game type that still uses the post-puzzle quiz pattern.
 
 export type GameType = 'grid' | 'spike' | 'match';
+
+export interface UnlockQuestion {
+  /** Element id this question unlocks when answered correctly. Must match
+   *  an entry in the planning game's ELEMENTS array. */
+  elementId: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+}
 
 export interface GameConfig {
   taleId: string;
@@ -12,9 +26,19 @@ export interface GameConfig {
   instructions: string;
   successTitle: string;
   successMsg: string;
+
+  // ── Legacy single post-puzzle quiz (still used by spike + match) ──
   quizQuestion: string;
   quizOptions: string[];
   quizCorrectIndex: number;
+
+  // ── v5.1.7+ Planning-game additions ──────────────────────────────
+  /** Inline unlock questions, one per locked element (4 for the grid
+   *  game; the first element starts unlocked for free). Optional so
+   *  non-planning games can ignore. */
+  unlockQuestions?: UnlockQuestion[];
+  /** Short placement hints surfaced in the Tale Logic Clues panel. */
+  logicClues?: string[];
 }
 
 // ── Allen Town Grid ──────────────────────────────────────────────────────────
@@ -24,13 +48,65 @@ export const ALLEN_TOWN_GAME: GameConfig = {
   badgeKey: 'game:wa-lager',
   title: "LAY OUT ALLEN'S TOWN",
   instructions:
-    'Allen drew Allentown as a 42-block grid in 1762. Tap the lots in order to lay the first streets of his town — the pulsing block is your next stop.',
+    'Allen drew Allentown as a 42-block grid in 1762. Place the COAL YARD, DEPOT, FREIGHT HOUSE, BRIDGE, and MAIN STREET in the right spots — use clues from the Tale to unlock each one.',
   successTitle: 'STREETS LAID',
   successMsg:
     "You laid the first streets of Allen's Town. The grid you just traced is still the layout of downtown Allentown today.",
+
+  // Legacy field — unused by the planning game but kept for type safety.
   quizQuestion: 'What year did William Allen officially lay out the town of Allentown?',
   quizOptions: ['1735', '1762', '1777', '1780'],
   quizCorrectIndex: 1,
+
+  // v5.1.7+ interleaved unlock questions. MAIN STREET starts unlocked
+  // for free so the player can immediately make a move; the other four
+  // open up as the player answers each clue correctly.
+  unlockQuestions: [
+    {
+      elementId: 'coal-yard',
+      question: 'When did William Allen acquire his Lehigh Valley tract?',
+      options: ['1704', '1735', '1762', '1780'],
+      correctIndex: 1,
+    },
+    {
+      elementId: 'depot',
+      question: 'How many lots did Allen lay out in his 1762 town plan?',
+      options: ['256', '500', '756', '1,000'],
+      correctIndex: 2,
+    },
+    {
+      elementId: 'freight-house',
+      question: "What was William Allen's highest judicial office?",
+      options: [
+        'Mayor of Philadelphia',
+        'Governor of Pennsylvania',
+        'Chief Justice of Pennsylvania',
+        'Supreme Court Justice',
+      ],
+      correctIndex: 2,
+    },
+    {
+      elementId: 'bridge',
+      question: 'Where was the Liberty Bell hidden during the Revolution?',
+      options: [
+        'Boston',
+        'Carpenters’ Hall, Philadelphia',
+        'Albany',
+        'Beneath Zion Reformed Church in Allentown',
+      ],
+      correctIndex: 3,
+    },
+  ],
+
+  // v5.1.7 logic clues — short placement hints surfaced in the bottom
+  // panel beside the lantern. These are GAME hints (where things go),
+  // distinct from the unlock QUIZ questions (Tale trivia).
+  logicClues: [
+    'Coal shipments arrived from upper-valley mines to the north.',
+    'Jordan Creek bends along the western edge of the tract.',
+    'The depot sits at the river crossing, near the town’s spine.',
+    'Freight cars roll east toward the iron works.',
+  ],
 };
 
 // ── Packer Rail Spike ────────────────────────────────────────────────────────

@@ -595,3 +595,499 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), 0 0 18px rgba(224, 161, 90, 0.35);
   white-space: nowrap;
 }
+
+
+/* =====================================================================
+   v5.1.7 → v5.1.10 — interleaved quiz, action bar, panels, medallion
+   ===================================================================== */
+
+
+/* ── Hinted zone (v5.1.8 — HINT pulses next correct zone) ────────── */
+.allen-map-zone.hinted {
+  border-style: solid;
+  border-color: var(--gold);
+  background:
+    linear-gradient(135deg, rgba(224, 161, 90, 0.28), rgba(130, 52, 18, 0.18)),
+    rgba(20, 14, 6, 0.3);
+  box-shadow: 0 0 22px rgba(224, 161, 90, 0.75);
+  animation: allenHintPulse 0.55s ease-in-out infinite alternate;
+}
+@keyframes allenHintPulse {
+  from { box-shadow: 0 0 14px rgba(224, 161, 90, 0.5); }
+  to   { box-shadow: 0 0 26px rgba(224, 161, 90, 0.95); }
+}
+
+
+/* ── Locked element card (v5.1.7) ────────────────────────────────── */
+.allen-element-card.locked {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 8px,
+      rgba(201, 130, 63, 0.04) 8px, rgba(201, 130, 63, 0.04) 9px),
+    var(--iron-2);
+  border-color: rgba(201, 130, 63, 0.22);
+  cursor: pointer;
+}
+.allen-element-card.locked .allen-element-icon {
+  color: rgba(201, 130, 63, 0.45);
+  filter: none;
+}
+.allen-element-card.locked .allen-element-label,
+.allen-element-card.locked .allen-element-blurb {
+  opacity: 0.55;
+}
+.allen-element-card.locked:hover {
+  border-color: rgba(201, 130, 63, 0.55);
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 8px,
+      rgba(201, 130, 63, 0.06) 8px, rgba(201, 130, 63, 0.06) 9px),
+    var(--iron-2);
+}
+.allen-element-locked {
+  position: absolute;
+  bottom: 0.35rem; right: 0.4rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.36rem;
+  letter-spacing: 0.18em;
+  color: var(--ember);
+}
+
+
+/* ── Action bar (v5.1.8) ─────────────────────────────────────────── */
+.allen-action-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.allen-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background:
+    linear-gradient(180deg, rgba(224, 161, 90, 0.12), transparent 70%),
+    var(--iron-2);
+  border: 1px solid rgba(201, 130, 63, 0.5);
+  border-radius: 2px;
+  padding: 0.55rem 0.7rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.2em;
+  color: #F1E7D7;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.allen-action-btn:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(224, 161, 90, 0.22), transparent 70%),
+    var(--iron-2);
+  border-color: rgba(224, 161, 90, 0.78);
+}
+.allen-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.allen-action-icon {
+  font-size: 0.78rem;
+  color: var(--gold);
+  line-height: 1;
+}
+.allen-action-label {
+  line-height: 1;
+}
+.allen-action-count {
+  font-size: 0.46rem;
+  color: var(--aged);
+  letter-spacing: 0.12em;
+}
+
+
+/* ── Inline quiz overlay (v5.1.7 + v5.1.9 polish) ────────────────── */
+.allen-quiz-overlay {
+  background:
+    linear-gradient(135deg, rgba(201, 130, 63, 0.08), transparent 60%),
+    var(--iron-2);
+  border: 1px solid rgba(201, 130, 63, 0.45);
+  border-radius: 3px;
+  padding: 0.95rem 1rem 1.1rem;
+  position: relative;
+  animation: allenPanelEnter 0.25s ease-out;
+}
+.allen-quiz-overlay::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg,
+    transparent, var(--ember) 30%, var(--gold) 50%, var(--ember) 70%, transparent);
+}
+@keyframes allenPanelEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.allen-quiz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+.allen-quiz-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.3em;
+  color: var(--ember);
+}
+.allen-quiz-close {
+  background: transparent;
+  border: 1px solid rgba(201, 130, 63, 0.35);
+  border-radius: 1px;
+  color: var(--steam);
+  font-size: 0.6rem;
+  padding: 0.18rem 0.45rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.allen-quiz-close:hover {
+  color: var(--gold);
+  border-color: rgba(201, 130, 63, 0.7);
+}
+.allen-quiz-question {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--parchment);
+  text-align: center;
+  margin: 0.45rem 0 0.85rem;
+}
+.allen-quiz-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+.allen-quiz-option {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(20, 14, 6, 0.5);
+  border: 1px solid rgba(201, 130, 63, 0.35);
+  border-radius: 2px;
+  padding: 0.55rem 0.6rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: var(--steam);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.allen-quiz-option:hover:not(:disabled) {
+  background: rgba(201, 130, 63, 0.1);
+  border-color: rgba(224, 161, 90, 0.6);
+  color: #E0A15A;
+}
+.allen-quiz-option:disabled { cursor: default; }
+.allen-quiz-option-num {
+  flex-shrink: 0;
+  width: 1.05rem; height: 1.05rem;
+  border-radius: 50%;
+  background: rgba(201, 130, 63, 0.15);
+  border: 1px solid rgba(201, 130, 63, 0.4);
+  color: var(--gold);
+  font-size: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+}
+.allen-quiz-option-text {
+  line-height: 1.35;
+  flex: 1;
+}
+.allen-quiz-option.correct {
+  background:
+    linear-gradient(90deg, rgba(57, 99, 36, 0.35), rgba(57, 99, 36, 0.18)),
+    var(--iron-2);
+  border-color: rgba(120, 175, 80, 0.75);
+  color: #C7E0A0;
+}
+.allen-quiz-option.correct .allen-quiz-option-num {
+  background: rgba(120, 175, 80, 0.25);
+  border-color: rgba(120, 175, 80, 0.7);
+  color: #C7E0A0;
+}
+.allen-quiz-option.wrong {
+  background: rgba(192, 78, 24, 0.18);
+  border-color: rgba(192, 78, 24, 0.5);
+  color: rgba(192, 78, 24, 0.85);
+  opacity: 0.8;
+}
+.allen-quiz-option.wrong .allen-quiz-option-num {
+  background: rgba(192, 78, 24, 0.18);
+  border-color: rgba(192, 78, 24, 0.55);
+  color: rgba(255, 200, 175, 0.85);
+}
+.allen-quiz-feedback {
+  margin-top: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 2px;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.75rem;
+  text-align: center;
+}
+.allen-quiz-feedback.correct {
+  background: rgba(57, 99, 36, 0.15);
+  border: 1px solid rgba(120, 175, 80, 0.4);
+  color: #C7E0A0;
+}
+.allen-quiz-feedback.wrong {
+  background: rgba(192, 78, 24, 0.1);
+  border: 1px solid rgba(192, 78, 24, 0.35);
+  color: rgba(255, 180, 150, 0.85);
+}
+
+
+/* ── Bottom panels: Logic Clues + Next Unlock (v5.1.7 + v5.1.9) ─── */
+.allen-bottom-panels {
+  display: grid;
+  grid-template-columns: 1fr 130px;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+@media (max-width: 480px) {
+  .allen-bottom-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.allen-clues-panel {
+  display: flex;
+  gap: 0.65rem;
+  background:
+    linear-gradient(135deg, rgba(201, 130, 63, 0.05), transparent 60%),
+    var(--iron-2);
+  border: 1px solid rgba(201, 130, 63, 0.35);
+  border-radius: 3px;
+  padding: 0.65rem 0.75rem 0.7rem;
+  position: relative;
+}
+.allen-clues-panel::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201, 130, 63, 0.55) 30%,
+    rgba(224, 161, 90, 0.65) 50%, rgba(201, 130, 63, 0.55) 70%, transparent);
+  pointer-events: none;
+}
+.allen-clues-lantern {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0.2rem;
+  color: #E0A15A;
+  filter: drop-shadow(0 0 6px rgba(224, 161, 90, 0.35));
+}
+.allen-clues-lantern .ts-icon-md {
+  width: 28px; height: 28px;
+}
+.allen-clues-body {
+  flex: 1;
+  min-width: 0;
+}
+.allen-clues-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.42rem;
+  letter-spacing: 0.28em;
+  color: var(--ember);
+  margin-bottom: 0.35rem;
+}
+.allen-clues-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: clue;
+}
+.allen-clues-item {
+  counter-increment: clue;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.66rem;
+  line-height: 1.45;
+  color: var(--steam);
+  padding-left: 1.1rem;
+  position: relative;
+  margin-bottom: 0.2rem;
+}
+.allen-clues-item:last-child { margin-bottom: 0; }
+.allen-clues-item::before {
+  content: counter(clue);
+  position: absolute;
+  left: 0; top: 0.1rem;
+  width: 0.85rem; height: 0.85rem;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 130, 63, 0.45);
+  color: var(--gold);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.55rem;
+  font-style: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.allen-next-unlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background:
+    linear-gradient(135deg, rgba(201, 130, 63, 0.05), transparent 70%),
+    var(--iron-2);
+  border: 1px solid rgba(201, 130, 63, 0.35);
+  border-radius: 3px;
+  padding: 0.5rem 0.55rem 0.65rem;
+  gap: 0.25rem;
+  position: relative;
+}
+.allen-next-unlock::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201, 130, 63, 0.55) 50%, transparent);
+  pointer-events: none;
+}
+.allen-next-unlock-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.26em;
+  color: var(--ember);
+}
+.allen-next-unlock-icon {
+  font-size: 1.4rem;
+  color: var(--gold);
+  filter: drop-shadow(0 0 6px rgba(224, 161, 90, 0.4));
+  margin-top: 0.15rem;
+  line-height: 1;
+}
+.allen-next-unlock-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  color: #F1E7D7;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+.allen-next-unlock-hint {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.58rem;
+  color: var(--aged);
+  line-height: 1.4;
+}
+
+
+/* ── Premium success medallion (v5.1.10) ─────────────────────────── */
+.game-medallion {
+  position: relative;
+  width: 150px; height: 150px;
+  margin-bottom: 1.3rem;
+  display: flex; align-items: center; justify-content: center;
+  animation: medallionReveal 0.85s var(--ease-out-quart) both;
+}
+@keyframes medallionReveal {
+  0%   { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+  60%  { transform: scale(1.08) rotate(2deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.game-medallion-rays {
+  position: absolute;
+  inset: -25%;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 0deg,
+      rgba(224, 161, 90, 0)     0deg,
+      rgba(224, 161, 90, 0.35) 18deg,
+      rgba(224, 161, 90, 0)    36deg,
+      rgba(224, 161, 90, 0.35) 54deg,
+      rgba(224, 161, 90, 0)    72deg,
+      rgba(224, 161, 90, 0.35) 90deg,
+      rgba(224, 161, 90, 0)   108deg,
+      rgba(224, 161, 90, 0.35) 126deg,
+      rgba(224, 161, 90, 0)   144deg,
+      rgba(224, 161, 90, 0.35) 162deg,
+      rgba(224, 161, 90, 0)   180deg,
+      rgba(224, 161, 90, 0.35) 198deg,
+      rgba(224, 161, 90, 0)   216deg,
+      rgba(224, 161, 90, 0.35) 234deg,
+      rgba(224, 161, 90, 0)   252deg,
+      rgba(224, 161, 90, 0.35) 270deg,
+      rgba(224, 161, 90, 0)   288deg,
+      rgba(224, 161, 90, 0.35) 306deg,
+      rgba(224, 161, 90, 0)   324deg,
+      rgba(224, 161, 90, 0.35) 342deg,
+      rgba(224, 161, 90, 0)   360deg);
+  opacity: 0.55;
+  filter: blur(2px);
+  animation: medallionRays 12s linear infinite;
+}
+@keyframes medallionRays {
+  to { transform: rotate(360deg); }
+}
+.game-medallion-ring-outer,
+.game-medallion-ring-inner,
+.game-medallion-face {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.game-medallion-ring-outer {
+  inset: 0;
+  border: 2px solid rgba(201, 130, 63, 0.85);
+  background:
+    radial-gradient(circle at 35% 35%, rgba(224, 161, 90, 0.25), transparent 65%),
+    linear-gradient(135deg, #3a2810, #1f1408);
+  box-shadow:
+    0 0 30px rgba(201, 130, 63, 0.45),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+}
+.game-medallion-ring-inner {
+  inset: 10px;
+  border: 1px solid rgba(201, 130, 63, 0.55);
+  background: linear-gradient(135deg, #2e1f0a, #1a1208);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.game-medallion-face {
+  inset: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #E0A15A;
+  filter: drop-shadow(0 0 10px rgba(224, 161, 90, 0.5));
+}
+.game-medallion-face .ts-icon-lg {
+  width: 64px; height: 64px;
+}
+.game-medallion-ribbon {
+  position: absolute;
+  bottom: -22px; left: 50%;
+  transform: translateX(-50%);
+  background:
+    linear-gradient(180deg, rgba(224, 161, 90, 0.45), rgba(130, 52, 18, 0.35)),
+    #2A1F17;
+  border: 1px solid rgba(201, 130, 63, 0.7);
+  padding: 0.32rem 1rem;
+  clip-path: polygon(8px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0% 50%);
+  white-space: nowrap;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.game-medallion-ribbon span {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.78rem;
+  color: #F1E7D7;
+  letter-spacing: 0.18em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}

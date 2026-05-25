@@ -63,9 +63,18 @@ export function GameOverlay({
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
   const handleGameWin = useCallback(() => {
+    if (config.type === 'grid') {
+      // v5.1.7+: the planning game integrates its own unlock-quiz into
+      // play, so there is no separate post-puzzle quiz. Completing the
+      // game means the player answered every gate question — award the
+      // badge now and go straight to the success medallion.
+      if (!alreadyEarned) onBadgeAwarded(config.badgeKey);
+      setPhase('success');
+      return;
+    }
     quizShowingRef.current = true;
     setPhase('quiz');
-  }, []);
+  }, [config, alreadyEarned, onBadgeAwarded]);
 
   const handleGameLose = useCallback(() => {
     setPhase('fail');
@@ -115,6 +124,7 @@ export function GameOverlay({
       return (
         <div className="game-canvas-wrap game-canvas-planning">
           <AllenTownPlanningGame
+            config={config}
             onWin={handleGameWin}
             onLose={handleGameLose}
             quizShowing={quizShowingRef.current}
@@ -192,20 +202,36 @@ export function GameOverlay({
 
   const renderSuccess = () => (
     <div className="game-success active">
-      <div className="game-success-badge">
-        <TsIcon icon={successBadgeIcon} className="ts-icon-lg" />
+      {/* v5.1.10: engraved medallion with ray burst + ribbon. The old
+         .game-success-badge is replaced by a layered medallion only for
+         grid games; non-grid games keep their original simpler badge. */}
+      {config.type === 'grid' ? (
+        <div className="game-medallion" aria-hidden="true">
+          <div className="game-medallion-rays" />
+          <div className="game-medallion-ring-outer" />
+          <div className="game-medallion-ring-inner" />
+          <div className="game-medallion-face">
+            <TsIcon icon={successBadgeIcon} className="ts-icon-lg" />
+          </div>
+          {successBadgeTitle && (
+            <div className="game-medallion-ribbon">
+              <span>{successBadgeTitle.toUpperCase()}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="game-success-badge">
+          <TsIcon icon={successBadgeIcon} className="ts-icon-lg" />
+        </div>
+      )}
+      <div className="game-success-eyebrow">
+        {config.type === 'grid' ? 'TOWN LAYOUT COMPLETE' : 'BADGE EARNED'}
       </div>
-      <div className="game-success-eyebrow">BADGE EARNED</div>
       <h3 className="game-success-title">{config.successTitle}</h3>
       <p className="game-success-msg">{config.successMsg}</p>
-      {successBadgeTitle && (
-        <p className="game-success-msg" style={{ marginTop: '-0.6rem', opacity: 0.85 }}>
-          {successBadgeTitle.toUpperCase()}
-        </p>
-      )}
       <div className="game-success-btns">
         <button type="button" className="game-start-btn" onClick={onClose}>
-          CONTINUE
+          CONTINUE TO TALE
         </button>
       </div>
     </div>
