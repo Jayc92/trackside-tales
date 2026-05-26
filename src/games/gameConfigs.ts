@@ -109,20 +109,62 @@ export const ALLEN_TOWN_GAME: GameConfig = {
   ],
 };
 
-// ── Packer Rail Spike ────────────────────────────────────────────────────────
+// ── Packer Rail Route ───────────────────────────────────────────────────────
+// v5.1.14: rebuilt from the old spike-tap into a sequenced rail-building
+// puzzle. Five LVRR junctions must be laid west-to-east. Each junction
+// has its own card, its own unlock quiz, and its own placement reason.
 export const PACKER_RAIL_GAME: GameConfig = {
   taleId: 'packer-pils',
   type: 'spike',
   badgeKey: 'game:packer-pils',
-  title: 'DRIVE THE RAIL SPIKES',
+  title: 'BUILD THE LEHIGH VALLEY LINE',
   instructions:
-    "Packer's crews drove thousands of spikes to lay the Lehigh Valley line. Tap each spike on the rail before it slips by — land 8 of 12 to earn your badge.",
-  successTitle: 'LINE COMPLETE',
+    "Asa Packer's Lehigh Valley Railroad ran west-to-east, from the Mauch Chunk coal seams to the Delaware at Easton. Lay each junction in order — use the Tale clues to know which stop comes next.",
+  successTitle: 'THE LINE IS LAID',
   successMsg:
-    'The line is set. The valley is moving. Forty-six miles of iron between Easton and Mauch Chunk — and the coal that built America starts rolling.',
+    'Forty-six miles of iron between Mauch Chunk and Easton. Packer\'s coal trains roll east — and the valley starts to move.',
+
+  // Legacy single quiz preserved for type safety; the route game uses
+  // unlockQuestions below.
   quizQuestion: 'What did the Bethlehem Iron Company — founded to supply Packer\'s railroad with rails — eventually become?',
   quizOptions: ['U.S. Steel', 'Bethlehem Steel', 'Carnegie Steel', 'Lehigh Iron'],
   quizCorrectIndex: 1,
+
+  // Four unlock questions, one per locked junction. MAUCH CHUNK starts
+  // unlocked (it's the western terminus — where the line begins).
+  unlockQuestions: [
+    {
+      elementId: 'parryville',
+      question: 'In what year did the Lehigh Valley Railroad open between Mauch Chunk and Easton?',
+      options: ['1840', '1855', '1865', '1880'],
+      correctIndex: 1,
+    },
+    {
+      elementId: 'lehighton',
+      question: "What did Packer's coal trains carry east toward Philadelphia and New York?",
+      options: ['Iron ore', 'Anthracite coal', 'Lumber', 'Wheat'],
+      correctIndex: 1,
+    },
+    {
+      elementId: 'bethlehem',
+      question: "What did the Bethlehem Iron Company — founded to supply Packer's rails — eventually become?",
+      options: ['U.S. Steel', 'Bethlehem Steel', 'Carnegie Steel', 'Lehigh Iron'],
+      correctIndex: 1,
+    },
+    {
+      elementId: 'easton',
+      question: 'How many miles did the LVRR mainline cover between Mauch Chunk and Easton?',
+      options: ['24', '36', '46', '60'],
+      correctIndex: 2,
+    },
+  ],
+
+  logicClues: [
+    'Coal trains roll east, down from the western mountains.',
+    'The Lehigh River guides the line from Mauch Chunk to Easton.',
+    "The iron works at Bethlehem feed Packer's mainline.",
+    'Each junction can only be laid after the one before it.',
+  ],
 };
 
 // ── Wooden Match ─────────────────────────────────────────────────────────────

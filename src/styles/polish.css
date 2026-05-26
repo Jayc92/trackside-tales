@@ -659,6 +659,117 @@
   /* v5.1.13: lifted from var(--steam) for readability on small cards */
   color: #DCC9A8;
 }
+
+
+/* =====================================================================
+   v5.1.14 — Packer Pilsner rail junctions + spike markers
+   ---------------------------------------------------------------------
+   Reuses the AllenTownPlanningGame chrome (HUD, parchment, action bar,
+   rail, panels, drag ghost). The map + junctions get packer-* classes
+   so the visual treatment is rail-specific: brass spike markers with
+   Roman numerals replace the brass building SVG, and an out-of-order
+   state visually marks junctions that need an earlier one laid first.
+   ===================================================================== */
+
+
+.packer-junction {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.16em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.2rem;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s ease;
+  user-select: none;
+  touch-action: none;
+}
+.packer-junction:disabled { cursor: default; }
+
+/* Faint open-circle marker on every empty junction so the player sees
+   where the rail's possible stops are. */
+.packer-junction-marker {
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(201, 130, 63, 0.5);
+  border-radius: 50%;
+  background: rgba(20, 14, 6, 0.6);
+  box-shadow: 0 0 4px rgba(201, 130, 63, 0.25);
+}
+
+/* Crosshair reuses the W.A. .allen-map-zone-crosshair animation set */
+.packer-junction-crosshair {
+  width: 54%;
+  height: 54%;
+}
+
+.packer-junction.targeted {
+  transform: scale(1.05);
+}
+.packer-junction.filled {
+  cursor: default;
+}
+
+/* Brass spike + Roman-numeral chip rendered when a junction is laid */
+.packer-junction-spike {
+  width: 64%;
+  height: 64%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255, 220, 160, 0.25), transparent 65%),
+    linear-gradient(135deg, #3a2810, #1f1408);
+  border: 1.5px solid rgba(224, 161, 90, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 12px rgba(224, 161, 90, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: packerSpikeIn 0.55s var(--ease-out-quart) both;
+}
+@keyframes packerSpikeIn {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.packer-junction-numeral {
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: #F1E7D7;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+  line-height: 1;
+}
+
+/* Hint pulse — reuses the W.A. .allen-map-zone.hinted animation by
+   structurally aliasing here. */
+.packer-junction.hinted .packer-junction-marker,
+.packer-junction.armed-target .packer-junction-marker {
+  border-color: var(--gold);
+  background: rgba(224, 161, 90, 0.15);
+  box-shadow: 0 0 14px rgba(224, 161, 90, 0.7);
+  animation: packerHintPulse 0.7s ease-in-out infinite alternate;
+}
+@keyframes packerHintPulse {
+  from { box-shadow: 0 0 10px rgba(224, 161, 90, 0.45); }
+  to   { box-shadow: 0 0 22px rgba(224, 161, 90, 0.95); }
+}
+
+/* Lit rail segment between junctions — straightforward fade-in */
+.packer-segment-lit {
+  animation: packerSegmentDraw 0.7s ease-out both;
+}
+@keyframes packerSegmentDraw {
+  from { opacity: 0; }
+  to   { opacity: 0.9; }
+}
 .allen-element-check {
   position: absolute;
   top: 0.35rem; right: 0.4rem;

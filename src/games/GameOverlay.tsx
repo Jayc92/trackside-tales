@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { GameConfig } from './gameConfigs';
 import { AllenTownPlanningGame } from './AllenTownPlanningGame';
+import { PackerRouteGame } from './PackerRouteGame';
 import { TsIcon } from '../components/TsIcon';
 
 // ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
@@ -63,11 +64,11 @@ export function GameOverlay({
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
   const handleGameWin = useCallback(() => {
-    if (config.type === 'grid') {
-      // v5.1.7+: the planning game integrates its own unlock-quiz into
-      // play, so there is no separate post-puzzle quiz. Completing the
-      // game means the player answered every gate question — award the
-      // badge now and go straight to the success medallion.
+    // v5.1.7+: planning game (grid) integrates its own unlock-quiz.
+    // v5.1.14: Packer route game (spike) does the same — interleaved
+    // unlock quizzes per junction, no post-puzzle quiz needed. Both
+    // award the badge directly and go to the success medallion.
+    if (config.type === 'grid' || config.type === 'spike') {
       if (!alreadyEarned) onBadgeAwarded(config.badgeKey);
       setPhase('success');
       return;
@@ -132,9 +133,22 @@ export function GameOverlay({
         </div>
       );
     }
-    // Defensive: spike + match games are not yet wired in v5.1.2. The
-    // Tale detail CTA prevents reaching here, but if anything does, show
-    // a polished placeholder so the overlay never renders broken UI.
+    if (config.type === 'spike') {
+      // v5.1.14: Packer Pilsner sequenced rail-building puzzle.
+      return (
+        <div className="game-canvas-wrap game-canvas-planning">
+          <PackerRouteGame
+            config={config}
+            onWin={handleGameWin}
+            onLose={handleGameLose}
+            quizShowing={quizShowingRef.current}
+          />
+        </div>
+      );
+    }
+    // Defensive: match games are still gated to COMING SOON. If the
+    // overlay is ever opened with a non-wired config (dev console, future
+    // regression) render a polite placeholder instead of broken UI.
     return (
       <div className="game-canvas-wrap">
         <p className="game-instructions">
@@ -205,7 +219,7 @@ export function GameOverlay({
       {/* v5.1.10: engraved medallion with ray burst + ribbon. The old
          .game-success-badge is replaced by a layered medallion only for
          grid games; non-grid games keep their original simpler badge. */}
-      {config.type === 'grid' ? (
+      {config.type === 'grid' || config.type === 'spike' ? (
         <div className="game-medallion" aria-hidden="true">
           <div className="game-medallion-rays" />
           <div className="game-medallion-ring-outer" />
@@ -225,7 +239,11 @@ export function GameOverlay({
         </div>
       )}
       <div className="game-success-eyebrow">
-        {config.type === 'grid' ? 'TOWN LAYOUT COMPLETE' : 'BADGE EARNED'}
+        {config.type === 'grid'
+          ? 'TOWN LAYOUT COMPLETE'
+          : config.type === 'spike'
+            ? 'LINE COMPLETE'
+            : 'BADGE EARNED'}
       </div>
       <h3 className="game-success-title">{config.successTitle}</h3>
       <p className="game-success-msg">{config.successMsg}</p>
