@@ -210,8 +210,22 @@ export function TaleDetailPage() {
             </div>
           )}
 
+          {/* v5.2: section divider that frames the rest of the page as
+             the "earn your marks" half of the Tale. Two-badge model:
+             one for discovery (scan), one for completion (game). The
+             eyebrow makes that hierarchy explicit so the plaque + game
+             CTA below read as a deliberate sequence, not loose buttons. */}
+          <div className="story-marks-divider" aria-hidden="true">
+            <span className="story-marks-rule" />
+            <span className="story-marks-label">EVERY TALE HAS TWO MARKS</span>
+            <span className="story-marks-rule" />
+          </div>
+          <p className="story-marks-intro">
+            One mark for <strong>discovering</strong> the Tale. One mark for <strong>completing</strong> its challenge. Both go in your Trackside Passport.
+          </p>
+
           <div className="collectible-section">
-            <div className="collectible-label">BADGE 1/2 · SCAN BADGE</div>
+            <div className="collectible-label">MARK 1 OF 2 · DISCOVERY</div>
             <h3 className="collectible-title">{tale.scanBadge.title}</h3>
             <div className="collectible-icon">
               <TsIcon icon={tale.scanBadge.icon} className="ts-icon-lg" />
@@ -220,7 +234,7 @@ export function TaleDetailPage() {
               <p className="collectible-desc">{tale.scanBadge.desc}</p>
             )}
             <button className={`collectible-btn${hasScanBadge ? ' claimed' : ''}`} disabled>
-              {hasScanBadge ? '✓ IN YOUR PASSPORT' : 'SCAN BADGE PENDING'}
+              {hasScanBadge ? '✓ EARNED · IN YOUR PASSPORT' : 'EARNED ON SCAN'}
             </button>
           </div>
 
@@ -253,14 +267,14 @@ export function TaleDetailPage() {
 
             return (
               <div className="minigame-section">
-                <div className="minigame-label">INTERACTIVE · BADGE 2/2</div>
+                <div className="minigame-label">MARK 2 OF 2 · INTERACTIVE CHALLENGE</div>
                 <h3 className="minigame-title">
                   {showAsComingSoon ? 'Interactive Challenge' : tale.game.title}
                 </h3>
                 <p className="minigame-context">
-                  {showAsEarned && 'Both badges are now marked in your Trackside Passport.'}
-                  {showAsActive && 'Complete this short challenge to earn the second badge for this Tale.'}
-                  {showAsComingSoon && 'This Tale challenge is being rebuilt for the next preview.'}
+                  {showAsEarned && 'Both Marks are now in your Trackside Passport. The Tale is fully collected.'}
+                  {showAsActive && 'Put the Tale into motion. Use what you just read to earn this Tale’s second Mark.'}
+                  {showAsComingSoon && 'This Tale’s challenge is being rebuilt for the next preview.'}
                 </p>
                 {(showAsActive || showAsEarned) && (
                   <p className="minigame-sub">{tale.game.instructions}</p>
@@ -270,7 +284,7 @@ export function TaleDetailPage() {
                     className="minigame-btn"
                     onClick={() => setShowGame(true)}
                   >
-                    PLAY TO EARN
+                    CONTINUE THE TALE — PLAY
                   </button>
                 )}
                 {showAsEarned && (

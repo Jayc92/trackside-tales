@@ -76,7 +76,7 @@ const MENU_CARDS: MenuCard[] = [
     badgeSrc: 'assets/home/home-card-passport.png',
     badgeAlt: 'Passport',
     title: 'PASSPORT',
-    sub: 'Collect stamps. Earn rewards.',
+    sub: 'Track your Tales and badge progress.',
     fallback: FALLBACK_PASSPORT,
   },
 ];
@@ -108,6 +108,35 @@ export function HomePage() {
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
         </div>
+      </div>
+
+      {/* v5.2: first-time-user "how it works" strip. Three-step rail-card
+         tells a guest, in one glance, why they're here: scan a can, read
+         the Tale, earn the badges. Sits between the hero and the
+         navigation stack so it's the first piece of copy below the fold.
+         No new routes, no logic — just orientation. */}
+      <div className="home-howitworks" aria-label="How Trackside Tales works">
+        <div className="home-howitworks-label">HOW TRACKSIDE TALES WORKS</div>
+        <ol className="home-howitworks-steps">
+          <li>
+            <span className="home-howitworks-num">1</span>
+            <span className="home-howitworks-text">
+              <strong>Scan a can</strong> to unlock its Tale.
+            </span>
+          </li>
+          <li>
+            <span className="home-howitworks-num">2</span>
+            <span className="home-howitworks-text">
+              <strong>Read the story</strong> behind the beer.
+            </span>
+          </li>
+          <li>
+            <span className="home-howitworks-num">3</span>
+            <span className="home-howitworks-text">
+              <strong>Play the challenge</strong> to earn both badges.
+            </span>
+          </li>
+        </ol>
       </div>
 
       {/* Navigation stack */}

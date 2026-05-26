@@ -45,7 +45,7 @@ export function PassportPage() {
   };
 
   const handleReset = () => {
-    if (!confirm('Reset all demo progress? This clears all unlocked Tales and badges.')) return;
+    if (!confirm('Reset preview progress? This clears all unlocked Tales and earned Marks.')) return;
     resetDemo();
     try { localStorage.removeItem(LS_HOW_DISMISSED); } catch (_) { /* ignore */ }
   };
@@ -61,7 +61,7 @@ export function PassportPage() {
 
           <div className="passport-id-card">
             <div className="passport-id-header">
-              <div className="passport-id-eyebrow">GUEST PASSPORT</div>
+              <div className="passport-id-eyebrow">FOUNDERS PASSPORT</div>
               <div className="passport-id-number">{passId}</div>
             </div>
             <div className="passport-id-body">
@@ -69,7 +69,7 @@ export function PassportPage() {
               <div className="passport-id-info">
                 <div className="passport-id-name">{nickname}</div>
                 <div className="passport-id-status">PREVIEW GUEST · TRACKSIDE TALES</div>
-                <div className="passport-id-since">Member since preview</div>
+                <div className="passport-id-since">Founders preview · early access</div>
               </div>
             </div>
             <div className="passport-id-stats">
@@ -79,15 +79,15 @@ export function PassportPage() {
               </div>
               <div className="passport-id-stat">
                 <div className="passport-id-stat-num">{stamps}</div>
-                <div className="passport-id-stat-lbl">STAMPS EARNED</div>
+                <div className="passport-id-stat-lbl">MARKS EARNED</div>
               </div>
               <div className="passport-id-stat">
                 <div className="passport-id-stat-num">{games}</div>
-                <div className="passport-id-stat-lbl">GAMES DONE</div>
+                <div className="passport-id-stat-lbl">CHALLENGES DONE</div>
               </div>
               <div className="passport-id-stat">
                 <div className="passport-id-stat-num">{rewards}</div>
-                <div className="passport-id-stat-lbl">REWARDS PROGRESS</div>
+                <div className="passport-id-stat-lbl">FOUNDERS TIER</div>
               </div>
             </div>
             <div className="nickname-edit-row">
@@ -111,6 +111,16 @@ export function PassportPage() {
           </div>
           <div className="stamp-book-sub">
             Every Tale you unlock marks a page in your Trackside Passport.
+          </div>
+          {/* v5.2: explicit key so a first-time guest understands what
+             the two stamp marks mean before they scroll into the book. */}
+          <div className="stamp-book-key" aria-label="Passport mark legend">
+            <span className="stamp-book-key-item">
+              <span className="stamp-book-key-dot" /> 1 mark · Tale discovered
+            </span>
+            <span className="stamp-book-key-item">
+              <span className="stamp-book-key-dot full" /> 2 marks · Challenge completed
+            </span>
           </div>
         </div>
 
@@ -142,13 +152,13 @@ export function PassportPage() {
               if (!unlocked) {
                 helper = (
                   <div className="passport-entry-helper">
-                    Scan a Trackside Tale to earn this stamp.
+                    Scan a Trackside Tale to earn its first Mark.
                   </div>
                 );
               } else if (unlocked && !gameStamp) {
                 helper = (
                   <div className="passport-entry-helper">
-                    Complete the mini-game to earn the second badge.
+                    Complete the Tale’s challenge to earn the second Mark.
                   </div>
                 );
               }
@@ -200,22 +210,22 @@ export function PassportPage() {
             <div className="passport-empty-state">
               <div className="passport-empty-title">Your Passport is ready</div>
               <div className="passport-empty-body">
-                Scan a Trackside Tale to earn your first stamp and start collecting stories.
+                Scan a Trackside can — or pick a Preview Tale on the Scan page — to earn your first Mark and start collecting stories.
               </div>
               <button className="passport-empty-cta" onClick={() => nav('scan')}>
-                START SCANNING
+                START A PREVIEW UNLOCK
               </button>
             </div>
           )}
 
           <div className="passport-note">
-            Your passport keeps every story you've collected — even after a beer rotates off tap.
-            Once it's yours, it's yours forever.
+            Your Passport keeps every Tale you've collected — even after a beer rotates off tap.
+            Once it's yours, it's yours forever. Founders Tier rewards roll out as the program goes live.
           </div>
         </div>
 
         <button className="reset-preview-btn" onClick={handleReset}>
-          RESET PREVIEW
+          RESET PREVIEW PROGRESS
         </button>
 
       </div>

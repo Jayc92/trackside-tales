@@ -1782,3 +1782,155 @@
   line-height: 1.3;
 }
 
+
+/* =====================================================================
+   v5.2 — Physical Preview Readiness + Story Detail Flow Polish
+   ---------------------------------------------------------------------
+   First-time-user comprehension layer. All rules below are additive:
+   they target new markup added in HomePage / TaleDetailPage /
+   PassportPage and don't touch existing selectors. Removing this block
+   leaves the app working — only the new orientation surfaces disappear.
+   ===================================================================== */
+
+
+/* ── Home: "How Trackside Tales works" three-step strip ─────────────── */
+.home-howitworks {
+  margin: 0.25rem 1rem 1.25rem;
+  padding: 0.85rem 1rem 0.95rem;
+  border: 1px solid rgba(201,130,63,0.3);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 14px,
+      rgba(201,130,63,0.02) 14px, rgba(201,130,63,0.02) 15px),
+    var(--iron-2);
+  position: relative;
+}
+.home-howitworks::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.55) 30%,
+    rgba(224,161,90,0.65) 50%, rgba(201,130,63,0.55) 70%, transparent);
+}
+.home-howitworks-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.32em;
+  color: var(--ember);
+  text-align: center;
+  margin-bottom: 0.7rem;
+}
+.home-howitworks-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+.home-howitworks-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.home-howitworks-num {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,130,63,0.65);
+  background: rgba(201,130,63,0.08);
+  color: var(--gold, #E0A15A);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.home-howitworks-text {
+  color: #DCC9A8;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.home-howitworks-text strong {
+  color: #F1E7D7;
+  font-weight: 600;
+}
+
+
+/* ── Story Detail: "every Tale has two marks" divider + intro ───────── */
+#page-story .story-marks-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.1rem 0 0.4rem;
+}
+#page-story .story-marks-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201,130,63,0.45), transparent);
+}
+#page-story .story-marks-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.32em;
+  color: var(--ember);
+  flex: 0 0 auto;
+}
+#page-story .story-marks-intro {
+  margin: 0 0 0.9rem;
+  color: #C9B58E;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-align: center;
+  font-style: italic;
+}
+#page-story .story-marks-intro strong {
+  color: #F1E7D7;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Tighten the gap between the two badge plaques so they read as a pair. */
+#page-story .collectible-section + .minigame-section,
+#page-story .minigame-section {
+  margin-top: 0.75rem;
+}
+
+
+/* ── Passport: stamp-book key (legend) ──────────────────────────────── */
+.stamp-book-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+  margin: 0.7rem 1.25rem 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px dashed rgba(201,130,63,0.28);
+  border-radius: 3px;
+  background: rgba(201,130,63,0.04);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  color: #C9B58E;
+}
+.stamp-book-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.stamp-book-key-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,130,63,0.55);
+  background: rgba(201,130,63,0.15);
+}
+.stamp-book-key-dot.full {
+  background: var(--gold, #E0A15A);
+  border-color: var(--gold, #E0A15A);
+  box-shadow: 0 0 0 2px rgba(224,161,90,0.18);
+}
+
