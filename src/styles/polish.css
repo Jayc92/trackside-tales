@@ -1295,3 +1295,103 @@
   0%   { transform: scale(1.04); }
   100% { transform: scale(1); }
 }
+
+
+/* =====================================================================
+   v5.1.12 — clarity + planning logic surfaces
+   ===================================================================== */
+
+
+/* "ALLEN APPROVES" parchment — positive counterpart to the reconsider
+   slide-up. Lifted gold tone so it reads as confirmation, not warning.
+   Auto-dismisses with the same timing as .allen-reconsider. */
+.allen-approve {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translate(-50%, 0);
+  z-index: 950;
+  width: min(360px, calc(100% - 1.6rem));
+  padding: 0.65rem 1rem 0.75rem;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at top, rgba(255, 220, 160, 0.1), transparent 70%),
+    linear-gradient(180deg, rgba(46, 32, 12, 0.96), rgba(28, 20, 8, 0.96));
+  border: 1px solid rgba(224, 161, 90, 0.7);
+  border-radius: 3px;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 20px rgba(224, 161, 90, 0.18);
+  animation:
+    allenReconsiderIn 0.32s var(--ease-out-quart),
+    allenReconsiderOut 0.4s ease-in 1.1s forwards;
+  pointer-events: none;
+}
+.allen-approve::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(224, 161, 90, 0.6) 25%,
+    rgba(255, 230, 180, 0.85) 50%, rgba(224, 161, 90, 0.6) 75%, transparent);
+}
+.allen-approve-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+  margin-bottom: 0.3rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+.allen-approve-quote {
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: #F1E7D7;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+
+/* "PLANNING NOTE" box — surfaced under the element rail when an
+   element is armed. Replaces the generic centred hint with the
+   element's own planningLogic copy. */
+.allen-planning-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: -0.2rem;
+  padding: 0.55rem 0.85rem 0.65rem;
+  background:
+    linear-gradient(135deg, rgba(201, 130, 63, 0.08), transparent 60%),
+    var(--iron-2);
+  border: 1px solid rgba(201, 130, 63, 0.35);
+  border-radius: 3px;
+  position: relative;
+  text-align: center;
+  animation: allenPanelEnter 0.25s ease-out;
+}
+.allen-planning-note::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201, 130, 63, 0.5) 30%,
+    rgba(224, 161, 90, 0.7) 50%, rgba(201, 130, 63, 0.5) 70%, transparent);
+  pointer-events: none;
+}
+.allen-planning-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.3em;
+  color: var(--ember);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+.allen-planning-text {
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--parchment);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}

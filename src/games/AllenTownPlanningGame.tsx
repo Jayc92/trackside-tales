@@ -59,7 +59,14 @@ interface MapZone {
 interface PlaceableElement {
   id: string;
   label: string;
-  blurb: string;
+  /** Why this element exists in the town plan — shown on the card. */
+  rationale: string;
+  /** Where it should logically go — shown as a "PLANNING NOTE" when armed. */
+  planningLogic: string;
+  /** Why the chosen site works — shown via "ALLEN APPROVES" on a correct placement. */
+  successReason: string;
+  /** Why the chosen site doesn't — shown via "ALLEN RECONSIDERS" on a wrong placement. */
+  wrongReason: string;
   startsUnlocked?: boolean;
 }
 
@@ -71,26 +78,83 @@ const ZONES: MapZone[] = [
   { id: 'freight-house', label: 'FREIGHT HOUSE', x: 72, y: 30, width: 24, height: 16, correctElement: 'freight-house' },
 ];
 
+// v5.1.12: every element now carries its planning logic — why it exists,
+// where it belongs, and what counts as a right vs wrong placement. Copy
+// is framed as planning logic ("A practical town plan would…",
+// "Allen's survey would favor…") rather than historical certainty,
+// since we don't have block-by-block evidence for 1762.
 const ELEMENTS: PlaceableElement[] = [
-  { id: 'main-street',   label: 'MAIN STREET',   blurb: 'The town spine — runs through center.',          startsUnlocked: true },
-  { id: 'coal-yard',     label: 'COAL YARD',     blurb: 'Receives shipments from upper-valley mines.' },
-  { id: 'depot',         label: 'DEPOT',         blurb: 'Built near the central river crossing.' },
-  { id: 'freight-house', label: 'FREIGHT HOUSE', blurb: 'Serves the eastbound line.' },
-  { id: 'bridge',        label: 'BRIDGE',        blurb: 'Spans Jordan Creek to the west.' },
+  {
+    id: 'main-street',
+    label: 'MAIN STREET',
+    rationale:
+      'The town needs a central road to organise trade, homes, and civic life.',
+    planningLogic:
+      "A practical town plan would anchor Main Street at the centre, connecting the market blocks.",
+    successReason:
+      '"Main Street gives Allen’s town a civic spine."',
+    wrongReason:
+      '"The town’s spine belongs at the heart of the plan, not at its edges."',
+    startsUnlocked: true,
+  },
+  {
+    id: 'coal-yard',
+    label: 'COAL YARD',
+    rationale:
+      'Fuel and bulk shipments need a working edge of town, clear of the civic blocks.',
+    planningLogic:
+      'The logic of trade suggests placing the coal yard near transport access, clear of the civic blocks.',
+    successReason:
+      '"The coal yard sits at the working edge, where shipments can move."',
+    wrongReason:
+      '"A coal yard would crowd the civic blocks. It belongs at the working edge."',
+  },
+  {
+    id: 'depot',
+    label: 'DEPOT',
+    rationale:
+      'Trade needs a receiving point near the main road and the water crossing.',
+    planningLogic:
+      "Allen’s survey would favour a depot near both the main road and the water crossing.",
+    successReason:
+      '"The depot now sits where goods can move between road and water."',
+    wrongReason:
+      '"A depot needs the main route within reach. This site is too far from trade."',
+  },
+  {
+    id: 'freight-house',
+    label: 'FREIGHT HOUSE',
+    rationale:
+      'Goods need storage close to the transport route — not in the civic centre.',
+    planningLogic:
+      'A practical town plan keeps the freight house close to the trade route, not the civic centre.',
+    successReason:
+      '"The freight house anchors the eastbound trade line."',
+    wrongReason:
+      '"A freight house has no place in the civic centre. Move it to the trade edge."',
+  },
+  {
+    id: 'bridge',
+    label: 'BRIDGE',
+    rationale:
+      'A crossing connects the settlement across Jordan Creek.',
+    planningLogic:
+      "Allen’s survey would place the bridge where the road meets Jordan Creek.",
+    successReason:
+      '"The bridge completes the crossing over Jordan Creek."',
+    wrongReason:
+      '"A bridge must cross water — not sit inside the town blocks."',
+  },
 ];
 
 
-// ── "Allen reconsiders" quote pool ────────────────────────────────
-// One picked at random on each wrong placement. Period-flavoured but
-// concise enough to fit a 2-line parchment slide-up on mobile.
-const RECONSIDER_QUOTES = [
-  '"The ground is too low — pick higher."',
-  '"Not here — the soil is too marshy."',
-  '"This sits in shadow. The morning side, perhaps."',
-  '"Allen frowns. The road would never reach this place."',
-  '"Closer to water, or closer to road. Not both."',
-  '"The Penn surveyors would never approve this line."',
-];
+// v5.1.12: random reconsider quotes removed. Each wrong placement now
+// surfaces the element's own wrongReason from the ELEMENTS array, so
+// the player learns WHY the placement was wrong, element by element.
+//
+// Fallback used only if a placement happens with an unrecognized id.
+const FALLBACK_WRONG_REASON =
+  '"This site is wrong for that element."';
 
 
 // ── Building icons (inline SVG, drawn line-by-line) ──────────────
@@ -256,9 +320,14 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   const [hoverZoneId, setHoverZoneId] = useState<string | null>(null);
   const [hintZoneId, setHintZoneId]   = useState<string | null>(null);
 
-  // v5.1.11: replaces the brief red zone flash. Holds the rotating
-  // Allen quote shown when a placement is rejected.
+  // v5.1.11: parchment slide-up on wrong placement. v5.1.12 makes the
+  // quote element-specific so the player learns why the site doesn't fit.
   const [reconsiderMessage, setReconsiderMessage] = useState<string | null>(null);
+
+  // v5.1.12: positive counterpart shown on correct placements. Pulls
+  // each element's successReason; auto-dismisses on the next placement
+  // attempt or on win.
+  const [approveMessage, setApproveMessage] = useState<string | null>(null);
 
   const [activeQuizElementId, setActiveQuizElementId] = useState<string | null>(null);
   const [quizSelected, setQuizSelected] = useState<number | null>(null);
@@ -292,6 +361,10 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
     if (winFiredRef.current) return;
     winFiredRef.current = true;
     completedRef.current = true;
+    // Clear the per-placement parchment so it doesn't linger over the
+    // success screen during the phase transition.
+    setApproveMessage(null);
+    setReconsiderMessage(null);
     stopTimer();
     onWin();
   }, [onWin, stopTimer]);
@@ -312,11 +385,23 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   }, [quizShowing, triggerLose, stopTimer]);
 
 
-  // ── v5.1.11: surface an Allen-reconsiders parchment for 1.5s ─────
-  const triggerReconsider = useCallback(() => {
-    const quote = RECONSIDER_QUOTES[Math.floor(Math.random() * RECONSIDER_QUOTES.length)];
-    setReconsiderMessage(quote);
+  // ── Surface a parchment slide-up for 1.5s ─────────────────────────
+  // v5.1.12: quotes are now element-specific so the player understands
+  // why this particular element doesn't belong on the chosen site.
+  const triggerReconsider = useCallback((elementId: string) => {
+    const el = ELEMENTS.find((e) => e.id === elementId);
+    setApproveMessage(null);
+    setReconsiderMessage(el?.wrongReason ?? FALLBACK_WRONG_REASON);
     window.setTimeout(() => setReconsiderMessage(null), 1500);
+  }, []);
+
+  // v5.1.12: positive counterpart surfaced on correct placements.
+  const triggerApprove = useCallback((elementId: string) => {
+    const el = ELEMENTS.find((e) => e.id === elementId);
+    if (!el) return;
+    setReconsiderMessage(null);
+    setApproveMessage(el.successReason);
+    window.setTimeout(() => setApproveMessage(null), 1500);
   }, []);
 
 
@@ -334,13 +419,19 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
       const next = { ...placements, [zoneId]: elementId };
       setPlacements(next);
       setArmedElementId(null);
+      // v5.1.12: positive "ALLEN APPROVES" parchment with the element's
+      // own reasoning. Suppressed on the FINAL placement so it doesn't
+      // overlap the success-medallion transition.
       if (Object.keys(next).length >= ZONES.length) {
         completedRef.current = true;
         window.setTimeout(triggerWin, 400);
+      } else {
+        triggerApprove(elementId);
       }
     } else {
-      // v5.1.11: softer feedback — parchment slide-up instead of red.
-      triggerReconsider();
+      // v5.1.11: parchment slide-up instead of red flash.
+      // v5.1.12: element-specific wrongReason for the quote.
+      triggerReconsider(elementId);
       setMovesLeft((m) => {
         const nextMoves = Math.max(0, m - 1);
         if (nextMoves <= 0) window.setTimeout(triggerLose, 480);
@@ -348,7 +439,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
       });
       setArmedElementId(null);
     }
-  }, [placements, unlocked, triggerWin, triggerLose, triggerReconsider]);
+  }, [placements, unlocked, triggerWin, triggerLose, triggerReconsider, triggerApprove]);
 
 
   // ── Tap interactions ─────────────────────────────────────────────
@@ -652,6 +743,30 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
                 fontFamily="'IM Fell English', serif" letterSpacing="0.16em">
             SURVEY MAP · ALLEN TRACT · ANNO 1762
           </text>
+
+          {/* v5.1.12 region labels — period-correct italic IM Fell at
+              low opacity so they read as map annotations rather than UI.
+              They give the player a mental model of WHERE each kind of
+              element belongs, without crowding the canvas. */}
+          <g
+            fontFamily="'IM Fell English', serif"
+            fontStyle="italic"
+            fill="#a07808"
+            opacity="0.5"
+          >
+            {/* Jordan Creek — vertical, beside the river */}
+            <text x="16" y="170" fontSize="8" transform="rotate(-86 16 170)">
+              Jordan Creek
+            </text>
+            {/* civic core — near MAIN STREET */}
+            <text x="172" y="100" fontSize="7" letterSpacing="0.16em">civic core</text>
+            {/* industrial edge — north, near COAL YARD */}
+            <text x="148" y="22" fontSize="7" letterSpacing="0.16em">industrial edge</text>
+            {/* crossing point — between river + BRIDGE */}
+            <text x="56" y="178" fontSize="7" letterSpacing="0.16em">crossing point</text>
+            {/* trade edge — east, near FREIGHT HOUSE */}
+            <text x="304" y="86" fontSize="7" letterSpacing="0.16em">trade edge</text>
+          </g>
         </svg>
 
         {ZONES.map((zone) => {
@@ -716,10 +831,10 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
           className="allen-action-btn"
           onClick={handleHint}
           disabled={hintsLeft <= 0 || !!activeQuizElementId}
-          aria-label={`Sextant — ${hintsLeft} left`}
+          aria-label={`Survey hint — ${hintsLeft} left`}
         >
           <span className="allen-action-icon" aria-hidden="true">◈</span>
-          <span className="allen-action-label">SEXTANT</span>
+          <span className="allen-action-label">SURVEY HINT</span>
           <span className="allen-action-count">[{hintsLeft}]</span>
         </button>
         <button
@@ -817,7 +932,9 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
                     {isLocked ? '◉' : '◈'}
                   </div>
                   <div className="allen-element-label">{el.label}</div>
-                  <div className="allen-element-blurb">{el.blurb}</div>
+                  {/* v5.1.12: card now shows WHY this element exists in
+                      the town plan, not just a one-line hint. */}
+                  <div className="allen-element-blurb">{el.rationale}</div>
                   {isPlaced && <div className="allen-element-check" aria-hidden="true">✓ PLACED</div>}
                   {isLocked && <div className="allen-element-locked" aria-hidden="true">TAP TO UNLOCK</div>}
                 </div>
@@ -825,13 +942,28 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
             })}
           </div>
 
-          <div className="allen-elements-hint">
-            {armedElementId
-              ? 'Tap the marker on the map to place this element.'
-              : nextLocked
+          {/* v5.1.12: when an element is armed, replace the generic hint
+              with its planning logic — a small "PLANNING NOTE" surfacing
+              the reasoning for where this element belongs. */}
+          {armedElementId ? (
+            (() => {
+              const armed = ELEMENTS.find((e) => e.id === armedElementId);
+              return (
+                <div className="allen-planning-note">
+                  <span className="allen-planning-eyebrow">PLANNING NOTE</span>
+                  <span className="allen-planning-text">
+                    {armed?.planningLogic ?? 'Place this element on the map.'}
+                  </span>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="allen-elements-hint">
+              {nextLocked
                 ? 'Tap a locked element to answer its Tale clue.'
                 : 'Tap an element to arm it, or drag it onto the map.'}
-          </div>
+            </div>
+          )}
 
           <div className="allen-bottom-panels">
             <div className="allen-clues-panel">
@@ -883,11 +1015,23 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
         </div>
       )}
 
-      {/* v5.1.11: "Allen reconsiders…" parchment slide-up ────── */}
+      {/* v5.1.11: parchment slide-up on wrong placement.
+         v5.1.12: quote is now element-specific. */}
       {reconsiderMessage && (
         <div className="allen-reconsider" role="status" aria-live="polite">
           <div className="allen-reconsider-eyebrow">ALLEN RECONSIDERS</div>
           <div className="allen-reconsider-quote">{reconsiderMessage}</div>
+        </div>
+      )}
+
+      {/* v5.1.12: positive parchment on correct placement, surfacing
+         the element's own successReason so the player learns why the
+         site works. Auto-dismisses; suppressed on the final placement
+         so it doesn't overlap the medallion transition. */}
+      {approveMessage && (
+        <div className="allen-approve" role="status" aria-live="polite">
+          <div className="allen-approve-eyebrow">ALLEN APPROVES</div>
+          <div className="allen-approve-quote">{approveMessage}</div>
         </div>
       )}
     </div>
