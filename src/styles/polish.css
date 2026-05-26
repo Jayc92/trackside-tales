@@ -350,17 +350,23 @@
 }
 
 
-/* ── HUD strip (v5.1.4) ──────────────────────────────────────────── */
+/* ── HUD strip — v5.1.11 diegetic surveyor instruments ───────────
+   3 columns (down from 5), with sundial + pip + Roman-numeral
+   displays. The component now drives the values; the grid here just
+   lays out the three stats.
+   ──────────────────────────────────────────────────────────────── */
 .game-hud {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  border: 1px solid rgba(201, 130, 63, 0.4);
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid rgba(201, 130, 63, 0.45);
   border-radius: 2px;
   overflow: hidden;
   background:
-    linear-gradient(90deg, rgba(201, 130, 63, 0.06), transparent 60%),
+    linear-gradient(90deg, rgba(201, 130, 63, 0.08), transparent 60%),
+    linear-gradient(180deg, rgba(255, 235, 200, 0.02), transparent 40%),
     var(--iron-2);
   position: relative;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 .game-hud::before {
   content: '';
@@ -372,16 +378,18 @@
 }
 .game-hud-stat {
   text-align: center;
-  padding: 0.45rem 0.2rem 0.5rem;
-  border-right: 1px solid rgba(201, 130, 63, 0.18);
+  padding: 0.5rem 0.35rem 0.55rem;
+  border-right: 1px solid rgba(201, 130, 63, 0.22);
+  position: relative;
 }
 .game-hud-stat:last-child { border-right: none; }
 .game-hud-label {
   font-family: 'Source Code Pro', monospace;
-  font-size: 0.38rem;
-  letter-spacing: 0.18em;
+  font-size: 0.4rem;
+  letter-spacing: 0.22em;
   color: var(--aged);
   white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 }
 .game-hud-val {
   font-family: 'Bebas Neue', sans-serif;
@@ -389,8 +397,45 @@
   line-height: 1;
   color: var(--gold);
   letter-spacing: 0.04em;
-  margin-top: 0.18rem;
+  margin-top: 0.22rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
 }
+
+/* Sundial glyph for SURVEY DAYS */
+.hud-sundial {
+  font-size: 0.85rem;
+  color: #E0A15A;
+  filter: drop-shadow(0 0 4px rgba(224, 161, 90, 0.45));
+}
+.hud-num { line-height: 1; }
+
+/* Pips for ALLEN'S RESOLVE */
+.hud-pips {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  gap: 0.05rem;
+}
+.hud-pips-filled { color: var(--gold); }
+.hud-pips-empty  { color: rgba(160, 120, 8, 0.32); }
+.hud-pips.game-time-warn .hud-pips-filled {
+  animation: timerWarn 0.6s ease infinite;
+}
+
+/* Roman numerals for JOURNAL */
+.hud-roman {
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-size: 0.95rem;
+  font-style: italic;
+  gap: 0.18rem;
+}
+.hud-roman-num   { color: #F1E7D7; }
+.hud-roman-sep   { color: rgba(160, 120, 8, 0.4); }
+.hud-roman-total { color: rgba(224, 161, 90, 0.6); }
 
 
 /* ── Map + zones (v5.1.3) ────────────────────────────────────────── */
@@ -412,77 +457,118 @@
   height: 100%;
   display: block;
 }
+/* v5.1.11: zones are invisible by default. Empty zones show only a
+   faint dot marker; the matching armed/dragged element surfaces a
+   brass crosshair on its correct zone. Filled zones host the inline
+   building SVG. No always-visible dashed borders. */
 .allen-map-zone {
   position: absolute;
-  border: 1.5px dashed rgba(201, 130, 63, 0.55);
-  border-radius: 2px;
-  background: rgba(20, 14, 6, 0.18);
+  border: 0;
+  background: transparent;
   color: var(--gold);
-  font-family: 'Source Code Pro', monospace;
-  font-size: 0.42rem;
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-size: 0.5rem;
   letter-spacing: 0.16em;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.2rem;
   cursor: pointer;
-  padding: 0.1rem;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  padding: 0;
+  transition: transform 0.2s ease;
   user-select: none;
-  /* prevent the browser native scroll/zoom interfering with dragging */
   touch-action: none;
 }
-.allen-map-zone:hover:not(:disabled) {
-  border-color: rgba(224, 161, 90, 0.85);
-  background: rgba(201, 130, 63, 0.1);
+.allen-map-zone:disabled { cursor: default; }
+
+/* Faint center dot — present on every empty zone so the player has
+   a sense of "something can go here" without UI scaffolding. */
+.allen-map-zone-marker {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(201, 130, 63, 0.45);
+  box-shadow: 0 0 4px rgba(201, 130, 63, 0.25);
 }
-.allen-map-zone.armed-target {
-  border-style: solid;
-  border-color: rgba(224, 161, 90, 0.85);
-  box-shadow: 0 0 14px rgba(201, 130, 63, 0.45);
-  animation: allenZonePulse 1.4s ease-in-out infinite;
+
+/* Armed-target: brass crosshair fades in only on the correct zone
+   for the currently armed/dragged element. */
+.allen-map-zone-crosshair {
+  width: 64%;
+  height: 64%;
+  color: var(--gold);
+  filter: drop-shadow(0 0 6px rgba(224, 161, 90, 0.55));
+  animation: allenCrosshairIn 0.35s ease-out, allenCrosshairPulse 1.6s ease-in-out 0.35s infinite;
 }
+@keyframes allenCrosshairIn {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes allenCrosshairPulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(224, 161, 90, 0.35)); }
+  50%      { filter: drop-shadow(0 0 10px rgba(224, 161, 90, 0.85)); }
+}
+
+/* Visible only when armed for this zone, OR when filled — never the
+   always-on label scaffolding it used to be. */
+.allen-map-zone-label {
+  color: var(--gold);
+  font-weight: 600;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.22em;
+  animation: allenCrosshairIn 0.35s ease-out;
+}
+
 .allen-map-zone.targeted {
-  border-style: solid;
-  border-color: var(--gold);
-  background:
-    linear-gradient(135deg, rgba(224, 161, 90, 0.22), rgba(130, 52, 18, 0.15)),
-    rgba(20, 14, 6, 0.3);
-  box-shadow: 0 0 18px rgba(224, 161, 90, 0.55);
-  transform: scale(1.03);
+  transform: scale(1.06);
 }
 .allen-map-zone.filled {
-  border-style: solid;
-  border-color: rgba(201, 130, 63, 0.7);
-  background:
-    linear-gradient(135deg, rgba(224, 161, 90, 0.32), rgba(130, 52, 18, 0.2)),
-    var(--iron-2);
   cursor: default;
 }
-.allen-map-zone.invalid {
-  border-color: rgba(192, 78, 24, 0.85);
-  background: rgba(192, 78, 24, 0.22);
-  animation: allenZoneShake 0.45s ease;
-}
-.allen-map-zone-label {
-  color: inherit;
-  font-weight: 600;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
-}
-.allen-map-zone-mark {
-  font-size: 0.9rem;
-  color: #E0A15A;
-  filter: drop-shadow(0 0 4px rgba(224, 161, 90, 0.55));
-}
+
+/* Hint pulse keyframes referenced by .allen-map-zone.hinted below */
 @keyframes allenZonePulse {
   0%, 100% { box-shadow: 0 0 10px rgba(201, 130, 63, 0.35); }
   50%      { box-shadow: 0 0 20px rgba(224, 161, 90, 0.65); }
 }
-@keyframes allenZoneShake {
-  0%, 100% { transform: translateX(0); }
-  25%      { transform: translateX(-4px); }
-  75%      { transform: translateX(4px); }
+
+
+/* Inline building SVG — drawn line-by-line on placement */
+.allen-bldg {
+  width: 92%;
+  height: 92%;
+  color: var(--gold);
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.65))
+          drop-shadow(0 0 6px rgba(224, 161, 90, 0.35));
+}
+.allen-bldg-stroke line,
+.allen-bldg-stroke rect,
+.allen-bldg-stroke path,
+.allen-bldg-stroke polyline,
+.allen-bldg-stroke circle {
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 240;
+  stroke-dashoffset: 240;
+  animation: bldgDraw 800ms ease-out forwards;
+}
+.allen-bldg-stroke circle[fill="currentColor"] {
+  fill: currentColor;
+  animation: bldgFadeIn 600ms ease 700ms forwards;
+  opacity: 0;
+}
+@keyframes bldgDraw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes bldgFadeIn {
+  to { opacity: 1; }
 }
 
 
@@ -1090,4 +1176,122 @@
   color: #F1E7D7;
   letter-spacing: 0.18em;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+
+/* =====================================================================
+   v5.1.11 — "Allen reconsiders…" parchment + IM FELL typography pass
+   ===================================================================== */
+
+
+/* Parchment slide-up shown when a placement is rejected. Replaces the
+   prior red zone flash. Slides up from the bottom, holds, fades out. */
+.allen-reconsider {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translate(-50%, 0);
+  z-index: 950;
+  width: min(360px, calc(100% - 1.6rem));
+  padding: 0.65rem 1rem 0.75rem;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at top, rgba(255, 235, 200, 0.06), transparent 70%),
+    linear-gradient(180deg, rgba(58, 40, 16, 0.96), rgba(28, 20, 8, 0.96));
+  border: 1px solid rgba(201, 130, 63, 0.55);
+  border-radius: 3px;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation:
+    allenReconsiderIn 0.32s var(--ease-out-quart),
+    allenReconsiderOut 0.4s ease-in 1.1s forwards;
+  pointer-events: none;
+}
+.allen-reconsider::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(201, 130, 63, 0.5) 25%,
+    rgba(224, 161, 90, 0.7) 50%, rgba(201, 130, 63, 0.5) 75%, transparent);
+}
+.allen-reconsider-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.32em;
+  color: var(--ember);
+  margin-bottom: 0.3rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+.allen-reconsider-quote {
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: #F1E7D7;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+@keyframes allenReconsiderIn {
+  from { transform: translate(-50%, 28px); opacity: 0; }
+  to   { transform: translate(-50%, 0);    opacity: 1; }
+}
+@keyframes allenReconsiderOut {
+  from { transform: translate(-50%, 0);    opacity: 1; }
+  to   { transform: translate(-50%, 14px); opacity: 0; }
+}
+
+
+/* ── IM FELL English typography pass ──────────────────────────────
+   Period-correct serif for Tale-clue copy, journal quotes, and the
+   surveyor map footer. Adds a printed-page feel without breaking the
+   mobile readability of the rest of the UI.
+   ──────────────────────────────────────────────────────────────── */
+.allen-quiz-question,
+.allen-quiz-feedback,
+.allen-clues-item,
+.allen-next-unlock-hint {
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+}
+.allen-quiz-question {
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.allen-clues-item {
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.allen-quiz-eyebrow,
+.allen-clues-label,
+.allen-elements-rail-label,
+.allen-next-unlock-label,
+.allen-reconsider-eyebrow {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+
+/* ── Letterpress shadows on important type ────────────────────── */
+.game-title,
+.game-success-title,
+.game-success-eyebrow,
+.game-medallion-ribbon span,
+.allen-element-label,
+.allen-element-check,
+.allen-element-locked,
+.allen-action-label,
+.allen-elements-hint,
+.allen-next-unlock-name,
+.game-hud-val,
+.game-hud-label {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+}
+
+
+/* ── Refined element card on placement (v5.1.11 polish) ───────── */
+/* Subtle scale-pulse when a card transitions to placed. */
+.allen-element-card.placed {
+  animation: allenElementSettle 0.35s ease-out;
+}
+@keyframes allenElementSettle {
+  0%   { transform: scale(1.04); }
+  100% { transform: scale(1); }
 }

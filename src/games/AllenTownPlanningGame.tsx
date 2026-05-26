@@ -3,36 +3,34 @@ import { GameConfig } from './gameConfigs';
 import { TsIcon } from '../components/TsIcon';
 
 // =====================================================================
-// W.A. LAGER PLANNING GAME — v5.1.3 → v5.1.10 rollup
+// W.A. LAGER PLANNING GAME — v5.1.3 → v5.1.11
 // ---------------------------------------------------------------------
-// History of this file:
-//   v5.1.3  parchment map background + 5 named drop zones
-//   v5.1.4  5-stat HUD strip (PROGRESS / TIME / CLUE POINTS / MOVES / BADGE)
-//   v5.1.5  side rail of element cards with tap-to-place
-//   v5.1.6  pointer-based drag-and-drop
-//   v5.1.7  Tale Logic Clues panel + lantern (now wired)
-//   v5.1.8  HINT + RESET action bar (auto-commit drop, no CONFIRM)
-//   v5.1.9  Inline unlock-quiz interleaved with placement,
-//           Next Unlock preview card
-//   v5.1.10 Premium engraved-medallion success state (in polish.css)
+// History:
+//   v5.1.3–6   map + zones + HUD + element rail + drag
+//   v5.1.7–9   inline unlock-quiz interleaved with placement
+//   v5.1.10    premium engraved-medallion success state
+//   v5.1.11    DIEGETIC SURVEYOR PASS — visual/feedback layer only
 //
-// Game loop (revised in v5.1.7+):
-//   1. The first element (MAIN STREET) starts unlocked.
-//   2. Tap a locked element → inline quiz appears → correct answer
-//      unlocks the element + ticks CLUE POINTS; wrong answer costs
-//      one MOVE and lets the player retry.
-//   3. Drag or tap an unlocked element onto a map zone. Auto-commit
-//      on drop. Wrong placement costs one MOVE and flashes the zone red.
-//   4. When all 5 elements are placed correctly → onWin (the badge is
-//      awarded by GameOverlay because the unlock-quiz is the quiz now,
-//      and the post-puzzle quiz phase is skipped for grid games).
-//   5. MOVES → 0 or TIME → 0 → onLose.
+// v5.1.11 ships:
+//   - Surveyor-style 3-stat HUD: SURVEY DAYS (sundial), ALLEN'S RESOLVE
+//     (pips), JOURNAL (Roman numerals). Drops the generic 5-stat strip.
+//   - Map richness: contour lines, dashed road from SE, mile markers,
+//     fold crease, denser stippled forest, river current marks.
+//   - 5 inline SVG building icons that stroke-in over 700ms when a
+//     zone is filled. Hand-drawn ink-line style, brass on currentColor.
+//   - Emergent brass crosshair: visible only on the correct zone when
+//     its element is armed or being dragged. Empty zones show a faint
+//     dot marker instead of the dashed-rectangle scaffolding.
+//   - "Allen reconsiders…" parchment slide-up replaces the red flash
+//     on wrong placement. Same penalty (lose 1 MOVE), softer feedback.
+//   - Letterpress text shadows and IM FELL English on Tale-clue copy
+//     for a period-printed feel.
 //
-// HARD RULES PRESERVED:
-//   - same { onWin, onLose, quizShowing } prop contract as before
-//   - no badge-key, localStorage-key, Supabase, scan, or QR changes
-//   - AllenTownGame.tsx (the v5.1.2 tap-in-sequence game) is still on
-//     disk untouched as the rollback fallback
+// HARD RULES (unchanged from v5.1.7+):
+//   - same { config, onWin, onLose, quizShowing } prop contract
+//   - badge contract unchanged — onWin is gated on all 5 placed
+//   - no badge-key, localStorage, Supabase, scan, or QR changes
+//   - AllenTownGame.tsx (v5.1.2 fallback) still on disk untouched
 // =====================================================================
 
 
@@ -40,6 +38,11 @@ import { TsIcon } from '../components/TsIcon';
 const GAME_DURATION_SEC = 90;
 const STARTING_MOVES    = 7;
 const STARTING_HINTS    = 2;
+
+// 1 survey day = ~3 seconds of game time. Purely a display unit; the
+// underlying timer still counts seconds and the warn thresholds still
+// trigger on seconds.
+const SECONDS_PER_DAY = 3;
 
 
 // ── Element + zone definitions ───────────────────────────────────────
@@ -57,7 +60,6 @@ interface PlaceableElement {
   id: string;
   label: string;
   blurb: string;
-  /** v5.1.7+: true if this element does not require a quiz to unlock. */
   startsUnlocked?: boolean;
 }
 
@@ -69,9 +71,6 @@ const ZONES: MapZone[] = [
   { id: 'freight-house', label: 'FREIGHT HOUSE', x: 72, y: 30, width: 24, height: 16, correctElement: 'freight-house' },
 ];
 
-// MAIN STREET is at the top of the rail and starts unlocked — it's the
-// town's spine, the most obvious historical reference point, and lets
-// the player make a placement immediately.
 const ELEMENTS: PlaceableElement[] = [
   { id: 'main-street',   label: 'MAIN STREET',   blurb: 'The town spine — runs through center.',          startsUnlocked: true },
   { id: 'coal-yard',     label: 'COAL YARD',     blurb: 'Receives shipments from upper-valley mines.' },
@@ -79,6 +78,156 @@ const ELEMENTS: PlaceableElement[] = [
   { id: 'freight-house', label: 'FREIGHT HOUSE', blurb: 'Serves the eastbound line.' },
   { id: 'bridge',        label: 'BRIDGE',        blurb: 'Spans Jordan Creek to the west.' },
 ];
+
+
+// ── "Allen reconsiders" quote pool ────────────────────────────────
+// One picked at random on each wrong placement. Period-flavoured but
+// concise enough to fit a 2-line parchment slide-up on mobile.
+const RECONSIDER_QUOTES = [
+  '"The ground is too low — pick higher."',
+  '"Not here — the soil is too marshy."',
+  '"This sits in shadow. The morning side, perhaps."',
+  '"Allen frowns. The road would never reach this place."',
+  '"Closer to water, or closer to road. Not both."',
+  '"The Penn surveyors would never approve this line."',
+];
+
+
+// ── Building icons (inline SVG, drawn line-by-line) ──────────────
+// Each icon is a small ink-line drawing rendered inside its zone
+// when placed. Children inherit `currentColor` (brass-gold) from the
+// `.allen-bldg` wrapper. `.allen-bldg-stroke` triggers the draw-in
+// animation defined in polish.css.
+
+function MainStreetIcon() {
+  return (
+    <svg className="allen-bldg" viewBox="0 0 60 36" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <g className="allen-bldg-stroke">
+        {/* Two rows of small lots flanking a central road */}
+        <rect x="4"  y="4"  width="9" height="10" />
+        <rect x="16" y="4"  width="9" height="10" />
+        <rect x="35" y="4"  width="9" height="10" />
+        <rect x="47" y="4"  width="9" height="10" />
+        <rect x="4"  y="22" width="9" height="10" />
+        <rect x="16" y="22" width="9" height="10" />
+        <rect x="35" y="22" width="9" height="10" />
+        <rect x="47" y="22" width="9" height="10" />
+        {/* Central road */}
+        <line x1="2" y1="18" x2="58" y2="18" />
+        {/* Cross-road */}
+        <line x1="30" y1="2" x2="30" y2="34" strokeDasharray="2 1.5" />
+      </g>
+    </svg>
+  );
+}
+
+function CoalYardIcon() {
+  return (
+    <svg className="allen-bldg" viewBox="0 0 60 36" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <g className="allen-bldg-stroke">
+        {/* Coal pile (triangular heap) */}
+        <path d="M4 30 L18 12 L32 30 Z" />
+        <line x1="9"  y1="22" x2="27" y2="22" />
+        <line x1="13" y1="26" x2="23" y2="26" />
+        {/* Industrial building with smokestack */}
+        <rect x="36" y="14" width="20" height="16" />
+        <path d="M36 14 L46 6 L56 14" />
+        <line x1="50" y1="6" x2="50" y2="2" />
+        <circle cx="50" cy="1.5" r="1.5" fill="currentColor" stroke="none" />
+      </g>
+    </svg>
+  );
+}
+
+function DepotIcon() {
+  return (
+    <svg className="allen-bldg" viewBox="0 0 60 36" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <g className="allen-bldg-stroke">
+        {/* Peaked-roof depot */}
+        <path d="M8 24 L8 12 L30 4 L52 12 L52 24 Z" />
+        <line x1="8"  y1="24" x2="52" y2="24" />
+        {/* Door */}
+        <rect x="26" y="14" width="8" height="10" />
+        {/* Rail line below */}
+        <line x1="0"  y1="30" x2="60" y2="30" />
+        <line x1="0"  y1="33" x2="60" y2="33" />
+        <line x1="6"  y1="29" x2="6"  y2="34" />
+        <line x1="18" y1="29" x2="18" y2="34" />
+        <line x1="30" y1="29" x2="30" y2="34" />
+        <line x1="42" y1="29" x2="42" y2="34" />
+        <line x1="54" y1="29" x2="54" y2="34" />
+      </g>
+    </svg>
+  );
+}
+
+function BridgeIcon() {
+  return (
+    <svg className="allen-bldg" viewBox="0 0 60 36" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <g className="allen-bldg-stroke">
+        {/* Truss bridge deck */}
+        <line x1="2"  y1="20" x2="58" y2="20" />
+        <line x1="2"  y1="14" x2="58" y2="14" />
+        <line x1="2"  y1="14" x2="2"  y2="20" />
+        <line x1="58" y1="14" x2="58" y2="20" />
+        {/* Truss diagonals */}
+        <line x1="2"  y1="20" x2="14" y2="14" />
+        <line x1="14" y1="20" x2="2"  y2="14" />
+        <line x1="14" y1="20" x2="28" y2="14" />
+        <line x1="28" y1="20" x2="14" y2="14" />
+        <line x1="28" y1="20" x2="44" y2="14" />
+        <line x1="44" y1="20" x2="28" y2="14" />
+        <line x1="44" y1="20" x2="58" y2="14" />
+        <line x1="58" y1="20" x2="44" y2="14" />
+        {/* Water current beneath */}
+        <path d="M0 28 Q15 26 30 28 T 60 28" />
+        <path d="M0 32 Q15 30 30 32 T 60 32" />
+      </g>
+    </svg>
+  );
+}
+
+function FreightHouseIcon() {
+  return (
+    <svg className="allen-bldg" viewBox="0 0 60 36" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <g className="allen-bldg-stroke">
+        {/* Long barn body with peaked roof */}
+        <path d="M2 26 L2 14 L12 6 L52 6 L52 14 L58 14 L58 26 Z" />
+        <line x1="2"  y1="26" x2="58" y2="26" />
+        <line x1="12" y1="6"  x2="12" y2="26" />
+        {/* Loading dock door */}
+        <rect x="18" y="14" width="14" height="12" />
+        <line x1="25" y1="14" x2="25" y2="26" />
+        {/* Side door */}
+        <rect x="38" y="16" width="8" height="10" />
+        {/* Dock platform */}
+        <line x1="2" y1="30" x2="58" y2="30" />
+        <line x1="2" y1="30" x2="2"  y2="34" />
+        <line x1="58" y1="30" x2="58" y2="34" />
+      </g>
+    </svg>
+  );
+}
+
+function BuildingForElement({ id }: { id: string }) {
+  switch (id) {
+    case 'main-street':   return <MainStreetIcon />;
+    case 'coal-yard':     return <CoalYardIcon />;
+    case 'depot':         return <DepotIcon />;
+    case 'bridge':        return <BridgeIcon />;
+    case 'freight-house': return <FreightHouseIcon />;
+    default: return null;
+  }
+}
+
+
+// ── Diegetic HUD helpers ─────────────────────────────────────────
+const ROMAN: Record<number, string> = {
+  0: '0', 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII',
+};
+function toRoman(n: number): string {
+  return ROMAN[n] ?? String(n);
+}
 
 
 // ── Props ────────────────────────────────────────────────────────────
@@ -91,36 +240,31 @@ interface AllenTownPlanningGameProps {
 
 
 export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: AllenTownPlanningGameProps) {
-  // ── State ──────────────────────────────────────────────────────────
+  // ── State (unchanged logic from v5.1.10) ───────────────────────────
   const [placements, setPlacements] = useState<Record<string, string>>({});
   const [movesLeft, setMovesLeft]   = useState(STARTING_MOVES);
   const [timeLeft, setTimeLeft]     = useState(GAME_DURATION_SEC);
   const [hintsLeft, setHintsLeft]   = useState(STARTING_HINTS);
 
-  // v5.1.7+ unlock state: ids of elements that have passed their quiz
-  // (or started unlocked).
   const [unlocked, setUnlocked] = useState<Set<string>>(
     () => new Set(ELEMENTS.filter((e) => e.startsUnlocked).map((e) => e.id)),
   );
 
-  // Tap-to-place: which UNLOCKED element is armed for the next zone tap.
   const [armedElementId, setArmedElementId] = useState<string | null>(null);
-
-  // Drag state.
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const [hoverZoneId, setHoverZoneId] = useState<string | null>(null);
+  const [hintZoneId, setHintZoneId]   = useState<string | null>(null);
 
-  // Brief flash states.
-  const [invalidZoneId, setInvalidZoneId] = useState<string | null>(null);
-  const [hintZoneId, setHintZoneId]       = useState<string | null>(null);
+  // v5.1.11: replaces the brief red zone flash. Holds the rotating
+  // Allen quote shown when a placement is rejected.
+  const [reconsiderMessage, setReconsiderMessage] = useState<string | null>(null);
 
-  // v5.1.7+: active unlock quiz (id of the element being asked about).
   const [activeQuizElementId, setActiveQuizElementId] = useState<string | null>(null);
-  const [quizSelected, setQuizSelected]   = useState<number | null>(null);
-  const [quizResult, setQuizResult]       = useState<'correct' | 'wrong' | null>(null);
+  const [quizSelected, setQuizSelected] = useState<number | null>(null);
+  const [quizResult, setQuizResult]     = useState<'correct' | 'wrong' | null>(null);
 
-  // ── Refs preserved from the v5.1.2 lineage ─────────────────────────
+  // ── Refs preserved from the v5.1.x lineage ────────────────────────
   const completedRef = useRef(false);
   const winFiredRef  = useRef(false);
   const loseFiredRef = useRef(false);
@@ -137,8 +281,6 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
     }
   }, []);
 
-
-  // ── Lose / Win triggers ────────────────────────────────────────────
   const triggerLose = useCallback(() => {
     if (completedRef.current || quizShowing || winFiredRef.current || loseFiredRef.current) return;
     loseFiredRef.current = true;
@@ -154,8 +296,6 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
     onWin();
   }, [onWin, stopTimer]);
 
-
-  // ── Countdown timer ────────────────────────────────────────────────
   useEffect(() => {
     timerRef.current = setInterval(() => {
       if (completedRef.current || quizShowing) return;
@@ -172,7 +312,15 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   }, [quizShowing, triggerLose, stopTimer]);
 
 
-  // ── Placement logic ────────────────────────────────────────────────
+  // ── v5.1.11: surface an Allen-reconsiders parchment for 1.5s ─────
+  const triggerReconsider = useCallback(() => {
+    const quote = RECONSIDER_QUOTES[Math.floor(Math.random() * RECONSIDER_QUOTES.length)];
+    setReconsiderMessage(quote);
+    window.setTimeout(() => setReconsiderMessage(null), 1500);
+  }, []);
+
+
+  // ── Placement logic (penalty/state behavior unchanged) ───────────
   const attemptPlacement = useCallback((elementId: string, zoneId: string) => {
     if (completedRef.current || winFiredRef.current || loseFiredRef.current) return;
     if (placements[zoneId]) return;
@@ -186,14 +334,13 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
       const next = { ...placements, [zoneId]: elementId };
       setPlacements(next);
       setArmedElementId(null);
-
       if (Object.keys(next).length >= ZONES.length) {
         completedRef.current = true;
         window.setTimeout(triggerWin, 400);
       }
     } else {
-      setInvalidZoneId(zoneId);
-      window.setTimeout(() => setInvalidZoneId(null), 450);
+      // v5.1.11: softer feedback — parchment slide-up instead of red.
+      triggerReconsider();
       setMovesLeft((m) => {
         const nextMoves = Math.max(0, m - 1);
         if (nextMoves <= 0) window.setTimeout(triggerLose, 480);
@@ -201,23 +348,20 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
       });
       setArmedElementId(null);
     }
-  }, [placements, unlocked, triggerWin, triggerLose]);
+  }, [placements, unlocked, triggerWin, triggerLose, triggerReconsider]);
 
 
-  // ── Tap-to-place / open-quiz ───────────────────────────────────────
+  // ── Tap interactions ─────────────────────────────────────────────
   const handleElementTap = useCallback((elementId: string) => {
     if (completedRef.current || quizShowing) return;
     if (Object.values(placements).includes(elementId)) return;
-
     if (!unlocked.has(elementId)) {
-      // Open the inline quiz for this element.
       setActiveQuizElementId(elementId);
       setQuizSelected(null);
       setQuizResult(null);
       setArmedElementId(null);
       return;
     }
-    // Toggle armed for placement.
     setArmedElementId((cur) => (cur === elementId ? null : elementId));
   }, [placements, unlocked, quizShowing]);
 
@@ -227,7 +371,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   }, [armedElementId, attemptPlacement]);
 
 
-  // ── Pointer drag ───────────────────────────────────────────────────
+  // ── Pointer drag (unchanged) ─────────────────────────────────────
   const hitTestZone = (x: number, y: number): string | null => {
     const nodes = document.querySelectorAll<HTMLElement>('.allen-map-zone:not(.filled)');
     for (const node of Array.from(nodes)) {
@@ -241,7 +385,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, elementId: string) => {
     if (completedRef.current || quizShowing) return;
-    if (!unlocked.has(elementId)) return;     // can't drag locked
+    if (!unlocked.has(elementId)) return;
     if (Object.values(placements).includes(elementId)) return;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     dragStateRef.current = { elementId, hoverZoneId: null };
@@ -272,7 +416,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   }, [attemptPlacement]);
 
 
-  // ── Quiz handlers ──────────────────────────────────────────────────
+  // ── Quiz handlers (unchanged) ────────────────────────────────────
   const activeQuiz = activeQuizElementId
     ? config.unlockQuestions?.find((q) => q.elementId === activeQuizElementId) ?? null
     : null;
@@ -283,7 +427,6 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
     const isCorrect = idx === activeQuiz.correctIndex;
     setQuizResult(isCorrect ? 'correct' : 'wrong');
     if (isCorrect) {
-      // Brief beat so the green highlight reads, then unlock + close.
       window.setTimeout(() => {
         setUnlocked((prev) => {
           const next = new Set(prev);
@@ -295,15 +438,11 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
         setQuizResult(null);
       }, 700);
     } else {
-      // Wrong → cost 1 move; player can retry the same question.
       setMovesLeft((m) => {
         const nextMoves = Math.max(0, m - 1);
-        if (nextMoves <= 0) {
-          window.setTimeout(triggerLose, 480);
-        }
+        if (nextMoves <= 0) window.setTimeout(triggerLose, 480);
         return nextMoves;
       });
-      // Allow retry after a short pause.
       window.setTimeout(() => {
         setQuizSelected(null);
         setQuizResult(null);
@@ -318,11 +457,9 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   }, []);
 
 
-  // ── HINT + RESET (v5.1.8) ─────────────────────────────────────────
+  // ── HINT + RESET (unchanged behavior) ───────────────────────────
   const handleHint = useCallback(() => {
     if (hintsLeft <= 0) return;
-    // Pulse the next correct zone for whichever element is armed (or
-    // pick the next still-unfilled zone if nothing is armed).
     let zoneId: string | null = null;
     if (armedElementId) {
       const z = ZONES.find((z) => z.correctElement === armedElementId);
@@ -340,65 +477,65 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   const handleReset = useCallback(() => {
     setPlacements({});
     setArmedElementId(null);
-    setInvalidZoneId(null);
     setHintZoneId(null);
-    // Unlocked elements stay unlocked; quizzes already answered stay
-    // answered. Moves and time stay as they are — this is a placement
-    // do-over, not a full game restart.
   }, []);
 
 
-  // ── Derived values ─────────────────────────────────────────────────
+  // ── Derived values ───────────────────────────────────────────────
   const placed = Object.keys(placements).length;
   const cluesEarned = Math.max(
     0,
     unlocked.size - ELEMENTS.filter((e) => e.startsUnlocked).length,
   );
   const totalCluesAvailable = config.unlockQuestions?.length ?? 0;
-  const fmt = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-  };
+  const surveyDaysLeft = Math.ceil(timeLeft / SECONDS_PER_DAY);
   const timeWarn  = timeLeft  <= 15 && timeLeft  > 0;
   const movesWarn = movesLeft <= 2  && movesLeft > 0;
 
-  // The next locked element (for Next Unlock preview)
   const nextLocked = ELEMENTS.find(
     (el) => !unlocked.has(el.id) && !Object.values(placements).includes(el.id),
   );
 
   const logicClues = config.logicClues ?? [];
 
+  // The element currently in play (armed or being dragged) — used to
+  // light up the matching brass crosshair on the correct zone only.
+  const focusedElementId = draggingElementId ?? armedElementId;
+
 
   return (
     <div className="allen-planning-game">
 
-      {/* HUD strip ─────────────────────────────────────────────── */}
+      {/* HUD strip — v5.1.11 diegetic surveyor instruments ──────── */}
       <div className="game-hud" role="status" aria-live="polite">
-        <div className="game-hud-stat">
-          <div className="game-hud-label">PROGRESS</div>
-          <div className="game-hud-val">{placed}/{ZONES.length}</div>
+        <div className="game-hud-stat hud-survey-days">
+          <div className="game-hud-label">SURVEY DAYS</div>
+          <div className={`game-hud-val${timeWarn ? ' game-time-warn' : ''}`}>
+            <span className="hud-sundial" aria-hidden="true">◐</span>
+            <span className="hud-num">{surveyDaysLeft}</span>
+          </div>
         </div>
-        <div className="game-hud-stat">
-          <div className="game-hud-label">TIME</div>
-          <div className={`game-hud-val${timeWarn ? ' game-time-warn' : ''}`}>{fmt(timeLeft)}</div>
+        <div className="game-hud-stat hud-resolve">
+          <div className="game-hud-label">ALLEN'S RESOLVE</div>
+          <div
+            className={`game-hud-val hud-pips${movesWarn ? ' game-time-warn' : ''}`}
+            aria-label={`${movesLeft} of ${STARTING_MOVES}`}
+          >
+            <span className="hud-pips-filled">{'●'.repeat(movesLeft)}</span>
+            <span className="hud-pips-empty">{'○'.repeat(Math.max(0, STARTING_MOVES - movesLeft))}</span>
+          </div>
         </div>
-        <div className="game-hud-stat">
-          <div className="game-hud-label">CLUE POINTS</div>
-          <div className="game-hud-val">{cluesEarned}/{totalCluesAvailable}</div>
-        </div>
-        <div className="game-hud-stat">
-          <div className="game-hud-label">MOVES</div>
-          <div className={`game-hud-val${movesWarn ? ' game-time-warn' : ''}`}>{movesLeft}</div>
-        </div>
-        <div className="game-hud-stat">
-          <div className="game-hud-label">BADGE</div>
-          <div className="game-hud-val">1/2</div>
+        <div className="game-hud-stat hud-journal">
+          <div className="game-hud-label">JOURNAL</div>
+          <div className="game-hud-val hud-roman">
+            <span className="hud-roman-num">{toRoman(cluesEarned)}</span>
+            <span className="hud-roman-sep">/</span>
+            <span className="hud-roman-total">{toRoman(totalCluesAvailable)}</span>
+          </div>
         </div>
       </div>
 
-      {/* Map + zones ───────────────────────────────────────────── */}
+      {/* Map + zones — v5.1.11 ink topography ──────────────────── */}
       <div className="allen-map-wrap" aria-label="Allen Town survey map">
         <svg
           className="allen-map-svg"
@@ -414,40 +551,121 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
               <stop offset="0%" stopColor="#3a2810" />
               <stop offset="100%" stopColor="#1f1408" />
             </linearGradient>
+            <linearGradient id="allenFoldCrease" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%"  stopColor="rgba(0,0,0,0)" />
+              <stop offset="49%" stopColor="rgba(0,0,0,0.18)" />
+              <stop offset="50%" stopColor="rgba(255,235,200,0.05)" />
+              <stop offset="51%" stopColor="rgba(0,0,0,0.18)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            </linearGradient>
           </defs>
+
+          {/* Parchment ground */}
           <rect width="400" height="280" fill="url(#allenParchBg)" />
           <rect width="400" height="280" fill="url(#allenParchGrid)" />
-          <path d="M28 0 Q44 60 38 120 Q30 180 50 280" stroke="#1a3a4a" strokeWidth="11" fill="none" opacity="0.55" strokeLinecap="round" />
-          <path d="M28 0 Q44 60 38 120 Q30 180 50 280" stroke="#284f60" strokeWidth="4" fill="none" opacity="0.4" strokeLinecap="round" />
-          <circle cx="118" cy="40"  r="14" fill="#2a3618" opacity="0.4" />
-          <circle cx="135" cy="55"  r="9"  fill="#2a3618" opacity="0.35" />
-          <circle cx="105" cy="52"  r="8"  fill="#2a3618" opacity="0.3" />
-          <circle cx="350" cy="240" r="11" fill="#2a3618" opacity="0.32" />
-          <circle cx="365" cy="225" r="7"  fill="#2a3618" opacity="0.28" />
+
+          {/* Ink contour lines — faint topography running parallel to the river */}
+          <g stroke="#6b4e22" strokeWidth="0.4" fill="none" opacity="0.22">
+            <path d="M60 0  Q72 60 66 120 Q60 180 78 280" />
+            <path d="M88 0  Q102 60 96 120 Q90 180 108 280" />
+            <path d="M118 0 Q130 60 124 120 Q120 180 136 280" />
+            <path d="M156 0 Q166 60 162 120 Q160 180 174 280" />
+          </g>
+
+          {/* Old road from Philadelphia — diagonal dashed line entering SE */}
+          <g opacity="0.55">
+            <path
+              d="M400 240 L120 110"
+              stroke="#7a5c28" strokeWidth="1.5" strokeDasharray="5 3" fill="none"
+            />
+            {/* Mile markers — small Roman numerals along the road */}
+            <g fontFamily="serif" fontSize="6" fill="#a07808" opacity="0.65">
+              <text x="328" y="207" transform="rotate(-22 328 207)">II</text>
+              <text x="248" y="170" transform="rotate(-22 248 170)">V</text>
+              <text x="168" y="133" transform="rotate(-22 168 133)">VIII</text>
+            </g>
+            <text x="394" y="252" fontSize="5" fill="#7a5c28" textAnchor="end"
+                  fontFamily="serif" fontStyle="italic" opacity="0.65">
+              to Philadelphia
+            </text>
+          </g>
+
+          {/* Jordan Creek — main river */}
+          <path d="M28 0 Q44 60 38 120 Q30 180 50 280"
+                stroke="#1a3a4a" strokeWidth="11" fill="none" opacity="0.55" strokeLinecap="round" />
+          <path d="M28 0 Q44 60 38 120 Q30 180 50 280"
+                stroke="#284f60" strokeWidth="4" fill="none" opacity="0.4" strokeLinecap="round" />
+
+          {/* River current marks — short cross-hatches showing flow */}
+          <g stroke="#9ec0d0" strokeWidth="0.4" opacity="0.45" fill="none">
+            <line x1="35" y1="20"  x2="42" y2="14"  />
+            <line x1="40" y1="60"  x2="48" y2="55"  />
+            <line x1="40" y1="100" x2="48" y2="95"  />
+            <line x1="34" y1="140" x2="42" y2="135" />
+            <line x1="32" y1="180" x2="40" y2="176" />
+            <line x1="38" y1="220" x2="46" y2="216" />
+            <line x1="44" y1="260" x2="52" y2="256" />
+          </g>
+
+          {/* Stippled forest patches — small dot clusters NW + SE */}
+          <g fill="#2a3618" opacity="0.55">
+            {/* NW cluster */}
+            <circle cx="104" cy="38"  r="1.4" />
+            <circle cx="112" cy="44"  r="1.2" />
+            <circle cx="118" cy="36"  r="1.3" />
+            <circle cx="124" cy="42"  r="1.0" />
+            <circle cx="130" cy="50"  r="1.4" />
+            <circle cx="116" cy="56"  r="1.2" />
+            <circle cx="108" cy="50"  r="1.0" />
+            <circle cx="138" cy="42"  r="1.1" />
+            <circle cx="146" cy="52"  r="1.3" />
+            <circle cx="132" cy="60"  r="1.2" />
+            <circle cx="122" cy="62"  r="1.0" />
+            <circle cx="100" cy="48"  r="1.0" />
+            {/* SE cluster */}
+            <circle cx="332" cy="244" r="1.3" />
+            <circle cx="346" cy="238" r="1.2" />
+            <circle cx="356" cy="248" r="1.4" />
+            <circle cx="362" cy="232" r="1.0" />
+            <circle cx="372" cy="244" r="1.2" />
+            <circle cx="350" cy="256" r="1.0" />
+            <circle cx="338" cy="258" r="1.1" />
+            <circle cx="324" cy="252" r="1.0" />
+          </g>
+
+          {/* Parchment fold crease — subtle diagonal across the map */}
+          <rect width="400" height="280" fill="url(#allenFoldCrease)" opacity="0.55" />
+
+          {/* Compass rose NE */}
           <g transform="translate(370 30)" opacity="0.6">
             <circle cx="0" cy="0" r="14" fill="none" stroke="#a07808" strokeWidth="0.7" />
             <line x1="0" y1="-13" x2="0" y2="-1" stroke="#a07808" strokeWidth="1.2" />
             <polygon points="0,-16 -3,-8 3,-8" fill="#a07808" />
+            <line x1="-12" y1="0" x2="-2"  y2="0"  stroke="#a07808" strokeWidth="0.6" />
+            <line x1="12"  y1="0" x2="2"   y2="0"  stroke="#a07808" strokeWidth="0.6" />
+            <line x1="0"   y1="12" x2="0"  y2="2"  stroke="#a07808" strokeWidth="0.6" />
             <text x="0" y="22" fontSize="6" fill="#a07808" textAnchor="middle" fontFamily="serif">N</text>
           </g>
-          <text x="20" y="270" fontSize="6" fill="#6b4e22" opacity="0.55" fontFamily="'Source Code Pro', monospace" letterSpacing="0.12em">
-            SURVEY MAP · ALLEN TRACT · 1762
+
+          {/* Surveyor label */}
+          <text x="20" y="270" fontSize="6" fill="#6b4e22" opacity="0.6"
+                fontFamily="'IM Fell English', serif" letterSpacing="0.16em">
+            SURVEY MAP · ALLEN TRACT · ANNO 1762
           </text>
         </svg>
 
         {ZONES.map((zone) => {
           const filled = !!placements[zone.id];
+          const elementHere = placements[zone.id];
           const targeted = !filled && hoverZoneId === zone.id;
-          const invalid  = invalidZoneId === zone.id;
-          const armedAndZone = !filled && armedElementId !== null;
+          const isArmedTarget = !filled && focusedElementId !== null && zone.correctElement === focusedElementId;
           const hinted = hintZoneId === zone.id;
           const cls = [
             'allen-map-zone',
-            filled       ? 'filled'       : '',
-            targeted     ? 'targeted'     : '',
-            invalid      ? 'invalid'      : '',
-            armedAndZone ? 'armed-target' : '',
-            hinted       ? 'hinted'       : '',
+            filled        ? 'filled'        : '',
+            targeted      ? 'targeted'      : '',
+            isArmedTarget ? 'armed-target'  : '',
+            hinted        ? 'hinted'        : '',
           ].filter(Boolean).join(' ');
           return (
             <button
@@ -463,26 +681,45 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
               }}
               onClick={() => handleZoneTap(zone.id)}
               disabled={filled}
-              aria-label={`${zone.label} zone${filled ? ' — placed' : ''}`}
+              aria-label={`${zone.label} site${filled ? ' — placed' : ''}`}
             >
-              <span className="allen-map-zone-label">{zone.label}</span>
-              {filled && <span className="allen-map-zone-mark" aria-hidden="true">◈</span>}
+              {filled && elementHere ? (
+                <BuildingForElement id={elementHere} />
+              ) : (
+                <>
+                  {/* Faint dot marker when empty; brass crosshair when armed for this zone */}
+                  {isArmedTarget ? (
+                    <svg className="allen-map-zone-crosshair" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="0.8" />
+                      <line x1="12" y1="2"  x2="12" y2="22" stroke="currentColor" strokeWidth="0.8" />
+                      <line x1="2"  y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="0.8" />
+                      <circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                    </svg>
+                  ) : (
+                    <span className="allen-map-zone-marker" aria-hidden="true" />
+                  )}
+                  {/* Label only when armed for this zone (player gets confirmation) */}
+                  {isArmedTarget && (
+                    <span className="allen-map-zone-label">{zone.label}</span>
+                  )}
+                </>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Action bar — v5.1.8 ─────────────────────────────────── */}
+      {/* Action bar — HINT + RESET (unchanged) ─────────────────── */}
       <div className="allen-action-bar">
         <button
           type="button"
           className="allen-action-btn"
           onClick={handleHint}
           disabled={hintsLeft <= 0 || !!activeQuizElementId}
-          aria-label={`Hint — ${hintsLeft} left`}
+          aria-label={`Sextant — ${hintsLeft} left`}
         >
           <span className="allen-action-icon" aria-hidden="true">◈</span>
-          <span className="allen-action-label">HINT</span>
+          <span className="allen-action-label">SEXTANT</span>
           <span className="allen-action-count">[{hintsLeft}]</span>
         </button>
         <button
@@ -496,7 +733,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
         </button>
       </div>
 
-      {/* Quiz overlay (when active) OR element rail + clues + next ── */}
+      {/* Quiz overlay OR element rail + clues + next ─────────── */}
       {activeQuiz ? (
         <div className="allen-quiz-overlay">
           <div className="allen-quiz-header">
@@ -542,13 +779,12 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
           )}
           {quizResult === 'wrong' && (
             <div className="allen-quiz-feedback wrong">
-              Not quite — lost 1 move. Try again.
+              Not quite — lost 1 day. Try again.
             </div>
           )}
         </div>
       ) : (
         <>
-          {/* Element rail (v5.1.5 with locked states from v5.1.7) ── */}
           <div className="allen-elements-rail-label">PLACE THESE ELEMENTS</div>
           <div className="allen-elements-rail" role="list">
             {ELEMENTS.map((el) => {
@@ -589,16 +825,14 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
             })}
           </div>
 
-          {/* Helper hint under the rail */}
           <div className="allen-elements-hint">
             {armedElementId
-              ? 'Tap a zone on the map to place this element.'
+              ? 'Tap the marker on the map to place this element.'
               : nextLocked
                 ? 'Tap a locked element to answer its Tale clue.'
-                : 'Tap an element to arm it, or drag it onto a zone.'}
+                : 'Tap an element to arm it, or drag it onto the map.'}
           </div>
 
-          {/* Logic Clues + Next Unlock — v5.1.7 + v5.1.9 ──────── */}
           <div className="allen-bottom-panels">
             <div className="allen-clues-panel">
               <div className="allen-clues-lantern" aria-hidden="true">
@@ -646,6 +880,14 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
           aria-hidden="true"
         >
           ◈ {ELEMENTS.find((e) => e.id === draggingElementId)?.label}
+        </div>
+      )}
+
+      {/* v5.1.11: "Allen reconsiders…" parchment slide-up ────── */}
+      {reconsiderMessage && (
+        <div className="allen-reconsider" role="status" aria-live="polite">
+          <div className="allen-reconsider-eyebrow">ALLEN RECONSIDERS</div>
+          <div className="allen-reconsider-quote">{reconsiderMessage}</div>
         </div>
       )}
     </div>
