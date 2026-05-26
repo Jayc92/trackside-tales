@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { GameConfig } from './gameConfigs';
 import { TsIcon } from '../components/TsIcon';
 
@@ -320,14 +321,12 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   const [hoverZoneId, setHoverZoneId] = useState<string | null>(null);
   const [hintZoneId, setHintZoneId]   = useState<string | null>(null);
 
-  // v5.1.11: parchment slide-up on wrong placement. v5.1.12 makes the
-  // quote element-specific so the player learns why the site doesn't fit.
-  const [reconsiderMessage, setReconsiderMessage] = useState<string | null>(null);
-
-  // v5.1.12: positive counterpart shown on correct placements. Pulls
-  // each element's successReason; auto-dismisses on the next placement
-  // attempt or on win.
-  const [approveMessage, setApproveMessage] = useState<string | null>(null);
+  // v5.1.13: track the elementId that triggered the parchment so we can
+  // surface both the element NAME and its reason. Previously we stored
+  // just the quote text, which lost the connection to which element
+  // was being addressed.
+  const [reconsiderElementId, setReconsiderElementId] = useState<string | null>(null);
+  const [approveElementId, setApproveElementId]       = useState<string | null>(null);
 
   const [activeQuizElementId, setActiveQuizElementId] = useState<string | null>(null);
   const [quizSelected, setQuizSelected] = useState<number | null>(null);
@@ -363,8 +362,8 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
     completedRef.current = true;
     // Clear the per-placement parchment so it doesn't linger over the
     // success screen during the phase transition.
-    setApproveMessage(null);
-    setReconsiderMessage(null);
+    setApproveElementId(null);
+    setReconsiderElementId(null);
     stopTimer();
     onWin();
   }, [onWin, stopTimer]);
@@ -385,23 +384,36 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   }, [quizShowing, triggerLose, stopTimer]);
 
 
-  // ── Surface a parchment slide-up for 1.5s ─────────────────────────
-  // v5.1.12: quotes are now element-specific so the player understands
-  // why this particular element doesn't belong on the chosen site.
+  // v5.1.13: lock body scroll while a drag is in progress so the page
+  // can't slide underneath the finger and shift the perceived position
+  // of the drag ghost. Restores the previous overflow on unmount.
+  useEffect(() => {
+    if (!draggingElementId) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [draggingElementId]);
+
+
+  // ── Surface a parchment slide-up for 2.2s (v5.1.13 — was 1.5s) ────
+  // Hold time bumped so the player can actually read the confirmation.
+  // We now track which element the parchment is about, so the JSX can
+  // display ELEMENT NAME + reason instead of just an italic quote.
   const triggerReconsider = useCallback((elementId: string) => {
-    const el = ELEMENTS.find((e) => e.id === elementId);
-    setApproveMessage(null);
-    setReconsiderMessage(el?.wrongReason ?? FALLBACK_WRONG_REASON);
-    window.setTimeout(() => setReconsiderMessage(null), 1500);
+    setApproveElementId(null);
+    setReconsiderElementId(elementId);
+    window.setTimeout(() => setReconsiderElementId(null), 2200);
   }, []);
 
-  // v5.1.12: positive counterpart surfaced on correct placements.
   const triggerApprove = useCallback((elementId: string) => {
-    const el = ELEMENTS.find((e) => e.id === elementId);
-    if (!el) return;
-    setReconsiderMessage(null);
-    setApproveMessage(el.successReason);
-    window.setTimeout(() => setApproveMessage(null), 1500);
+    setReconsiderElementId(null);
+    setApproveElementId(elementId);
+    window.setTimeout(() => setApproveElementId(null), 2200);
   }, []);
 
 
@@ -597,33 +609,47 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   return (
     <div className="allen-planning-game">
 
-      {/* HUD strip — v5.1.11 diegetic surveyor instruments ──────── */}
+      {/* HUD strip — diegetic instruments, v5.1.13 plainspoken labels.
+         Period flavour is preserved via the sundial glyph, brass pips
+         and Roman numerals; the labels themselves now say what they do. */}
       <div className="game-hud" role="status" aria-live="polite">
         <div className="game-hud-stat hud-survey-days">
-          <div className="game-hud-label">SURVEY DAYS</div>
-          <div className={`game-hud-val${timeWarn ? ' game-time-warn' : ''}`}>
+          <div className="game-hud-label">DAYS LEFT</div>
+          <div
+            className={`game-hud-val${timeWarn ? ' game-time-warn' : ''}`}
+            aria-label={`${surveyDaysLeft} days remaining`}
+          >
             <span className="hud-sundial" aria-hidden="true">◐</span>
             <span className="hud-num">{surveyDaysLeft}</span>
           </div>
         </div>
         <div className="game-hud-stat hud-resolve">
-          <div className="game-hud-label">ALLEN'S RESOLVE</div>
+          <div className="game-hud-label">MISTAKES LEFT</div>
           <div
             className={`game-hud-val hud-pips${movesWarn ? ' game-time-warn' : ''}`}
-            aria-label={`${movesLeft} of ${STARTING_MOVES}`}
+            aria-label={`${movesLeft} mistakes remaining`}
           >
             <span className="hud-pips-filled">{'●'.repeat(movesLeft)}</span>
             <span className="hud-pips-empty">{'○'.repeat(Math.max(0, STARTING_MOVES - movesLeft))}</span>
           </div>
         </div>
         <div className="game-hud-stat hud-journal">
-          <div className="game-hud-label">JOURNAL</div>
-          <div className="game-hud-val hud-roman">
+          <div className="game-hud-label">CLUES SOLVED</div>
+          <div
+            className="game-hud-val hud-roman"
+            aria-label={`${cluesEarned} of ${totalCluesAvailable} clues solved`}
+          >
             <span className="hud-roman-num">{toRoman(cluesEarned)}</span>
             <span className="hud-roman-sep">/</span>
             <span className="hud-roman-total">{toRoman(totalCluesAvailable)}</span>
           </div>
         </div>
+      </div>
+
+      {/* v5.1.13: one-line explainer under the HUD so the player knows
+         what each stat means without leaving the game. */}
+      <div className="game-hud-helper">
+        Time to plan · Wrong placements remaining · Tale clues solved
       </div>
 
       {/* Map + zones — v5.1.11 ink topography ──────────────────── */}
@@ -894,7 +920,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
           )}
           {quizResult === 'wrong' && (
             <div className="allen-quiz-feedback wrong">
-              Not quite — lost 1 day. Try again.
+              Not quite — that costs 1 mistake. Try again.
             </div>
           )}
         </div>
@@ -935,7 +961,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
                   {/* v5.1.12: card now shows WHY this element exists in
                       the town plan, not just a one-line hint. */}
                   <div className="allen-element-blurb">{el.rationale}</div>
-                  {isPlaced && <div className="allen-element-check" aria-hidden="true">✓ PLACED</div>}
+                  {isPlaced && <div className="allen-element-check" aria-hidden="true">✓ ADDED</div>}
                   {isLocked && <div className="allen-element-locked" aria-hidden="true">TAP TO UNLOCK</div>}
                 </div>
               );
@@ -1004,36 +1030,65 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
         </>
       )}
 
-      {/* Drag ghost */}
-      {draggingElementId && dragPos && (
+      {/* v5.1.13 drag ghost — portaled to document.body to bypass any
+         ancestor containing-block context. Positioned via transform so
+         there's a single source of truth for placement, eliminating the
+         left/top + transform conflict that produced the visible offset. */}
+      {draggingElementId && dragPos && createPortal(
         <div
           className="allen-drag-ghost"
-          style={{ left: dragPos.x, top: dragPos.y }}
+          style={{
+            transform: `translate3d(${dragPos.x}px, ${dragPos.y}px, 0) translate(-50%, -50%)`,
+          }}
           aria-hidden="true"
         >
           ◈ {ELEMENTS.find((e) => e.id === draggingElementId)?.label}
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* v5.1.11: parchment slide-up on wrong placement.
-         v5.1.12: quote is now element-specific. */}
-      {reconsiderMessage && (
-        <div className="allen-reconsider" role="status" aria-live="polite">
-          <div className="allen-reconsider-eyebrow">ALLEN RECONSIDERS</div>
-          <div className="allen-reconsider-quote">{reconsiderMessage}</div>
-        </div>
-      )}
+      {/* v5.1.13: clearer placement feedback. Both parchments now show
+         the element name in big Bebas Neue + the reason in readable
+         Playfair Display, so it reads as a confirmation, not poetry. */}
+      {(() => {
+        const reconsiderEl = reconsiderElementId
+          ? ELEMENTS.find((e) => e.id === reconsiderElementId)
+          : null;
+        if (!reconsiderEl) return null;
+        const reason = reconsiderEl.wrongReason
+          .replace(/^["“]|["”]$/g, '')
+          .replace(/\.$/, '') + '.';
+        return (
+          <div className="allen-reconsider" role="status" aria-live="polite">
+            <div className="allen-reconsider-eyebrow">
+              <span className="allen-reconsider-mark" aria-hidden="true">✕</span>
+              ALLEN RECONSIDERS
+            </div>
+            <div className="allen-reconsider-name">{reconsiderEl.label}</div>
+            <div className="allen-reconsider-quote">{reason}</div>
+          </div>
+        );
+      })()}
 
-      {/* v5.1.12: positive parchment on correct placement, surfacing
-         the element's own successReason so the player learns why the
-         site works. Auto-dismisses; suppressed on the final placement
-         so it doesn't overlap the medallion transition. */}
-      {approveMessage && (
-        <div className="allen-approve" role="status" aria-live="polite">
-          <div className="allen-approve-eyebrow">ALLEN APPROVES</div>
-          <div className="allen-approve-quote">{approveMessage}</div>
-        </div>
-      )}
+      {(() => {
+        const approveEl = approveElementId
+          ? ELEMENTS.find((e) => e.id === approveElementId)
+          : null;
+        if (!approveEl) return null;
+        const reason = approveEl.successReason
+          .replace(/^["“]|["”]$/g, '')
+          .replace(/\.$/, '') + '.';
+        return (
+          <div className="allen-approve" role="status" aria-live="polite">
+            <div className="allen-approve-eyebrow">
+              <span className="allen-approve-mark" aria-hidden="true">✓</span>
+              ADDED TO TOWN PLAN
+            </div>
+            <div className="allen-approve-name">{approveEl.label}</div>
+            <div className="allen-approve-quote">{reason}</div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

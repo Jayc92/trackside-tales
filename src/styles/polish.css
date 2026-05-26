@@ -426,16 +426,31 @@
   animation: timerWarn 0.6s ease infinite;
 }
 
-/* Roman numerals for JOURNAL */
+/* Roman numerals for CLUES SOLVED */
 .hud-roman {
   font-family: 'IM Fell English', 'Playfair Display', serif;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-style: italic;
   gap: 0.18rem;
 }
 .hud-roman-num   { color: #F1E7D7; }
 .hud-roman-sep   { color: rgba(160, 120, 8, 0.4); }
-.hud-roman-total { color: rgba(224, 161, 90, 0.6); }
+.hud-roman-total { color: rgba(224, 161, 90, 0.7); }
+
+
+/* v5.1.13: one-line caption under the HUD strip. Tells the player what
+   each stat actually measures, so they don't have to infer it from
+   labels alone. Keeps period flavour by using small caps + brass tint. */
+.game-hud-helper {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.18em;
+  color: rgba(201, 130, 63, 0.7);
+  text-align: center;
+  margin-top: -0.4rem;
+  padding: 0.45rem 0.5rem 0;
+  line-height: 1.5;
+}
 
 
 /* ── Map + zones (v5.1.3) ────────────────────────────────────────── */
@@ -639,9 +654,10 @@
 .allen-element-blurb {
   font-family: 'Playfair Display', serif;
   font-style: italic;
-  font-size: 0.6rem;
-  line-height: 1.4;
-  color: var(--steam);
+  font-size: 0.66rem;
+  line-height: 1.5;
+  /* v5.1.13: lifted from var(--steam) for readability on small cards */
+  color: #DCC9A8;
 }
 .allen-element-check {
   position: absolute;
@@ -661,15 +677,22 @@
 }
 
 
-/* ── Floating drag ghost (v5.1.6) ────────────────────────────────── */
+/* ── Floating drag ghost (v5.1.6, fixed in v5.1.13) ─────────────────
+   v5.1.13: removed the top:0/left:0 + transform conflict that produced
+   a visible left offset on some browsers. Position is now driven
+   entirely by an inline `transform: translate3d(x, y, 0) translate(-50%,
+   -50%)`. The component renders this via createPortal(document.body)
+   so it can't inherit any ancestor's containing-block context.
+   ──────────────────────────────────────────────────────────────────── */
 .allen-drag-ghost {
   position: fixed;
-  top: 0; left: 0;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  /* transform is set inline by the component */
   pointer-events: none;
-  z-index: 1000;
+  z-index: 9999;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   letter-spacing: 0.06em;
   color: #F1E7D7;
   background:
@@ -677,9 +700,10 @@
     rgba(26, 19, 12, 0.95);
   border: 1px solid rgba(224, 161, 90, 0.8);
   border-radius: 2px;
-  padding: 0.4rem 0.7rem;
+  padding: 0.45rem 0.8rem;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), 0 0 18px rgba(224, 161, 90, 0.35);
   white-space: nowrap;
+  will-change: transform;
 }
 
 
@@ -1216,18 +1240,41 @@
     rgba(224, 161, 90, 0.7) 50%, rgba(201, 130, 63, 0.5) 75%, transparent);
 }
 .allen-reconsider-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-family: 'Source Code Pro', monospace;
-  font-size: 0.4rem;
+  font-size: 0.46rem;
   letter-spacing: 0.32em;
   color: var(--ember);
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.25rem;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
+.allen-reconsider-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  border: 1px solid rgba(192, 78, 24, 0.6);
+  color: rgba(255, 180, 150, 0.95);
+  font-size: 0.6rem;
+  line-height: 1;
+}
+.allen-reconsider-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  color: #F1E7D7;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+}
 .allen-reconsider-quote {
-  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-family: 'Playfair Display', serif;
   font-style: italic;
-  font-size: 0.92rem;
-  line-height: 1.4;
+  font-size: 0.95rem;
+  line-height: 1.45;
   color: #F1E7D7;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
@@ -1241,24 +1288,34 @@
 }
 
 
-/* ── IM FELL English typography pass ──────────────────────────────
-   Period-correct serif for Tale-clue copy, journal quotes, and the
-   surveyor map footer. Adds a printed-page feel without breaking the
-   mobile readability of the rest of the UI.
+/* ── Typography — readable body, period flavour only on short labels ─
+   v5.1.13: pulled IM FELL English off body copy. It stays on short SVG
+   labels (map regions, surveyor footer) where the script feels right;
+   anywhere with multi-line text we use Playfair Display for legibility.
    ──────────────────────────────────────────────────────────────── */
 .allen-quiz-question,
 .allen-quiz-feedback,
 .allen-clues-item,
 .allen-next-unlock-hint {
-  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-family: 'Playfair Display', serif;
 }
 .allen-quiz-question {
-  font-size: 0.95rem;
-  line-height: 1.45;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  font-style: italic;
+}
+.allen-quiz-feedback {
+  font-style: italic;
 }
 .allen-clues-item {
-  font-size: 0.72rem;
-  line-height: 1.5;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  font-style: italic;
+  color: #DCC9A8; /* lifted contrast from var(--steam) for readability */
+}
+.allen-next-unlock-hint {
+  font-style: italic;
+  color: #B89A6A;
 }
 .allen-quiz-eyebrow,
 .allen-clues-label,
@@ -1336,18 +1393,42 @@
     rgba(255, 230, 180, 0.85) 50%, rgba(224, 161, 90, 0.6) 75%, transparent);
 }
 .allen-approve-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-family: 'Source Code Pro', monospace;
-  font-size: 0.4rem;
+  font-size: 0.46rem;
   letter-spacing: 0.32em;
   color: var(--gold);
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.25rem;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
+.allen-approve-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  border: 1px solid rgba(224, 161, 90, 0.7);
+  color: #E0A15A;
+  font-size: 0.6rem;
+  line-height: 1;
+  background: rgba(224, 161, 90, 0.12);
+}
+.allen-approve-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  color: #F1E7D7;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+}
 .allen-approve-quote {
-  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-family: 'Playfair Display', serif;
   font-style: italic;
-  font-size: 0.92rem;
-  line-height: 1.4;
+  font-size: 0.95rem;
+  line-height: 1.45;
   color: #F1E7D7;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
@@ -1388,10 +1469,10 @@
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
 }
 .allen-planning-text {
-  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-family: 'Playfair Display', serif;
   font-style: italic;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--parchment);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #F1E7D7;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 }
