@@ -273,24 +273,36 @@ export function GameOverlay({
     </div>
   );
 
-  const renderFail = () => (
-    <div className="game-fail active">
-      <div className="game-fail-mark">○</div>
-      <h3 className="game-fail-title">NOT QUITE</h3>
-      <p className="game-fail-msg">
-        Time ran out on this attempt. The grid still needs laying — give it
-        another pass.
-      </p>
-      <div className="game-success-btns">
-        <button type="button" className="game-start-btn" onClick={retryGame}>
-          TRY AGAIN
-        </button>
-        <button type="button" className="game-success-story-btn" onClick={onClose}>
-          SKIP
-        </button>
+  const renderFail = () => {
+    // v5.1.16: failure copy is now game-aware. The original draft
+    // hardcoded W.A. Lager grid language and assumed every fail came
+    // from running out of time. Both Packer (spike) and Wooden Match
+    // (match) can also fail from running out of mistakes, and neither
+    // is a "grid". Branch by config.type to match renderSuccess.
+    const failMsg =
+      config.type === 'grid'
+        ? 'The town plan isn\'t set yet — give it another pass.'
+        : config.type === 'spike'
+          ? 'The line isn\'t complete yet — give it another pass.'
+          : config.type === 'match'
+            ? 'The station is still dark — give it another pass.'
+            : 'The challenge isn\'t complete yet — give it another pass.';
+    return (
+      <div className="game-fail active">
+        <div className="game-fail-mark">○</div>
+        <h3 className="game-fail-title">NOT QUITE</h3>
+        <p className="game-fail-msg">{failMsg}</p>
+        <div className="game-success-btns">
+          <button type="button" className="game-start-btn" onClick={retryGame}>
+            TRY AGAIN
+          </button>
+          <button type="button" className="game-success-story-btn" onClick={onClose}>
+            SKIP
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div
