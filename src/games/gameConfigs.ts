@@ -167,20 +167,103 @@ export const PACKER_RAIL_GAME: GameConfig = {
   ],
 };
 
-// ── Wooden Match ─────────────────────────────────────────────────────────────
+// ── Wooden Match Station ────────────────────────────────────────────────────
+// v5.1.15: rebuilt from the old strike-the-match into a preservation-
+// decision puzzle. Five heritage artifacts. For each, the player picks
+// the right preservation action from four options. Correct → that
+// artifact's room lights amber. Wrong → "THE MATCH FALTERS" + 1 mistake.
+//
+// The mechanic is deliberately distinct from W.A. (spatial sorting) and
+// Packer (sequencing). Here it's curation: pick the right action for
+// each historic object. There's no separate unlock-quiz step — the
+// decisions ARE the quiz, interleaved with the gameplay.
 export const WOODEN_MATCH_GAME: GameConfig = {
   taleId: 'wooden-match',
   type: 'match',
   badgeKey: 'game:wooden-match',
-  title: 'STRIKE THE MATCH',
+  title: 'PRESERVE THE STATION LIGHT',
   instructions:
-    'The old station has been dark since 1967. Swipe across the strike strip to light a match — every strike lights one of the station lamps. Light all five.',
-  successTitle: 'STATION LIT',
+    "The old Wooden Match station has been dark since 1967. Walk the rooms by lantern light, decide what to do with each heritage piece, and bring the station back to life — without erasing what's there.",
+  successTitle: 'STATION RELIT',
   successMsg:
-    'The old station lights up again. A hundred and fifty years of footsteps, and the lamps are still on.',
+    "The lanterns are back on. A hundred and fifty years of footsteps, and the room remembers every one. The match holds.",
+
+  // Legacy single quiz preserved for type safety; the station game uses
+  // the per-artifact decisions in unlockQuestions instead.
   quizQuestion: 'When did the last scheduled passenger train depart the Bethlehem CNJ station?',
   quizOptions: ['August 18, 1967', 'December 12, 1970', 'March 3, 1975', 'June 11, 1955'],
   quizCorrectIndex: 0,
+
+  // v5.1.15: each entry is a per-artifact decision. elementId references
+  // an artifact in WoodenStationGame's ARTIFACTS array; the question is
+  // "what should we do with the [artifact]?"; options are 4 actions; the
+  // correctIndex picks the preservation-appropriate action.
+  unlockQuestions: [
+    {
+      elementId: 'lantern',
+      question: 'The brass station lantern over the platform door is dark. What should be done with it?',
+      options: [
+        'Replace it with a modern electric light',
+        'Light it with a fresh wick',
+        'Remove the lantern entirely',
+        'Paint the brass a brighter colour',
+      ],
+      correctIndex: 1,
+    },
+    {
+      elementId: 'bar',
+      question: 'The long pine bar is scarred from a century of glasses and forearms. What should be done with it?',
+      options: [
+        'Sand and re-varnish the original wood',
+        'Replace it with a modern bar',
+        'Paint it a new colour',
+        'Remove it entirely',
+      ],
+      correctIndex: 0,
+    },
+    {
+      elementId: 'window',
+      question: 'The leaded-glass trackside window has two cracks. What should be done with it?',
+      options: [
+        'Replace it with modern plate glass',
+        'Board it up permanently',
+        'Lead-seal the cracks, keep the glass',
+        'Remove the window altogether',
+      ],
+      correctIndex: 2,
+    },
+    {
+      elementId: 'floorboards',
+      question: 'The wide-plank pine floorboards are worn smooth by 150 years of footsteps. What should be done with them?',
+      options: [
+        'Tile over the floor',
+        'Sand the boards down to raw wood',
+        'Wax and seal the existing boards',
+        'Carpet the floor wall to wall',
+      ],
+      correctIndex: 2,
+    },
+    {
+      elementId: 'sign',
+      question: 'The cast-iron platform sign — WOODEN MATCH STATION — is weathered but legible. What should be done with it?',
+      options: [
+        'Replace it with a printed sign',
+        'Restore the patina, keep the original',
+        'Repaint it bright white',
+        'Remove the sign and store it away',
+      ],
+      correctIndex: 1,
+    },
+  ],
+
+  // Short preservation principles that guide every decision. Surfaced in
+  // the bottom Logic Clues panel.
+  logicClues: [
+    'Restore — don\'t replace. The original is the heritage.',
+    'Wear and patina are proof. Keep them visible.',
+    'Light the room with the same brass that lit it in 1868.',
+    'Every footstep matters. Preserve what carried them.',
+  ],
 };
 
 export const GAME_CONFIGS: GameConfig[] = [

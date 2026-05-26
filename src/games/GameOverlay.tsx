@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { GameConfig } from './gameConfigs';
 import { AllenTownPlanningGame } from './AllenTownPlanningGame';
 import { PackerRouteGame } from './PackerRouteGame';
+import { WoodenStationGame } from './WoodenStationGame';
 import { TsIcon } from '../components/TsIcon';
 
 // ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
@@ -66,9 +67,11 @@ export function GameOverlay({
   const handleGameWin = useCallback(() => {
     // v5.1.7+: planning game (grid) integrates its own unlock-quiz.
     // v5.1.14: Packer route game (spike) does the same — interleaved
-    // unlock quizzes per junction, no post-puzzle quiz needed. Both
-    // award the badge directly and go to the success medallion.
-    if (config.type === 'grid' || config.type === 'spike') {
+    // unlock quizzes per junction, no post-puzzle quiz needed.
+    // v5.1.15: Wooden Match station game (match) interleaves a
+    // preservation-decision quiz per artifact. All three award the
+    // badge directly and go to the success medallion.
+    if (config.type === 'grid' || config.type === 'spike' || config.type === 'match') {
       if (!alreadyEarned) onBadgeAwarded(config.badgeKey);
       setPhase('success');
       return;
@@ -146,9 +149,20 @@ export function GameOverlay({
         </div>
       );
     }
-    // Defensive: match games are still gated to COMING SOON. If the
-    // overlay is ever opened with a non-wired config (dev console, future
-    // regression) render a polite placeholder instead of broken UI.
+    if (config.type === 'match') {
+      // v5.1.15: Wooden Match preservation-decision puzzle.
+      return (
+        <div className="game-canvas-wrap game-canvas-planning">
+          <WoodenStationGame
+            config={config}
+            onWin={handleGameWin}
+            onLose={handleGameLose}
+            quizShowing={quizShowingRef.current}
+          />
+        </div>
+      );
+    }
+    // Defensive fallback for any future unwired type.
     return (
       <div className="game-canvas-wrap">
         <p className="game-instructions">
@@ -218,8 +232,10 @@ export function GameOverlay({
     <div className="game-success active">
       {/* v5.1.10: engraved medallion with ray burst + ribbon. The old
          .game-success-badge is replaced by a layered medallion only for
-         grid games; non-grid games keep their original simpler badge. */}
-      {config.type === 'grid' || config.type === 'spike' ? (
+         grid games; non-grid games keep their original simpler badge.
+         v5.1.15: match games (Wooden Match) get the medallion treatment
+         too, since their flow ends in the same direct-award path. */}
+      {config.type === 'grid' || config.type === 'spike' || config.type === 'match' ? (
         <div className="game-medallion" aria-hidden="true">
           <div className="game-medallion-rays" />
           <div className="game-medallion-ring-outer" />
@@ -243,7 +259,9 @@ export function GameOverlay({
           ? 'TOWN LAYOUT COMPLETE'
           : config.type === 'spike'
             ? 'LINE COMPLETE'
-            : 'BADGE EARNED'}
+            : config.type === 'match'
+              ? 'STATION RELIT'
+              : 'BADGE EARNED'}
       </div>
       <h3 className="game-success-title">{config.successTitle}</h3>
       <p className="game-success-msg">{config.successMsg}</p>

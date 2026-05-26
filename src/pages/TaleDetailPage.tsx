@@ -239,9 +239,14 @@ export function TaleDetailPage() {
              unchanged.
              ───────────────────────────────────────────────────────────── */}
           {gameConfig && (() => {
-            // v5.1.14: Packer Pilsner now enabled alongside W.A. Lager.
-            // Wooden Match still falls through to COMING SOON.
-            const gameEnabled = tale.id === 'wa-lager' || tale.id === 'packer-pils';
+            // v5.1.15: Wooden Match preservation-decision puzzle now
+            // enabled alongside W.A. Lager and Packer Pilsner. All
+            // three games are reachable; no more COMING SOON branch
+            // for the seeded tales.
+            const gameEnabled =
+              tale.id === 'wa-lager'
+              || tale.id === 'packer-pils'
+              || tale.id === 'wooden-match';
             const showAsEarned = hasGameBadge;
             const showAsActive = gameEnabled && !hasGameBadge;
             const showAsComingSoon = !gameEnabled && !hasGameBadge;

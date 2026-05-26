@@ -1587,3 +1587,198 @@
   color: #F1E7D7;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 }
+
+
+/* =====================================================================
+   v5.1.15 — Wooden Match Station preservation puzzle
+   ---------------------------------------------------------------------
+   Scoped under .wm-station-game. Reuses .allen-* layout primitives
+   (HUD, action bar, quiz overlay, parchment feedback, bottom panels).
+   The station-specific styles below cover only:
+     - the floor-plan map + room buttons
+     - the dim → amber glow transition on each room
+     - the lantern flame icon flicker
+     - small typographic tweaks for the preservation-decision overlay
+   ===================================================================== */
+
+.wm-floor-wrap {
+  /* Inherits .allen-map-wrap — already provides aspect ratio, border,
+     overflow, shadow. The dark interior is painted by the SVG fill. */
+  background: #0c0805;
+}
+
+/* Each room is an absolutely-positioned button on the floor plan.
+   By default it's dim — only the room frame and a faint icon are
+   visible, like a darkened doorway. When restored, it lights amber. */
+.wm-room {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  color: rgba(180, 140, 80, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.25rem;
+  cursor: pointer;
+  padding: 0.4rem 0.45rem;
+  transition: color 0.5s ease, transform 0.18s ease;
+  user-select: none;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+.wm-room:disabled { cursor: default; }
+.wm-room:hover:not(.lit):not(:disabled) {
+  transform: scale(1.02);
+  color: rgba(220, 175, 110, 0.7);
+}
+
+/* The dashed amber outline of a darkened room — present always so the
+   player can sense the room's shape, faintly visible against the dark. */
+.wm-room-frame {
+  position: absolute;
+  inset: 0;
+  border: 1px dashed rgba(201, 130, 63, 0.32);
+  border-radius: 3px;
+  pointer-events: none;
+  transition: border-color 0.5s ease, box-shadow 0.5s ease;
+}
+
+/* The amber glow that fills the room when it's been restored. Hidden
+   by default (opacity 0); fades in when .lit. Sits behind the icon. */
+.wm-room-glow {
+  position: absolute;
+  inset: 8%;
+  border-radius: 6px;
+  background: radial-gradient(ellipse at center,
+    rgba(255, 196, 100, 0.32) 0%,
+    rgba(224, 161, 90, 0.16) 45%,
+    transparent 78%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+/* Inline icon SVG — the heritage artifact. Brass on currentColor; the
+   color picks up from .wm-room. */
+.wm-room-art {
+  position: relative;
+  width: 56%;
+  max-width: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.wm-room-icon {
+  width: 100%;
+  height: auto;
+  color: inherit;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6));
+  transition: filter 0.5s ease;
+}
+
+/* The room's label — zone name + artifact, two stacked lines of small
+   monospace caps. Sits below the icon. Becomes more legible when lit. */
+.wm-room-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+  text-align: center;
+  line-height: 1.1;
+}
+.wm-room-zone {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.28em;
+  color: rgba(201, 130, 63, 0.55);
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+.wm-room-artifact {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: rgba(241, 231, 215, 0.55);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
+/* Lit state — room is restored. Color, glow, frame all bloom amber. */
+.wm-room.lit {
+  color: var(--gold);
+  cursor: default;
+  animation: wmRoomLight 0.7s ease-out;
+}
+.wm-room.lit .wm-room-glow { opacity: 1; }
+.wm-room.lit .wm-room-frame {
+  border-color: rgba(224, 161, 90, 0.7);
+  border-style: solid;
+  box-shadow:
+    inset 0 0 14px rgba(224, 161, 90, 0.18),
+    0 0 18px rgba(224, 161, 90, 0.22);
+}
+.wm-room.lit .wm-room-icon {
+  filter: drop-shadow(0 0 6px rgba(224, 161, 90, 0.7))
+          drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6));
+}
+.wm-room.lit .wm-room-zone     { color: var(--ember); }
+.wm-room.lit .wm-room-artifact { color: #F1E7D7; }
+
+/* Lantern flame inside the .wm-room-icon — only the lantern room renders
+   .wm-flame; gets a soft flicker when its room is lit. */
+.wm-room .wm-flame { opacity: 0; transition: opacity 0.6s ease; }
+.wm-room.lit .wm-flame {
+  opacity: 1;
+  animation: wmFlameFlicker 1.6s ease-in-out infinite alternate;
+}
+@keyframes wmFlameFlicker {
+  0%   { opacity: 0.85; transform: scale(0.92); }
+  100% { opacity: 1.0;  transform: scale(1.08); }
+}
+
+/* The room's restoration caption — short prose only on the lit state. */
+.wm-room-caption {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.15rem;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.6rem;
+  line-height: 1.3;
+  color: rgba(241, 231, 215, 0.85);
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+  max-width: 92%;
+}
+
+/* Hint state — pulsing amber outline for the next room when the
+   player taps DRAW LANTERN. */
+.wm-room.hinted .wm-room-frame {
+  border-color: rgba(224, 161, 90, 0.85);
+  animation: allenZonePulse 0.9s ease-in-out 3;
+}
+
+@keyframes wmRoomLight {
+  0%   { transform: scale(0.96); }
+  60%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* Centered hint copy under the floor plan when no quiz is open. */
+.wm-rooms-hint {
+  margin-top: 0.4rem;
+  color: #DCC9A8;
+  font-style: italic;
+}
+
+/* Preservation-decision overlay — same shell as the W.A. quiz overlay,
+   with the eyebrow ("PRESERVATION DECISION · BRASS LANTERN") allowed to
+   wrap onto two lines on narrow phones. */
+.wm-quiz-overlay .allen-quiz-eyebrow {
+  white-space: normal;
+  line-height: 1.3;
+}
+
