@@ -2272,3 +2272,158 @@
   .founders-progress-tier { font-size: 0.5rem; letter-spacing: 0.22em; }
   .passport-mark-name { font-size: 0.66rem; }
 }
+
+
+/* ================== v5.5 — Passport Book Payoff ==================
+   Adds: progress breakdown chips beneath the meter, top-of-stamp-book
+   celebration banner, and a slightly more "book page" feel to each
+   passport-entry (heritage rule + corner ornaments). All purely
+   additive — no v5.3 rules removed, no markup contracts changed. */
+
+/* Breakdown chips (3 Discovery · 2 Challenge · 1 of 3 Tales completed) */
+.founders-progress-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0.55rem 0 0.4rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(224,161,90,0.22);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: rgba(245,232,206,0.78);
+}
+.founders-progress-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28rem;
+}
+.founders-progress-chip-num {
+  font-family: 'Cinzel', 'Playfair Display', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold, #E0A15A);
+  line-height: 1;
+}
+.founders-progress-chip-of {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.62rem;
+  color: rgba(245,232,206,0.55);
+  letter-spacing: 0.04em;
+}
+.founders-progress-chip-lbl {
+  text-transform: uppercase;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  color: rgba(245,232,206,0.7);
+}
+.founders-progress-chip-sep {
+  color: rgba(224,161,90,0.4);
+  font-size: 0.7rem;
+  align-self: center;
+}
+
+/* Top-of-stamp-book celebration banner — same trigger as the per-entry
+   glow, surfaced again so the "Passport just updated" feeling lands
+   above the fold even before the user scrolls. Auto-fades with the
+   same 6.5s timeout (controlled by celebrateId state in the page). */
+.stamp-book-celebrate {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.7rem 0 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(224,161,90,0.7);
+  border-radius: 3px;
+  background:
+    linear-gradient(135deg, rgba(224,161,90,0.18), rgba(224,161,90,0.04));
+  box-shadow:
+    inset 0 0 0 1px rgba(245,232,206,0.06),
+    0 0 0 0 rgba(224,161,90,0.55);
+  animation: stampBookCelebratePulse 2.6s ease-out infinite;
+}
+.stamp-book-celebrate-spark {
+  color: var(--gold, #E0A15A);
+  font-size: 1.1rem;
+  line-height: 1;
+  text-shadow: 0 0 6px rgba(224,161,90,0.55);
+  animation: stampBookSparkSpin 4s linear infinite;
+}
+.stamp-book-celebrate-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.stamp-book-celebrate-copy strong {
+  font-family: 'Cinzel', 'Playfair Display', serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold, #E0A15A);
+}
+.stamp-book-celebrate-tale {
+  font-family: 'Crimson Text', 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.88rem;
+  color: rgba(245,232,206,0.88);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@keyframes stampBookCelebratePulse {
+  0%   { box-shadow: inset 0 0 0 1px rgba(245,232,206,0.06), 0 0 0 0 rgba(224,161,90,0.55); }
+  50%  { box-shadow: inset 0 0 0 1px rgba(245,232,206,0.1),  0 0 14px 0 rgba(224,161,90,0.45); }
+  100% { box-shadow: inset 0 0 0 1px rgba(245,232,206,0.06), 0 0 0 0 rgba(224,161,90,0.55); }
+}
+@keyframes stampBookSparkSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stamp-book-celebrate { animation: none; }
+  .stamp-book-celebrate-spark { animation: none; }
+}
+
+/* Light "book page" feel for each entry — top hairline rule + subtle
+   corner ornaments. Pure decoration; positioned absolutely so the
+   existing layout is untouched. */
+#page-profile .passport-entry { position: relative; }
+#page-profile .passport-entry::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 1.1rem; right: 1.1rem;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(224,161,90,0.22) 14%,
+    rgba(224,161,90,0.32) 50%,
+    rgba(224,161,90,0.22) 86%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+#page-profile .passport-entry:first-of-type::before { display: none; }
+#page-profile .passport-entry.complete::before {
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(224,161,90,0.45) 14%,
+    rgba(224,161,90,0.6)  50%,
+    rgba(224,161,90,0.45) 86%,
+    transparent 100%
+  );
+}
+
+/* Mobile: collapse the breakdown into two rows so labels stay readable. */
+@media (max-width: 420px) {
+  .founders-progress-breakdown { font-size: 0.62rem; gap: 0.35rem; }
+  .founders-progress-chip-num { font-size: 0.85rem; }
+  .founders-progress-chip-lbl { font-size: 0.5rem; letter-spacing: 0.13em; }
+  .stamp-book-celebrate { padding: 0.6rem 0.7rem; gap: 0.55rem; }
+  .stamp-book-celebrate-copy strong { font-size: 0.7rem; letter-spacing: 0.12em; }
+  .stamp-book-celebrate-tale { font-size: 0.78rem; }
+}

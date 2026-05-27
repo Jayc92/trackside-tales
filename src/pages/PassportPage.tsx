@@ -76,6 +76,10 @@ export function PassportPage() {
   // a calm Passport. Local mirror keeps the highlight on screen for a
   // beat after clearing the global signal.
   const [celebrateId, setCelebrateId] = useState<string | null>(state.lastEarnedGame);
+  const celebrateTale = useMemo(
+    () => (celebrateId ? tales.find((t) => t.id === celebrateId) || null : null),
+    [celebrateId, tales],
+  );
   const celebrateRowRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (state.lastEarnedGame) {
@@ -198,19 +202,37 @@ export function PassportPage() {
                 />
               ))}
             </div>
+            <div className="founders-progress-breakdown" aria-label="Marks breakdown">
+              <span className="founders-progress-chip">
+                <span className="founders-progress-chip-num">{scanCount}</span>
+                <span className="founders-progress-chip-lbl">Discovery</span>
+              </span>
+              <span className="founders-progress-chip-sep">·</span>
+              <span className="founders-progress-chip">
+                <span className="founders-progress-chip-num">{gameCount}</span>
+                <span className="founders-progress-chip-lbl">Challenge</span>
+              </span>
+              <span className="founders-progress-chip-sep">·</span>
+              <span className="founders-progress-chip">
+                <span className="founders-progress-chip-num">{fullyComplete}</span>
+                <span className="founders-progress-chip-of"> of </span>
+                <span className="founders-progress-chip-num">{tales.length}</span>
+                <span className="founders-progress-chip-lbl">Tales completed</span>
+              </span>
+            </div>
             <div className="founders-progress-foot">
               {nextTier ? (
                 <>
                   <span className="founders-progress-next">
-                    Next tier · {nextTier.label} at {nextTier.marks} Marks
+                    Next milestone · {nextTier.label} at {nextTier.marks} Marks
                   </span>
                   <span className="founders-progress-remain">
-                    {nextTier.marks - totalMarks} more to go · meter fills {tierProgressPct}%
+                    {nextTier.marks - totalMarks} more {nextTier.marks - totalMarks === 1 ? 'Mark' : 'Marks'} to go
                   </span>
                 </>
               ) : (
                 <span className="founders-progress-next">
-                  Founders Tier reached · all current Marks collected
+                  Founders milestone reached · every current Mark collected
                 </span>
               )}
             </div>
@@ -234,6 +256,19 @@ export function PassportPage() {
               <span className="stamp-book-key-dot full" /> Challenge Badge · completed
             </span>
           </div>
+          {/* v5.5: top-of-stamp-book celebration banner. Same celebrateId
+             signal as the per-entry glow below, surfaced again here so the
+             "your Passport just updated" feeling lands the moment the
+             page paints — not only when the user scrolls to the entry. */}
+          {celebrateId && celebrateTale && (
+            <div className="stamp-book-celebrate" role="status" aria-live="polite">
+              <span className="stamp-book-celebrate-spark" aria-hidden="true">✦</span>
+              <span className="stamp-book-celebrate-copy">
+                <strong>New Challenge Badge stamped.</strong>
+                <span className="stamp-book-celebrate-tale">{celebrateTale.gameBadge.title} · {celebrateTale.name}</span>
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="passport-section">
@@ -375,8 +410,8 @@ export function PassportPage() {
           )}
 
           <div className="passport-note">
-            Your Passport keeps every Tale you've collected — even after a beer rotates off tap.
-            Once it's yours, it's yours forever. Collector rewards are being built around future Trackside releases.
+            Your Passport keeps every Tale you've collected — even after a beer rotates off tap. Once it's yours, it's yours forever.
+            Collector rewards are being built around future Trackside releases · Founders progress will carry forward.
           </div>
         </div>
 
