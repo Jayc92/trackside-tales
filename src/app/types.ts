@@ -127,6 +127,10 @@ export interface AppState {
   collectedDates: Record<string, string>;
   currentTale: Tale | null;
   currentGame: GameConfig | null;
+  /** v5.3 — transient (non-persisted) signal: id of the most recently
+   *  awarded game badge in this session, so the Passport can surface a
+   *  "newly earned" treatment. Cleared after the Passport reads it. */
+  lastEarnedGame: string | null;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)

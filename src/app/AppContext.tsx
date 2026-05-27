@@ -9,6 +9,7 @@ const initialState: AppState = {
   page: 'home',
   currentTale: null,
   currentGame: null,
+  lastEarnedGame: null,
   ...loadState(),
 };
 
@@ -20,6 +21,7 @@ type Action =
   | { type: 'UNLOCK'; id: string }
   | { type: 'AWARD_SCAN_BADGE'; id: string }
   | { type: 'AWARD_GAME_BADGE'; id: string }
+  | { type: 'CLEAR_LAST_EARNED' }
   | { type: 'SET_USER'; user: { name: string; email?: string } | null }
   | { type: 'RECORD_DATE'; id: string }
   | { type: 'RESET_DEMO' };
@@ -46,9 +48,22 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'AWARD_GAME_BADGE': {
       const gameBadges = new Set(state.gameBadges);
+      // v5.3: only mark as "newly earned" the first time per session —
+      // re-entering the overlay on a tale that's already complete must
+      // not re-trigger the Passport's celebration treatment. The
+      // alreadyEarned guard in GameOverlay should prevent re-award, but
+      // this is defense-in-depth.
+      const wasFresh = !state.gameBadges.has(action.id);
       gameBadges.add(action.id);
-      return { ...state, gameBadges };
+      return {
+        ...state,
+        gameBadges,
+        lastEarnedGame: wasFresh ? action.id : state.lastEarnedGame,
+      };
     }
+
+    case 'CLEAR_LAST_EARNED':
+      return { ...state, lastEarnedGame: null };
 
     case 'SET_USER':
       return { ...state, user: action.user };
@@ -71,6 +86,7 @@ function reducer(state: AppState, action: Action): AppState {
         scanBadges: new Set(),
         gameBadges: new Set(),
         collectedDates: {},
+        lastEarnedGame: null,
       };
 
     default:
@@ -88,6 +104,7 @@ interface AppContextValue {
   unlockTale: (id: string) => void;
   awardScanBadge: (id: string) => void;
   awardGameBadge: (id: string) => void;
+  clearLastEarned: () => void;
   setUser: (user: { name: string; email?: string } | null) => void;
   recordDate: (id: string) => void;
   resetDemo: () => void;
@@ -136,6 +153,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const awardScanBadge  = useCallback((id: string) => dispatch({ type: 'AWARD_SCAN_BADGE', id }),  []);
   const awardGameBadge  = useCallback((id: string) => dispatch({ type: 'AWARD_GAME_BADGE', id }),  []);
+  const clearLastEarned = useCallback(() => dispatch({ type: 'CLEAR_LAST_EARNED' }), []);
   const setUser         = useCallback((user: { name: string } | null) => dispatch({ type: 'SET_USER', user }), []);
   const recordDate      = useCallback((id: string) => dispatch({ type: 'RECORD_DATE', id }), []);
   const resetDemo       = useCallback(() => dispatch({ type: 'RESET_DEMO' }), []);
@@ -149,6 +167,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       unlockTale,
       awardScanBadge,
       awardGameBadge,
+      clearLastEarned,
       setUser,
       recordDate,
       resetDemo,
