@@ -34,7 +34,7 @@ function getPassportId(joined: string | null): string {
 // Tales the ladder maxes at 6 marks (3 scan + 3 game). The ladder is
 // future-proofed: when more tales ship, the same tier thresholds extend.
 const TIERS = [
-  { tier: 0, label: 'PREVIEW',   marks: 0 },
+  { tier: 0, label: 'GUEST',     marks: 0 },
   { tier: 1, label: 'EXPLORER',  marks: 2 },
   { tier: 2, label: 'COLLECTOR', marks: 4 },
   { tier: 3, label: 'FOUNDERS',  marks: 6 },
@@ -104,7 +104,7 @@ export function PassportPage() {
   };
 
   const handleReset = () => {
-    if (!confirm('Reset preview progress? This clears all unlocked Tales and earned Marks.')) return;
+    if (!confirm('Reset Passport? This clears all unlocked Tales and earned Marks.')) return;
     resetDemo();
     try { localStorage.removeItem(LS_HOW_DISMISSED); } catch (_) { /* ignore */ }
   };
@@ -131,7 +131,7 @@ export function PassportPage() {
               <div className="passport-id-info">
                 <div className="passport-id-name">{nickname}</div>
                 <div className="passport-id-status">{currentTier.label} TIER · TRACKSIDE TALES</div>
-                <div className="passport-id-since">Founders preview · early access</div>
+                <div className="passport-id-since">Founders Passport · early collector</div>
               </div>
             </div>
             <div className="passport-id-stats">
@@ -366,22 +366,22 @@ export function PassportPage() {
             <div className="passport-empty-state">
               <div className="passport-empty-title">Your Passport is ready</div>
               <div className="passport-empty-body">
-                Scan a Trackside can — or pick a Preview Tale on the Scan page — to earn your first Mark and start collecting stories.
+                Scan a Trackside can — or choose a Featured Tale on the Scan page — to earn your first Mark and start collecting stories.
               </div>
               <button className="passport-empty-cta" onClick={() => nav('scan')}>
-                START A PREVIEW UNLOCK
+                UNLOCK YOUR FIRST TALE
               </button>
             </div>
           )}
 
           <div className="passport-note">
             Your Passport keeps every Tale you've collected — even after a beer rotates off tap.
-            Once it's yours, it's yours forever. Founders Tier rewards roll out as the program goes live.
+            Once it's yours, it's yours forever. Collector rewards are being built around future Trackside releases.
           </div>
         </div>
 
         <button className="reset-preview-btn" onClick={handleReset}>
-          RESET PREVIEW PROGRESS
+          RESET PASSPORT
         </button>
 
       </div>

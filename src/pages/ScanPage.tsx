@@ -40,7 +40,7 @@ export function ScanPage() {
     const result = parseQRCode(raw);
     if (!result) {
       setScanTitle('QR NOT RECOGNIZED');
-      setScanSub("That code isn't a Trackside Tale. Try a Trackside can or pick a Preview Tale below.");
+      setScanSub("That code isn't a Trackside Tale. Try a Trackside can or choose a Featured Tale below.");
       return;
     }
     handleDemoUnlock(result.taleId);
@@ -118,17 +118,14 @@ export function ScanPage() {
       <h2 className="scan-title" id="scan-title">{scanTitle}</h2>
       <p className="scan-sub" id="scan-sub">{scanSub}</p>
 
-      {/* v5.0.1+ polish: demo dispatch comes BEFORE the camera-error
-         panel so mobile users on a 375px screen see a working CTA above
-         the fold even when permissions block the camera. The retry
-         affordance still sits below for users who actually want to grant
-         camera access. */}
-      {/* v5.2: reframe — this is no longer "demo mode". For preview
-         guests it's the intentional way to try a Tale without a physical
-         can. Same handler, same unlock contract, friendlier framing. */}
+      {/* v5.4: Featured Tales — the intentional tap-to-unlock path.
+         Sits above the camera-error panel so a guest always has a
+         working CTA above the fold, even on small screens or when
+         camera permissions are blocked. Same unlock contract as a real
+         can scan — id passes through unlockTale + awardScanBadge. */}
       <div className="demo-quick-scan" id="demo-fallback">
-        <div className="demo-quick-scan-label" id="demo-label">PREVIEW UNLOCK · TRY A TALE</div>
-        <p className="demo-preview-hint">No can on hand? Tap a Preview Tale to see how a real scan unlocks the story and stamps your Passport.</p>
+        <div className="demo-quick-scan-label" id="demo-label">FEATURED TALES · TAP TO UNLOCK</div>
+        <p className="demo-preview-hint">Choose a Tale below to unlock the story and earn your Discovery Mark.</p>
         <div className="demo-quick-scan-buttons" id="demo-buttons">
           {tales.map((tale) => (
             <button
@@ -146,7 +143,7 @@ export function ScanPage() {
       {scannerError && (
         <div className="camera-error" id="camera-error">
           <strong>CAMERA UNAVAILABLE</strong><br />
-          <span>Pick a Preview Tale above, or grant camera access and retry.</span>
+          <span>Camera access is unavailable. Choose a Featured Tale above to continue, or grant camera access and retry.</span>
           <br />
           <button
             className="camera-retry-btn"

@@ -274,7 +274,7 @@ export function TaleDetailPage() {
                 <p className="minigame-context">
                   {showAsEarned && 'Both Marks are now in your Trackside Passport. The Tale is fully collected.'}
                   {showAsActive && 'Put the Tale into motion. Use what you just read to earn this Tale’s second Mark.'}
-                  {showAsComingSoon && 'This Tale’s challenge is being rebuilt for the next preview.'}
+                  {showAsComingSoon && 'This Tale’s challenge is on the way — coming soon.'}
                 </p>
                 {(showAsActive || showAsEarned) && (
                   <p className="minigame-sub">{tale.game.instructions}</p>

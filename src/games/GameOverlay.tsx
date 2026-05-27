@@ -166,7 +166,7 @@ export function GameOverlay({
     return (
       <div className="game-canvas-wrap">
         <p className="game-instructions">
-          This challenge is being rebuilt for the next preview.
+          This challenge is on the way — coming soon.
         </p>
         <button type="button" className="game-start-btn" onClick={onClose}>
           CLOSE
