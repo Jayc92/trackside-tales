@@ -1,21 +1,31 @@
 import React, { useState } from 'react';
 import { useApp } from '../app/AppContext';
-import { TsIcon } from '../components/TsIcon';
 import { GameOverlay } from '../games/GameOverlay';
 import { getGameConfig } from '../games/gameConfigs';
 import { formatDate } from '../services/badgeService';
 
-// ================== TALE DETAIL PAGE (== golden #page-story) ==================
-// Mirrors the golden v4.6.1 renderStory() output exactly:
-//   .story-nav (back-btn + story-progress)
-//   .story-hero (story-hero-bg, story-hero-top with back + badge chip,
-//                story-hero-year watermark, story-hero-artifact + can,
-//                story-hero-content with story-chapter + story-title + tagline)
-//   .story-identity-strip
-//   .story-body: portrait-card + bar-summary + story-meta + story-para/pullquote
-//                + collectible-section + minigame-section
-// Locked state renders the locked-only hero + story-locked-state CTA card.
-// Game/scan/unlock logic is preserved untouched.
+// ================== TALE DETAIL PAGE (v6.2 — Structured Design Pass) ==================
+// Visual rewrite for the unlocked branch only. The locked branch and all
+// game / scan / unlock logic are preserved verbatim.
+//
+// Hard constraints honored:
+//   • Badge keys, localStorage keys, Supabase paths, scan/unlock logic, and
+//     routing all unchanged.
+//   • awardGameBadge wiring through GameOverlay unchanged.
+//   • currentTale comes from app state — no data-shape changes.
+
+// Pick a milestone-level icon glyph from the timeline event title. These
+// are inert visual cues only; they have no effect on logic or routing.
+function timelineGlyph(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes('born'))         return '☉';
+  if (t.includes('purchase'))     return '✦';
+  if (t.includes('chief'))        return '⚖';
+  if (t.includes('found'))        return '⌂';
+  if (t.includes('liberty'))      return '☼';
+  if (t.includes('died') || t.includes('dies')) return '✦';
+  return '◈';
+}
 
 export function TaleDetailPage() {
   const { state, awardGameBadge, nav } = useApp();
@@ -32,7 +42,7 @@ export function TaleDetailPage() {
 
   const handleBadgeAwarded = (_badgeKey: string) => awardGameBadge(tale.id);
 
-  // ── Locked state ───────────────────────────────────────────────────────────
+  // ── Locked state (unchanged from v5.x — no structural rewrite) ─────────────
   if (!isUnlocked) {
     return (
       <div className="page active" id="page-story">
@@ -68,35 +78,55 @@ export function TaleDetailPage() {
     );
   }
 
-  // ── Unlocked state ─────────────────────────────────────────────────────────
+  // ── Unlocked state (v6.2 visual rewrite) ───────────────────────────────────
+  const gameEnabled =
+    tale.id === 'wa-lager'
+    || tale.id === 'packer-pils'
+    || tale.id === 'wooden-match';
+  const showAsEarned     = hasGameBadge;
+  const showAsActive     = gameEnabled && !hasGameBadge;
+  const showAsComingSoon = !gameEnabled && !hasGameBadge;
+  const totalMarks       = (hasScanBadge ? 1 : 0) + (hasGameBadge ? 1 : 0);
+
   return (
-    <div className="page active" id="page-story">
+    <div className="page active ts-tale-screen" id="page-story">
 
-      <div className="story-nav">
-        <button className="back-btn" onClick={() => nav('tales')}>Back to Tales</button>
-        <div className="story-progress">
-          <span className="story-progress-dot" />
-          <span>UNLOCKED</span>
+      {/* ============== 2. PARCHMENT HERO ============== */}
+      <section className="ts-tale-hero" aria-label={`${tale.name} hero`}>
+        <div className="ts-tale-hero__sidetab" aria-hidden="true">
+          <span className="ts-tale-hero__sidetab-text">
+            TRACKSIDE №{tale.year} · RAILWAY ARCHIVE
+          </span>
         </div>
-      </div>
 
-      <div id="story-content">
+        <div className="ts-tale-hero__top">
+          <button className="ts-tale-hero__back" onClick={() => nav('tales')}>
+            ← Back to Tales
+          </button>
+          <span className={`ts-tale-hero__pill${hasScanBadge ? '' : ' ts-tale-hero__pill--locked'}`}>
+            {hasScanBadge ? '🔒 UNLOCKED' : '🔒 SEALED'}
+          </span>
+        </div>
 
-        <div className="story-hero">
-          <div className="story-hero-bg" />
-          <div className="story-hero-top">
-            <button className="story-back-btn" onClick={() => nav('tales')}>← TALES</button>
-            <div className={`story-hero-badge-chip ${hasScanBadge ? 'earned' : 'locked'}`}>
-              {hasScanBadge ? '✓ SCANNED' : '◈ LOCKED'}
+        <div className="ts-tale-hero__year" aria-hidden="true">{tale.year}</div>
+
+        <div className="ts-tale-hero__body">
+          <div>
+            <div className="ts-tale-hero__eyebrow">{tale.chapter}</div>
+            <h1
+              className="ts-tale-hero__title"
+              dangerouslySetInnerHTML={{ __html: tale.title.replace('\n', '<br>') }}
+            />
+            <hr className="ts-tale-hero__rule" />
+            <div className="ts-tale-hero__meta">
+              {tale.name} · {tale.style} · ABV {tale.abv} · IBU {tale.ibu}
             </div>
           </div>
-          <div className="story-hero-year">{tale.year}</div>
           {tale.image && (
-            <div className="story-hero-artifact">
+            <div className="ts-tale-hero__can">
               <img
                 src={tale.image}
                 alt={tale.name}
-                className="story-hero-can"
                 onError={(e) => {
                   const parent = e.currentTarget.parentElement;
                   if (parent) parent.style.display = 'none';
@@ -104,218 +134,198 @@ export function TaleDetailPage() {
               />
             </div>
           )}
-          <div className="story-hero-content">
-            <div className="story-chapter">{tale.chapter}</div>
-            <h1
-              className="story-title"
-              dangerouslySetInnerHTML={{ __html: tale.title.replace('\n', '<br>') }}
-            />
-            <div className="story-hero-tagline">{tale.person.name} · {tale.person.dates}</div>
-          </div>
         </div>
+      </section>
 
-        <div className="story-identity-strip">
+      {/* ============== 3. SUMMARY PANEL ============== */}
+      <section className="ts-tale-summary" aria-label="Tale summary">
+        {tale.image && (
+          <div className="ts-tale-summary__art">
+            <img src={tale.image} alt="" />
+          </div>
+        )}
+        <div className="ts-tale-summary__body">
           <div>
-            <div className="story-beer-label">{tale.style} · ABV {tale.abv} · IBU {tale.ibu}</div>
-            <div className="story-beer-name">{tale.name}</div>
+            <h2 className="ts-tale-summary__name">{tale.person.name}</h2>
+            <div className="ts-tale-summary__dates">{tale.person.dates}</div>
           </div>
-          <div className="story-unlocked-badge">✓ UNLOCKED</div>
-        </div>
-
-        <div className="story-body">
-
-          <div className="portrait-card">
-            <div className={`portrait-frame${tale.image ? ' has-image' : ''}`}>
-              {tale.image ? (
-                <img
-                  className="portrait-frame-img"
-                  src={tale.image}
-                  alt={`${tale.name} can`}
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    const parent = img.parentElement;
-                    img.remove();
-                    if (parent) parent.classList.remove('has-image');
-                  }}
-                />
-              ) : (
-                <div className="portrait-inner">
-                  <div className="portrait-initials">
-                    {tale.person.initials || tale.person.name.split(' ').map((p) => p[0]).join('.')}
-                  </div>
-                  <div className="portrait-caption">PORTRAIT</div>
-                </div>
-              )}
-            </div>
-            <div className="portrait-bio">
-              <div className="portrait-name">{tale.person.name}</div>
-              <div className="portrait-dates">{tale.person.dates}</div>
-              <div className="portrait-desc">{tale.personBio}</div>
-            </div>
-          </div>
+          <p className="ts-tale-summary__bio">{tale.personBio}</p>
 
           {tale.barSummary && (
-            <div className="bar-summary">
-              <div className="bar-summary-row">
-                <div className="bar-summary-label">WHO</div>
-                <div className="bar-summary-text">{tale.barSummary.who}</div>
+            <div className="ts-tale-summary__facts">
+              <div className="ts-tale-fact">
+                <span className="ts-tale-fact__lbl">WHO</span>
+                <span className="ts-tale-fact__txt">{tale.barSummary.who}</span>
               </div>
-              <div className="bar-summary-row">
-                <div className="bar-summary-label">WHY HERE</div>
-                <div className="bar-summary-text">{tale.barSummary.why}</div>
+              <div className="ts-tale-fact">
+                <span className="ts-tale-fact__lbl">WHY HERE</span>
+                <span className="ts-tale-fact__txt">{tale.barSummary.why}</span>
               </div>
-              <div className="bar-summary-row">
-                <div className="bar-summary-label">THE BEER</div>
-                <div className="bar-summary-text">{tale.barSummary.beer}</div>
+              <div className="ts-tale-fact">
+                <span className="ts-tale-fact__lbl">THE BEER</span>
+                <span className="ts-tale-fact__txt">{tale.barSummary.beer}</span>
               </div>
             </div>
           )}
-
-          <div className="story-meta">
-            <span>{tale.tapStatus === 'on-tap' ? 'ON TAP' : 'RETIRED TALE'}</span>
-            {collected && <span>COLLECTED {formatDate(collected).toUpperCase()}</span>}
-            {tale.retiredDate && <span>RETIRED {formatDate(tale.retiredDate).toUpperCase()}</span>}
-          </div>
-
-          {tale.story.map((block, i) => {
-            if (block.type === 'quote') {
-              return (
-                <div key={i} className="story-pullquote">
-                  <p>"{block.text}"</p>
-                  {block.cite && <cite>{block.cite}</cite>}
-                </div>
-              );
-            }
-            return (
-              <p
-                key={i}
-                className="story-para"
-                dangerouslySetInnerHTML={{ __html: block.text || '' }}
-              />
-            );
-          })}
-
-          {tale.timeline && tale.timeline.length > 0 && (
-            <div className="timeline-section">
-              <div className="timeline-label">A LIFE IN THE VALLEY</div>
-              {tale.timeline.map((event, i) => (
-                <div key={i} className={`timeline-event${event.major ? ' major' : ''}`}>
-                  <div className="timeline-year">{event.year}</div>
-                  <div className="timeline-event-content">
-                    <div className="timeline-event-title">{event.event}</div>
-                    {event.detail && <div className="timeline-event-detail">{event.detail}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* v5.2: section divider that frames the rest of the page as
-             the "earn your marks" half of the Tale. Two-badge model:
-             one for discovery (scan), one for completion (game). The
-             eyebrow makes that hierarchy explicit so the plaque + game
-             CTA below read as a deliberate sequence, not loose buttons. */}
-          <div className="story-marks-divider" aria-hidden="true">
-            <span className="story-marks-rule" />
-            <span className="story-marks-label">EVERY TALE HAS TWO MARKS</span>
-            <span className="story-marks-rule" />
-          </div>
-          <p className="story-marks-intro">
-            One mark for <strong>discovering</strong> the Tale. One mark for <strong>completing</strong> its challenge. Both go in your Trackside Passport.
-          </p>
-
-          <div className="collectible-section">
-            <div className="collectible-label">MARK 1 OF 2 · DISCOVERY</div>
-            <h3 className="collectible-title">{tale.scanBadge.title}</h3>
-            <div className="collectible-icon">
-              <TsIcon icon={tale.scanBadge.icon} className="ts-icon-lg" />
-            </div>
-            {tale.scanBadge.desc && (
-              <p className="collectible-desc">{tale.scanBadge.desc}</p>
-            )}
-            <button className={`collectible-btn${hasScanBadge ? ' claimed' : ''}`} disabled>
-              {hasScanBadge ? '✓ EARNED · IN YOUR PASSPORT' : 'EARNED ON SCAN'}
-            </button>
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────────
-             v5.1.2: W.A. Lager is the first playable mini-game. The CTA
-             is enabled only when tale.id === 'wa-lager' AND the user
-             hasn't already earned the game badge. Packer Pilsner and
-             Wooden Match continue to show the polished COMING SOON
-             placeholder from v5.0.1.
-
-             Earned game badges from any prior session keep their ✓
-             EARNED state — passport progress is never visually rewound.
-
-             Award path: the game's quiz panel calls onBadgeAwarded only
-             after a correct answer. badge/localStorage keys are
-             unchanged.
-             ───────────────────────────────────────────────────────────── */}
-          {gameConfig && (() => {
-            // v5.1.15: Wooden Match preservation-decision puzzle now
-            // enabled alongside W.A. Lager and Packer Pilsner. All
-            // three games are reachable; no more COMING SOON branch
-            // for the seeded tales.
-            const gameEnabled =
-              tale.id === 'wa-lager'
-              || tale.id === 'packer-pils'
-              || tale.id === 'wooden-match';
-            const showAsEarned = hasGameBadge;
-            const showAsActive = gameEnabled && !hasGameBadge;
-            const showAsComingSoon = !gameEnabled && !hasGameBadge;
-
-            return (
-              <div className="minigame-section">
-                <div className="minigame-label">MARK 2 OF 2 · INTERACTIVE CHALLENGE</div>
-                <h3 className="minigame-title">
-                  {showAsComingSoon ? 'Interactive Challenge' : tale.game.title}
-                </h3>
-                <p className="minigame-context">
-                  {showAsEarned && 'Both Marks are now in your Trackside Passport. The Tale is fully collected.'}
-                  {showAsActive && 'Put the Tale into motion. Use what you just read to earn this Tale’s second Mark.'}
-                  {showAsComingSoon && 'This Tale’s challenge is on the way — coming soon.'}
-                </p>
-                {(showAsActive || showAsEarned) && (
-                  <p className="minigame-sub">{tale.game.instructions}</p>
-                )}
-                {showAsActive && (
-                  <button
-                    className="minigame-btn"
-                    onClick={() => setShowGame(true)}
-                  >
-                    CONTINUE THE TALE — PLAY
-                  </button>
-                )}
-                {showAsEarned && (
-                  <button
-                    className="minigame-btn completed"
-                    disabled
-                    aria-disabled="true"
-                  >
-                    ✓ {tale.gameBadge.title.toUpperCase()} — EARNED
-                  </button>
-                )}
-                {showAsComingSoon && (
-                  <button
-                    className="minigame-btn"
-                    disabled
-                    aria-disabled="true"
-                  >
-                    COMING SOON
-                  </button>
-                )}
-              </div>
-            );
-          })()}
-
         </div>
+      </section>
+
+      {/* ============== 4. STORY + MAP ============== */}
+      <div className="ts-tale-story-row">
+        <article className="ts-tale-story">
+          <div className="ts-tale-story__meta">
+            <span className="ts-tale-story__meta-dot" aria-hidden="true" />
+            {tale.tapStatus === 'on-tap' ? 'ON TAP' : 'RETIRED TALE'}
+            {collected && <span> · COLLECTED {formatDate(collected).toUpperCase()}</span>}
+            {tale.retiredDate && <span> · RETIRED {formatDate(tale.retiredDate).toUpperCase()}</span>}
+          </div>
+          <div className="ts-tale-story__body">
+            {tale.story.map((block, i) => {
+              if (block.type === 'quote') {
+                return (
+                  <blockquote key={i} className="ts-tale-story__quote">
+                    <span>"{block.text}"</span>
+                    {block.cite && (
+                      <cite className="ts-tale-story__quote-cite">{block.cite}</cite>
+                    )}
+                  </blockquote>
+                );
+              }
+              return (
+                <p
+                  key={i}
+                  dangerouslySetInnerHTML={{ __html: block.text || '' }}
+                />
+              );
+            })}
+          </div>
+        </article>
+
+        <section className="ts-tale-map" aria-label={tale.mapTitle}>
+          <div className="ts-tale-map__top">
+            <span className="ts-tale-map__title">{tale.mapTitle.toUpperCase()}</span>
+            <button type="button" className="ts-tale-map__btn">● LIVE MAP</button>
+          </div>
+          <div className="ts-tale-map__canvas">
+            {tale.pins.slice(0, 4).map((pin) => (
+              <div
+                key={pin.label}
+                className="ts-tale-map__pin"
+                style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+              >
+                <span className="ts-tale-map__pin-dot" aria-hidden="true" />
+                <span className="ts-tale-map__pin-label">{pin.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="ts-tale-map__foot">{tale.year} GRID REFERENCE</div>
+        </section>
       </div>
 
-      {/* v5.1.2: overlay is now reachable from W.A. Lager only. For other
-         tales the CTA is still disabled, so this branch never fires for
-         them. onBadgeAwarded routes through AppContext.awardGameBadge,
-         which uses the existing 'game:<id>' badge-key contract. */}
+      {/* ============== 5. TIMELINE ============== */}
+      {tale.timeline && tale.timeline.length > 0 && (
+        <section className="ts-timeline" aria-label="Historical timeline">
+          <div className="ts-timeline__label">A LIFE IN THE VALLEY</div>
+          <div className="ts-timeline__rail">
+            {tale.timeline.map((ev, i) => (
+              <div
+                key={i}
+                className={`ts-timeline__node${ev.major ? ' ts-timeline__node--major' : ''}`}
+              >
+                <div className="ts-timeline__medallion" aria-hidden="true">
+                  {timelineGlyph(ev.event)}
+                </div>
+                <div className="ts-timeline__year">{ev.year}</div>
+                <div className="ts-timeline__title">{ev.event}</div>
+                {ev.detail && <div className="ts-timeline__detail">{ev.detail}</div>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ============== 6. BADGE + INTERACTIVE CHALLENGE ============== */}
+      <div className="ts-tale-action-row">
+        <aside className="ts-tale-badge-card" aria-label="Discovery badge">
+          <div className="ts-tale-badge-card__count">BADGE {totalMarks}/2</div>
+          <h3 className="ts-tale-badge-card__title">{tale.scanBadge.title}</h3>
+          <div
+            className={`ts-tale-badge-card__medallion${hasScanBadge ? '' : ' ts-tale-badge-card__locked'}`}
+            aria-hidden="true"
+          >
+            <span className="ts-tale-badge-card__medallion-icon">◈</span>
+            <span className="ts-tale-badge-card__medallion-year">{tale.year}</span>
+          </div>
+        </aside>
+
+        <section className="ts-tale-challenge" aria-label="Interactive challenge">
+          <div className="ts-tale-challenge__eyebrow">INTERACTIVE CHALLENGE</div>
+          <h3 className="ts-tale-challenge__title">
+            {showAsComingSoon ? 'Interactive Challenge' : tale.game.title}
+          </h3>
+          <p className="ts-tale-challenge__copy">
+            {showAsEarned     && 'Both Marks are now in your Trackside Passport. The Tale is fully collected.'}
+            {showAsActive     && 'Complete this short challenge to earn the second badge for this Tale.'}
+            {showAsComingSoon && "This Tale's challenge is on the way — coming soon."}
+          </p>
+          <button
+            type="button"
+            className="ts-tale-challenge__primary"
+            onClick={() => showAsActive && setShowGame(true)}
+            disabled={!showAsActive}
+            aria-disabled={!showAsActive}
+          >
+            {showAsEarned     && '✓ CHALLENGE COMPLETE'}
+            {showAsActive     && '▶ PLAY TO EARN · ▦'}
+            {showAsComingSoon && 'COMING SOON'}
+          </button>
+          <div className="ts-tale-challenge__row">
+            <button type="button" className="ts-tale-challenge__btn">▶ WATCH INTRO</button>
+            <button type="button" className="ts-tale-challenge__btn">↗ SHARE TALE</button>
+          </div>
+        </section>
+      </div>
+
+      {/* ============== 7. NEXT STEP ============== */}
+      <section className="ts-next-step" aria-label="Next step">
+        <div className="ts-next-step__art" aria-hidden="true">
+          <span className="ts-next-step__art-mark">◈</span>
+          <span>TRACKSIDE</span>
+          <span>PASSPORT</span>
+        </div>
+        <div className="ts-next-step__body">
+          <div className="ts-next-step__eyebrow">NEXT STEP</div>
+          <h3 className="ts-next-step__title">
+            {showAsEarned ? 'TALE FULLY COLLECTED' : 'EARN THE SECOND BADGE'}
+          </h3>
+          <p className="ts-next-step__copy">
+            {showAsEarned
+              ? 'Both Marks are stamped in your Passport. Visit your Passport to admire the spread.'
+              : 'Complete the mini-game to finish this Passport page.'}
+          </p>
+          <div className="ts-next-step__btns">
+            <button
+              type="button"
+              className="ts-next-step__primary"
+              onClick={() => showAsActive && setShowGame(true)}
+              disabled={!showAsActive}
+              aria-disabled={!showAsActive}
+            >
+              {showAsEarned     && '✓ MINI-GAME COMPLETE'}
+              {showAsActive     && '🎮 PLAY MINI-GAME'}
+              {showAsComingSoon && 'MINI-GAME COMING SOON'}
+            </button>
+            <button
+              type="button"
+              className="ts-next-step__secondary"
+              onClick={() => nav('passport')}
+            >
+              📖 VIEW PASSPORT
+            </button>
+          </div>
+        </div>
+      </section>
+
       {showGame && gameConfig && (
         <GameOverlay
           config={gameConfig}
