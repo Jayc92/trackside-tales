@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { parseQRCode } from '../services/qrValidation';
+import { validateQrRemote } from '../services/qrValidationRemote';
+import { setLatestQrReceipt } from '../services/qrReceiptStore';
 import { Tale } from '../app/types';
 
 // ================== SCAN PAGE (v6.4 — Structured Design Pass) ==================
@@ -15,6 +17,19 @@ import { Tale } from '../app/types';
 //   • Featured Tales rows route through the same handleDemoUnlock as a real
 //     scan, so badge keys and unlock paths are identical.
 //   • startScanner / stopScanner mount/unmount lifecycle preserved.
+//
+// ADMIN-v6.7: enrichment-only remote QR validation hook.
+//   • parseQRCode is still the source of truth for the unlock decision —
+//     locally-valid scans always unlock, regardless of remote state.
+//   • After the local unlock dispatches, we fire (no await) a call to
+//     validateQrRemote. On success, the signed receipt lands in the
+//     in-memory qrReceiptStore for ADMIN-v6.8's log-events to consume.
+//   • Remote failure / null is silent. No UI change, no unlock rollback,
+//     no localStorage/badge-key mutation.
+//   • The Featured-Tales button rows do NOT trigger remote validation —
+//     they have no scanned `code` value (their canonical code would have
+//     to be reconstructed, which would muddy demo behavior). They keep
+//     the existing offline unlock contract verbatim.
 
 declare const Html5Qrcode: unknown;
 
@@ -126,7 +141,7 @@ function ScanFallbackPanel() {
 
 // ================== SCAN PAGE ROOT ==================
 export function ScanPage() {
-  const { state, tales, unlockTale, awardScanBadge, navToTale } = useApp();
+  const { state, tales, guestId, unlockTale, awardScanBadge, navToTale } = useApp();
   const [scanning, setScanning]     = useState(false);
   const [scannerError, setScanErr]  = useState(false);
   const [scanTitle, setScanTitle]   = useState('POINT AT A TRACKSIDE CAN');
@@ -144,15 +159,50 @@ export function ScanPage() {
     navToTale(tale);
   }, [tales, state.unlocked, unlockTale, awardScanBadge, navToTale]);
 
+  // ADMIN-v6.7 — fire-and-forget remote enrichment.
+  //
+  // Called only after the local parseQRCode + unlock path has already
+  // run (or about to run on the same tick). Returns immediately; the
+  // promise resolves out of band. On success the receipt lands in
+  // qrReceiptStore for ADMIN-v6.8 to consume; on failure or when the
+  // flag is off, validateQrRemote returns null and we silently skip.
+  //
+  // No throw can escape this function — `validateQrRemote` is already
+  // wrapped, but the .then().catch() here is belt-and-suspenders so a
+  // future helper change can never bubble into the unlock flow.
+  const captureRemoteReceipt = useCallback((raw: string) => {
+    void validateQrRemote(raw, guestId, 'scan')
+      .then((result) => {
+        if (!result || result.ok !== true) return;
+        setLatestQrReceipt({
+          taleSlug:   result.taleSlug,
+          qrCodeId:   result.qrCodeId,
+          receipt:    result.receipt,
+          receiptExp: result.receiptExp,
+          source:     'scan',
+          capturedAt: Date.now(),
+        });
+      })
+      .catch((err) => {
+        console.warn('[trackside] validate-qr enrichment skipped', err);
+      });
+  }, [guestId]);
+
   const processCode = useCallback((raw: string) => {
     const result = parseQRCode(raw);
     if (!result) {
+      // Local parse is the source of truth for the unlock decision.
+      // Remote validation does NOT rescue unrecognized codes in v6.7.
       setScanTitle('QR NOT RECOGNIZED');
       setScanSub("That code isn't a Trackside Tale. Try a Trackside can or choose a Featured Tale below.");
       return;
     }
     handleDemoUnlock(result.taleId);
-  }, [handleDemoUnlock]);
+    // Enrichment fires after the local unlock has dispatched. The
+    // unlock UI is already committed at this point; whatever happens
+    // on the network can't roll it back.
+    captureRemoteReceipt(raw);
+  }, [handleDemoUnlock, captureRemoteReceipt]);
 
   const startScanner = useCallback(async () => {
     if (typeof Html5Qrcode === 'undefined') {
