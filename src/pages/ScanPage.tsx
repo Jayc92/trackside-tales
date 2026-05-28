@@ -1,22 +1,130 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { parseQRCode } from '../services/qrValidation';
+import { Tale } from '../app/types';
 
-// ================== SCAN PAGE (== golden #page-scan) ==================
-// Mirrors the golden v4.6.1 #page-scan structure:
-//   .scan-viewport with .scan-live-chip, #qr-reader, .scan-corners,
-//   .scan-corners-b, .scan-line, .scan-can (placeholder when camera idle)
-//   .scan-title  /  .scan-sub
-//   .camera-error (hidden by default; shown when scanner fails to start)
-//   .demo-quick-scan with .demo-quick-scan-label + .demo-quick-scan-buttons
-//   filled with .demo-quick-btn rows
-// QR / unlock / scan logic preserved untouched — only markup classes were brought
-// in line with the golden so the existing scan-page CSS lights up.
+// ================== SCAN PAGE (v6.4 — Structured Design Pass) ==================
+// Visual rewrite to match the v6.0 reference. Scan / unlock / camera lifecycle
+// logic is preserved verbatim — only markup + classes were brought in line
+// with the design system.
+//
+// Hard constraints honored:
+//   • Html5Qrcode mounting target #qr-reader unchanged.
+//   • parseQRCode + handleDemoUnlock contract (unlockTale + awardScanBadge +
+//     navToTale) unchanged.
+//   • Featured Tales rows route through the same handleDemoUnlock as a real
+//     scan, so badge keys and unlock paths are identical.
+//   • startScanner / stopScanner mount/unmount lifecycle preserved.
 
 declare const Html5Qrcode: unknown;
 
 const QR_READER_ID = 'qr-reader';
 
+// ---- Scanner frame (camera area, reticle, plaques) -------------------------
+interface ScannerFrameProps {
+  scanning: boolean;
+  scannerError: boolean;
+}
+function ScannerFrame({ scanning, scannerError }: ScannerFrameProps) {
+  const status = scannerError
+    ? 'CAMERA UNAVAILABLE'
+    : scanning
+      ? 'LIVE · CAMERA'
+      : 'CAMERA READY';
+  const dotMod = scannerError ? ' ts-scan-plaque__dot--err' : '';
+  return (
+    <div className="ts-scan-frame">
+      {/* Outer brass corner ornaments */}
+      <span className="ts-scan-frame__ornament ts-scan-frame__ornament--tl" aria-hidden="true" />
+      <span className="ts-scan-frame__ornament ts-scan-frame__ornament--tr" aria-hidden="true" />
+      <span className="ts-scan-frame__ornament ts-scan-frame__ornament--bl" aria-hidden="true" />
+      <span className="ts-scan-frame__ornament ts-scan-frame__ornament--br" aria-hidden="true" />
+
+      {/* Top floating plaque — CAMERA READY */}
+      <div className="ts-scan-plaque ts-scan-plaque--top">
+        <span className={`ts-scan-plaque__dot${dotMod}`} aria-hidden="true" />
+        {status}
+      </div>
+
+      {/* Camera viewport — Html5Qrcode injects video into #qr-reader */}
+      <div className="ts-scan-frame__viewport">
+        <div id={QR_READER_ID} />
+
+        {/* Idle placeholder: stylized can on warm taproom-glow background */}
+        {!scanning && (
+          <div className="ts-scan-can" aria-hidden="true">
+            <div className="ts-scan-can__shape">
+              <div className="ts-scan-can__mark">
+                TRACKSIDE<br />TALES
+              </div>
+            </div>
+            <div className="ts-scan-can__name">EST. 2026</div>
+          </div>
+        )}
+
+        {/* Reticle corner brackets */}
+        <div className="ts-scan-reticle" aria-hidden="true">
+          <span className="ts-scan-reticle__corner ts-scan-reticle__corner--tl" />
+          <span className="ts-scan-reticle__corner ts-scan-reticle__corner--tr" />
+          <span className="ts-scan-reticle__corner ts-scan-reticle__corner--bl" />
+          <span className="ts-scan-reticle__corner ts-scan-reticle__corner--br" />
+        </div>
+
+        {/* Animated sweep line */}
+        <div className="ts-scan-sweep" aria-hidden="true" />
+      </div>
+
+      {/* Bottom floating plaque — SCAN TO UNLOCK */}
+      <div className="ts-scan-plaque ts-scan-plaque--bot">
+        ⊕ SCAN TO UNLOCK
+      </div>
+    </div>
+  );
+}
+
+// ---- Featured Tale row -----------------------------------------------------
+interface FeaturedTaleRowProps {
+  tale: Tale;
+  index: number;
+  unlocked: boolean;
+  onSelect: (taleId: string) => void;
+}
+function FeaturedTaleRow({ tale, index, unlocked, onSelect }: FeaturedTaleRowProps) {
+  return (
+    <button
+      type="button"
+      className={`ts-scan-row${unlocked ? ' ts-scan-row--unlocked' : ''}`}
+      onClick={() => onSelect(tale.id)}
+      aria-label={`Unlock ${tale.name} — ${tale.person.name}`}
+    >
+      <span className="ts-scan-row__num" aria-hidden="true">{index + 1}</span>
+      <span className="ts-scan-row__title">
+        <strong>{tale.name}</strong>{' '}
+        <span className="ts-scan-row__title-sub">— {tale.person.name}</span>
+      </span>
+      <span className="ts-scan-row__arrow" aria-hidden="true">→</span>
+    </button>
+  );
+}
+
+// ---- Can't-scan-right-now fallback panel -----------------------------------
+function ScanFallbackPanel() {
+  return (
+    <aside className="ts-scan-fallback" aria-label="Manual preview">
+      <div className="ts-scan-fallback__seal" aria-hidden="true">
+        <span className="ts-scan-fallback__seal-glyph">◈</span>
+        TRACKSIDE<br />PREVIEW<br />ANYTIME
+      </div>
+      <div className="ts-scan-fallback__body">
+        <div className="ts-scan-fallback__title">CAN'T SCAN RIGHT NOW?</div>
+        <div className="ts-scan-fallback__copy">Select a Tale to preview.</div>
+      </div>
+      <span className="ts-scan-fallback__watermark" aria-hidden="true">⚙</span>
+    </aside>
+  );
+}
+
+// ================== SCAN PAGE ROOT ==================
 export function ScanPage() {
   const { state, tales, unlockTale, awardScanBadge, navToTale } = useApp();
   const [scanning, setScanning]     = useState(false);
@@ -79,11 +187,8 @@ export function ScanPage() {
     setScanning(false);
   }, []);
 
-  // Auto-start once on mount; auto-stop on unmount. The Vite app only mounts
-  // ScanPage while it is the active route, so this is the natural place to
-  // attach/release the camera. We intentionally exclude startScanner/stopScanner
-  // from deps to avoid re-running on every state change (the callbacks are
-  // stable in effect — they reference current closures via React state).
+  // Auto-start once on mount; auto-stop on unmount. Lifecycle preserved
+  // verbatim from v5.x — see prior comment.
   const startedRef = useRef(false);
   useEffect(() => {
     if (state.page !== 'scan') {
@@ -99,54 +204,59 @@ export function ScanPage() {
   }, [state.page]);
 
   return (
-    <div className="page active" id="page-scan">
+    <div className="page active ts-scan-screen" id="page-scan">
 
-      <div className="scan-viewport">
-        <div className={`scan-live-chip${scanning ? ' active' : ''}`} id="scan-live-chip">LIVE · CAMERA</div>
-        <div id={QR_READER_ID} />
-        <div className="scan-corners" />
-        <div className="scan-corners-b" />
-        <div className="scan-line" />
-        {!scanning && (
-          <div className="scan-can" id="scan-placeholder">
-            <div className="scan-can-sweep" />
-            <div className="scan-can-name">TRACKSIDE<br />TALES</div>
-          </div>
-        )}
+      {/* ============== 1. SCANNER FRAME ============== */}
+      <ScannerFrame scanning={scanning} scannerError={scannerError} />
+
+      {/* ============== 2. INSTRUCTION BLOCK ============== */}
+      <div className="ts-scan-instructions">
+        <h2 className="ts-scan-instructions__title">
+          {scanTitle}
+        </h2>
+        <p className="ts-scan-instructions__copy">
+          <span className="ts-scan-instructions__star" aria-hidden="true">✦</span>
+          {scanSub}
+          <span className="ts-scan-instructions__star" aria-hidden="true">✦</span>
+        </p>
       </div>
 
-      <h2 className="scan-title" id="scan-title">{scanTitle}</h2>
-      <p className="scan-sub" id="scan-sub">{scanSub}</p>
-
-      {/* v5.4: Featured Tales — the intentional tap-to-unlock path.
-         Sits above the camera-error panel so a guest always has a
-         working CTA above the fold, even on small screens or when
-         camera permissions are blocked. Same unlock contract as a real
-         can scan — id passes through unlockTale + awardScanBadge. */}
-      <div className="demo-quick-scan" id="demo-fallback">
-        <div className="demo-quick-scan-label" id="demo-label">FEATURED TALES · TAP TO UNLOCK</div>
-        <p className="demo-preview-hint">Choose a Tale below to unlock the story and earn your Discovery Mark.</p>
-        <div className="demo-quick-scan-buttons" id="demo-buttons">
-          {tales.map((tale) => (
-            <button
+      {/* ============== 3. FEATURED TALES ============== */}
+      {/* Same unlock contract as a real can scan — id passes through
+         unlockTale + awardScanBadge. Visual presentation only changed. */}
+      <div className="ts-scan-featured" aria-label="Featured Tales — tap to unlock">
+        <div className="ts-scan-featured__header">
+          <span className="ts-scan-featured__rule" aria-hidden="true" />
+          <span className="ts-scan-featured__label">FEATURED TALES · TAP TO UNLOCK</span>
+          <span className="ts-scan-featured__rule" aria-hidden="true" />
+        </div>
+        <div className="ts-scan-featured__rows">
+          {tales.map((tale, idx) => (
+            <FeaturedTaleRow
               key={tale.id}
-              className="demo-quick-btn"
-              onClick={() => handleDemoUnlock(tale.id)}
-            >
-              <span>{tale.name} — {tale.person.name}</span>
-              <span className="demo-quick-btn-arrow">→</span>
-            </button>
+              tale={tale}
+              index={idx}
+              unlocked={state.unlocked.has(tale.id)}
+              onSelect={handleDemoUnlock}
+            />
           ))}
         </div>
       </div>
 
+      {/* ============== 4. CAN'T SCAN PANEL ============== */}
+      <ScanFallbackPanel />
+
+      {/* ============== 5. CAMERA ERROR (conditional) ============== */}
       {scannerError && (
-        <div className="camera-error" id="camera-error">
-          <strong>CAMERA UNAVAILABLE</strong><br />
-          <span>Camera access is unavailable. Choose a Featured Tale above to continue, or grant camera access and retry.</span>
-          <br />
+        <div className="ts-scan-error" role="alert">
+          <div className="ts-scan-error__title">CAMERA UNAVAILABLE</div>
+          <div className="ts-scan-error__copy">
+            Camera access is unavailable. Choose a Featured Tale above to continue,
+            or grant camera access and retry.
+          </div>
           <button
-            className="camera-retry-btn"
+            type="button"
+            className="ts-scan-error__retry"
             onClick={() => { setScanErr(false); startScanner(); }}
           >
             TRY CAMERA AGAIN
