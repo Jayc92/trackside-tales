@@ -6,6 +6,21 @@ export const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL      ?? '';
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 export const USE_REMOTE_CONTENT = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
+// ADMIN-v6.6 — server-side QR validation (validate-qr edge function).
+// Deliberately separate from USE_REMOTE_CONTENT: remote content can be
+// safely on while QR validation stays off (e.g., during admin staging
+// before the edge function is deployed). Defaults to OFF and only
+// flips on when the deploy explicitly opts in via env.
+//
+// Wiring is not yet present in ScanPage — this flag exists so the
+// helper in src/services/qrValidationRemote.ts has something to gate
+// on once v6.7 wires it into the scan flow.
+export const USE_REMOTE_QR_VALIDATION = Boolean(
+  SUPABASE_URL &&
+  SUPABASE_ANON_KEY &&
+  import.meta.env.VITE_USE_REMOTE_QR_VALIDATION === 'true'
+);
+
 // ---- Fetch helper ----
 export async function supabaseFetch(
   table: string,
