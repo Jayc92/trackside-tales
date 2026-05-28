@@ -1,0 +1,819 @@
+/* =====================================================================
+   Trackside Tales — Structured Design Language v1.0
+   =====================================================================
+
+   FOUNDATION-ONLY pass. This file is purely ADDITIVE:
+     • All tokens are namespaced --ts-*
+     • All classes are namespaced .ts-*
+     • Nothing in app.css / polish.css is overridden, removed, or renamed
+     • No existing page or component is restyled by importing this file
+
+   Future screen-by-screen polish passes will adopt these classes
+   incrementally (bottom nav → list cards → tale detail → unlock modal →
+   passport → game shell → individual games), so existing v5.x pages
+   continue to render exactly as they do today until they're explicitly
+   migrated.
+
+   See the full brief in the v1.0 design document. The components below
+   map 1:1 to the named items in that brief.
+   ===================================================================== */
+
+
+/* =====================================================================
+   1. DESIGN TOKENS
+   ===================================================================== */
+:root {
+
+  /* ---- 1.1 Color: charcoal foundation ---- */
+  --ts-color-bg:        #0E0C09;
+  --ts-color-bg-soft:   #15110D;
+  --ts-color-bg-panel:  #1B1510;
+  --ts-color-bg-deep:   #100C09;
+
+  /* ---- 1.2 Color: antique brass (lines/icons/labels) ---- */
+  --ts-color-brass:      #B8863B;
+  --ts-color-brass-soft: #8E672E;
+  --ts-color-brass-dim:  #5E4524;
+  --ts-color-brass-line:        rgba(184, 134, 59, 0.45);
+  --ts-color-brass-line-soft:   rgba(184, 134, 59, 0.22);
+  --ts-color-brass-line-faint:  rgba(184, 134, 59, 0.10);
+
+  /* ---- 1.3 Color: burnished copper (CTAs / active only) ---- */
+  --ts-color-copper:        #A65324;
+  --ts-color-copper-bright: #C56A2B;
+  --ts-color-copper-dark:   #6E3119;
+  --ts-color-copper-glow:   rgba(197, 106, 43, 0.42);
+
+  /* ---- 1.4 Color: aged parchment (archive moments only) ---- */
+  --ts-color-parchment:        #D8C49A;
+  --ts-color-parchment-soft:   #C4AE82;
+  --ts-color-parchment-dark:   #9A8054;
+  --ts-color-ink:              #2B2116;
+
+  /* ---- 1.5 Color: text ---- */
+  --ts-color-text:           #E8D8B0;  /* warm ivory primary */
+  --ts-color-text-secondary: #B89B68;  /* brass-tan */
+  --ts-color-text-muted:     #7C6747;  /* metadata */
+  --ts-color-text-on-dark:   #E8D8B0;
+  --ts-color-text-on-parch:  #241B12;
+  --ts-color-text-on-copper: #160D08;
+
+  /* ---- 1.6 Color: state ---- */
+  --ts-color-success: #8FA35A;  /* old-ledger green, not neon */
+  --ts-color-warning: #D09A3E;
+  --ts-color-error:   #8F3F2C;  /* stamped red, not bright */
+  --ts-color-locked:  #6C5A3D;
+
+  /* ---- 1.7 Spacing scale (4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48) ---- */
+  --ts-space-1:   4px;
+  --ts-space-2:   8px;
+  --ts-space-3:  12px;
+  --ts-space-4:  16px;
+  --ts-space-5:  20px;
+  --ts-space-6:  24px;
+  --ts-space-8:  32px;
+  --ts-space-10: 40px;
+  --ts-space-12: 48px;
+
+  /* ---- 1.8 Radii ---- */
+  --ts-radius-sm: 6px;
+  --ts-radius-md: 10px;
+  --ts-radius-lg: 14px;
+  --ts-radius-xl: 18px;
+  --ts-radius-pill: 999px;
+
+  /* ---- 1.9 Typography ---- */
+  --ts-font-display: 'Cinzel', 'Playfair Display', 'Times New Roman', serif;
+  --ts-font-label:   'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --ts-font-body:    'Crimson Text', 'Playfair Display', Georgia, serif;
+  --ts-font-ui:      -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+
+  --ts-letter-display: 0.05em;
+  --ts-letter-label:   0.18em;
+
+  /* ---- 1.10 Motion ---- */
+  --ts-motion-fast:       120ms;
+  --ts-motion-base:       220ms;
+  --ts-motion-slow:       420ms;
+  --ts-motion-ceremonial: 700ms;
+  --ts-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ts-ease-stamp:    cubic-bezier(0.15, 0.9, 0.2, 1.25);
+
+  /* ---- 1.11 Layout ---- */
+  --ts-shell-max:       430px;     /* one-handed mobile target */
+  --ts-tap-target-min:  44px;
+  --ts-bottom-nav-h:    64px;
+  --ts-page-pad-bot:    104px;     /* keeps CTAs above fixed bottom nav */
+
+  /* ---- 1.12 Shadows ---- */
+  --ts-shadow-card:
+    inset 0 0 0 1px rgba(255, 220, 150, 0.04),
+    0 12px 30px rgba(0, 0, 0, 0.35);
+  --ts-shadow-plaque:
+    inset 0 0 0 1px rgba(255, 220, 150, 0.06),
+    0 18px 38px rgba(0, 0, 0, 0.45);
+  --ts-shadow-parchment:
+    inset 0 0 24px rgba(80, 45, 20, 0.18),
+    0 12px 30px rgba(0, 0, 0, 0.35);
+  --ts-shadow-copper-glow:
+    0 0 0 1px rgba(255, 190, 90, 0.28),
+    0 6px 18px var(--ts-color-copper-glow);
+}
+
+
+/* =====================================================================
+   2. TYPOGRAPHY ROLES
+   Three roles only: display, label, body.
+   ===================================================================== */
+.ts-type-display-xl {
+  font-family: var(--ts-font-display);
+  font-size: 40px;
+  line-height: 0.95;
+  letter-spacing: var(--ts-letter-display);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.ts-type-display-lg {
+  font-family: var(--ts-font-display);
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: var(--ts-letter-display);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.ts-type-display-md {
+  font-family: var(--ts-font-display);
+  font-size: 20px;
+  line-height: 1.05;
+  letter-spacing: var(--ts-letter-display);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.ts-type-label {
+  font-family: var(--ts-font-label);
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: var(--ts-letter-label);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.ts-type-label-sm {
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: var(--ts-letter-label);
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--ts-color-text-secondary);
+}
+.ts-type-body {
+  font-family: var(--ts-font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+.ts-type-body-sm {
+  font-family: var(--ts-font-body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.ts-type-caption {
+  font-family: var(--ts-font-label);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ts-color-text-muted);
+}
+
+
+/* =====================================================================
+   3. APP SHELL + LAYOUT
+   ===================================================================== */
+.ts-app-shell {
+  max-width: var(--ts-shell-max);
+  margin: 0 auto;
+  background: var(--ts-color-bg);
+  color: var(--ts-color-text);
+  min-height: 100dvh;
+  position: relative;
+}
+
+.ts-page {
+  padding: var(--ts-space-5) var(--ts-space-4) var(--ts-page-pad-bot);
+}
+.ts-page--dense {
+  padding: var(--ts-space-4) var(--ts-space-3) var(--ts-page-pad-bot);
+}
+
+
+/* =====================================================================
+   4. PAGE HEADER + SECTION HEADER
+   ===================================================================== */
+.ts-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-2);
+  margin-bottom: var(--ts-space-6);
+}
+.ts-page-header__eyebrow {
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ts-color-brass);
+}
+.ts-page-header__title {
+  font-family: var(--ts-font-display);
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: var(--ts-letter-display);
+  text-transform: uppercase;
+  color: var(--ts-color-text);
+  font-weight: 800;
+  margin: 0;
+}
+.ts-page-header__sub {
+  font-family: var(--ts-font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ts-color-text-secondary);
+}
+
+.ts-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ts-space-3);
+  margin-bottom: var(--ts-space-3);
+}
+.ts-section-header__title {
+  font-family: var(--ts-font-label);
+  font-size: 12px;
+  letter-spacing: var(--ts-letter-label);
+  text-transform: uppercase;
+  color: var(--ts-color-brass);
+}
+.ts-section-header__meta {
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--ts-color-text-muted);
+}
+
+
+/* =====================================================================
+   5. PANEL SYSTEM (3 variants — base / plaque / parchment)
+   ===================================================================== */
+.ts-panel {
+  background: linear-gradient(180deg, var(--ts-color-bg-panel) 0%, var(--ts-color-bg-deep) 100%);
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  box-shadow: var(--ts-shadow-card);
+  padding: var(--ts-space-4);
+}
+
+.ts-panel-plaque {
+  background: linear-gradient(180deg, #20160F, #100C09);
+  border: 2px solid rgba(184, 134, 59, 0.65);
+  border-radius: var(--ts-radius-xl);
+  box-shadow: var(--ts-shadow-plaque);
+  padding: var(--ts-space-5);
+}
+
+.ts-panel-parchment {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.22), transparent 40%),
+    var(--ts-color-parchment);
+  color: var(--ts-color-text-on-parch);
+  border: 1px solid rgba(70, 45, 20, 0.35);
+  border-radius: var(--ts-radius-lg);
+  box-shadow: var(--ts-shadow-parchment);
+  padding: var(--ts-space-5);
+}
+.ts-panel-parchment .ts-type-label,
+.ts-panel-parchment .ts-type-label-sm {
+  color: rgba(70, 45, 20, 0.78);
+}
+
+
+/* =====================================================================
+   6. BUTTON SYSTEM
+   ===================================================================== */
+.ts-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ts-space-2);
+  min-height: var(--ts-tap-target-min);
+  padding: 0 var(--ts-space-5);
+  border-radius: var(--ts-radius-md);
+  font-family: var(--ts-font-label);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    transform var(--ts-motion-fast) var(--ts-ease-standard),
+    box-shadow var(--ts-motion-fast) var(--ts-ease-standard),
+    opacity var(--ts-motion-fast) var(--ts-ease-standard);
+  border: 1px solid transparent;
+}
+.ts-btn:active { transform: translateY(1px); }
+.ts-btn:focus-visible {
+  outline: 2px solid var(--ts-color-copper-bright);
+  outline-offset: 2px;
+}
+
+/* 6.1 Primary CTA — copper. One per viewport. */
+.ts-btn--primary {
+  min-height: 52px;
+  background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
+  color: var(--ts-color-text-on-copper);
+  border-color: rgba(255, 190, 90, 0.65);
+  box-shadow: var(--ts-shadow-copper-glow);
+}
+.ts-btn--primary:hover { filter: brightness(1.05); }
+
+/* 6.2 Secondary — dark/brass */
+.ts-btn--secondary {
+  background: rgba(20, 15, 10, 0.85);
+  color: var(--ts-color-text);
+  border-color: var(--ts-color-brass-line);
+}
+.ts-btn--secondary:hover {
+  border-color: var(--ts-color-brass);
+  background: rgba(30, 22, 15, 0.92);
+}
+
+/* 6.3 Ghost — text-only, low-priority */
+.ts-btn--ghost {
+  background: transparent;
+  color: var(--ts-color-text-secondary);
+  min-height: var(--ts-tap-target-min);
+  padding: 0 var(--ts-space-3);
+}
+.ts-btn--ghost:hover { color: var(--ts-color-text); }
+
+/* 6.4 Locked / disabled */
+.ts-btn--locked,
+.ts-btn[aria-disabled="true"],
+.ts-btn:disabled {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+  pointer-events: none;
+  cursor: default;
+}
+
+
+/* =====================================================================
+   7. CAN FRAME (consistent treatment for can art)
+   ===================================================================== */
+.ts-can-frame {
+  background: radial-gradient(circle at center, rgba(184, 134, 59, 0.16), transparent 60%);
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  padding: var(--ts-space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ts-can-frame__img {
+  max-width: 100%;
+  height: auto;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+}
+
+
+/* =====================================================================
+   8. BADGE MEDALLION + STAMP MARK
+   ===================================================================== */
+.ts-badge-medallion {
+  --_size: 64px;
+  width: var(--_size);
+  height: var(--_size);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 25%, #2A1F14, #15110D 70%);
+  border: 1px dashed var(--ts-color-brass-line);
+  color: var(--ts-color-brass);
+  position: relative;
+}
+.ts-badge-medallion--earned {
+  background: radial-gradient(circle at 30% 25%, #C56A2B 0%, #6E3119 70%);
+  border: 1px solid rgba(255, 190, 90, 0.6);
+  color: var(--ts-color-text-on-copper);
+}
+.ts-badge-medallion--complete {
+  background: radial-gradient(circle at 30% 25%, #E0A15A 0%, #A65324 70%);
+  border: 1px solid rgba(255, 220, 150, 0.7);
+  color: var(--ts-color-text-on-copper);
+  box-shadow: 0 0 22px rgba(224, 161, 90, 0.32);
+}
+.ts-badge-medallion--locked {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+
+.ts-stamp-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--ts-color-brass-line);
+  color: var(--ts-color-brass);
+  font-family: var(--ts-font-label);
+  font-size: 12px;
+}
+.ts-stamp-mark--earned {
+  background: var(--ts-color-copper-bright);
+  border-color: rgba(255, 190, 90, 0.7);
+  color: var(--ts-color-text-on-copper);
+}
+/* Ceremonial stamp animation — only applied when something is freshly earned */
+.ts-stamp-mark--ceremonial {
+  animation: ts-stamp-impact var(--ts-motion-ceremonial) var(--ts-ease-stamp) both;
+}
+@keyframes ts-stamp-impact {
+  0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(2deg);  opacity: 1; }
+  100% { transform: scale(1)   rotate(0);     opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-stamp-mark--ceremonial { animation: none; }
+}
+
+
+/* =====================================================================
+   9. PROGRESS STAT (single tile — building block for stat grids)
+   ===================================================================== */
+.ts-progress-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-1);
+  padding: var(--ts-space-3);
+  text-align: center;
+  border-right: 1px solid var(--ts-color-brass-line-faint);
+}
+.ts-progress-stat:last-child { border-right: none; }
+.ts-progress-stat__num {
+  font-family: var(--ts-font-display);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--ts-color-text);
+}
+.ts-progress-stat__lbl {
+  font-family: var(--ts-font-label);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ts-color-text-secondary);
+}
+
+
+/* =====================================================================
+   10. BOTTOM NAV (component-class only — does not override existing)
+   ===================================================================== */
+.ts-bottom-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--ts-shell-max);
+  height: var(--ts-bottom-nav-h);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  background: linear-gradient(180deg, rgba(14, 12, 9, 0.98), rgba(14, 12, 9, 1));
+  border-top: 1px solid var(--ts-color-brass-line);
+  z-index: 50;
+}
+.ts-bottom-nav__item {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ts-space-1);
+  min-height: var(--ts-tap-target-min);
+  color: var(--ts-color-text-secondary);
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: var(--ts-letter-label);
+  text-transform: uppercase;
+  padding: var(--ts-space-2) 0;
+  cursor: pointer;
+  transition: color var(--ts-motion-fast) var(--ts-ease-standard);
+}
+.ts-bottom-nav__item:hover { color: var(--ts-color-text); }
+.ts-bottom-nav__item--active {
+  color: var(--ts-color-copper-bright);
+}
+
+
+/* =====================================================================
+   11. TALE CARD + BEER CARD (list-row composition)
+   ===================================================================== */
+.ts-tale-card,
+.ts-beer-card {
+  display: flex;
+  align-items: stretch;
+  gap: var(--ts-space-4);
+  padding: var(--ts-space-4);
+  background: linear-gradient(180deg, var(--ts-color-bg-panel), var(--ts-color-bg-deep));
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  box-shadow: var(--ts-shadow-card);
+  transition: transform var(--ts-motion-base) var(--ts-ease-standard),
+              border-color var(--ts-motion-base) var(--ts-ease-standard);
+}
+.ts-tale-card:hover,
+.ts-beer-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--ts-color-brass);
+}
+.ts-tale-card__art,
+.ts-beer-card__art {
+  flex: 0 0 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ts-tale-card__body,
+.ts-beer-card__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-1);
+  min-width: 0;
+}
+.ts-tale-card__title,
+.ts-beer-card__title {
+  font-family: var(--ts-font-display);
+  font-size: 16px;
+  letter-spacing: var(--ts-letter-display);
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--ts-color-text);
+}
+.ts-tale-card__meta,
+.ts-beer-card__meta {
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: var(--ts-letter-label);
+  color: var(--ts-color-text-secondary);
+}
+.ts-tale-card__desc,
+.ts-beer-card__desc {
+  font-family: var(--ts-font-body);
+  font-size: 13px;
+  color: var(--ts-color-text-secondary);
+  line-height: 1.4;
+}
+
+
+/* =====================================================================
+   12. PASSPORT PAGE (parchment spread reusable shell)
+   ===================================================================== */
+.ts-passport-page {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.18), transparent 45%),
+    var(--ts-color-parchment);
+  color: var(--ts-color-text-on-parch);
+  border: 1px solid rgba(70, 45, 20, 0.4);
+  border-radius: var(--ts-radius-lg);
+  box-shadow: var(--ts-shadow-parchment);
+  padding: var(--ts-space-6) var(--ts-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-4);
+}
+.ts-passport-page__title {
+  font-family: var(--ts-font-display);
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ts-color-ink);
+}
+.ts-passport-page__rule {
+  border: none;
+  border-top: 1px dashed rgba(70, 45, 20, 0.5);
+  margin: 0;
+}
+
+
+/* =====================================================================
+   13. GAME UI (shared shell across all 3 mini-games)
+   ===================================================================== */
+.ts-game-shell {
+  background: var(--ts-color-bg);
+  color: var(--ts-color-text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.ts-game-stat-bar {
+  display: flex;
+  align-items: stretch;
+  gap: var(--ts-space-2);
+  padding: var(--ts-space-3) var(--ts-space-4);
+  border-bottom: 1px solid var(--ts-color-brass-line);
+  background: var(--ts-color-bg-soft);
+}
+.ts-game-stat {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+.ts-game-stat__lbl {
+  font-family: var(--ts-font-label);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ts-color-text-muted);
+}
+.ts-game-stat__val {
+  font-family: var(--ts-font-display);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ts-color-text);
+}
+
+.ts-game-clue-card {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.18), transparent 45%),
+    var(--ts-color-parchment);
+  color: var(--ts-color-text-on-parch);
+  border: 1px solid rgba(70, 45, 20, 0.4);
+  border-radius: var(--ts-radius-md);
+  padding: var(--ts-space-4);
+  margin: var(--ts-space-4);
+  font-family: var(--ts-font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  box-shadow: var(--ts-shadow-parchment);
+}
+
+/* Game tile states — uniform across all three games */
+.ts-game-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ts-radius-sm);
+  background: var(--ts-color-bg-panel);
+  border: 1px solid var(--ts-color-brass-line);
+  color: var(--ts-color-text);
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  min-height: var(--ts-tap-target-min);
+  padding: var(--ts-space-2);
+  cursor: pointer;
+  transition:
+    transform var(--ts-motion-fast) var(--ts-ease-standard),
+    border-color var(--ts-motion-fast) var(--ts-ease-standard),
+    background var(--ts-motion-fast) var(--ts-ease-standard);
+}
+.ts-game-tile--locked {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: grayscale(0.4);
+}
+.ts-game-tile--available {
+  border-color: var(--ts-color-brass);
+}
+.ts-game-tile--selected {
+  background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
+  color: var(--ts-color-text-on-copper);
+  border-color: rgba(255, 190, 90, 0.7);
+}
+.ts-game-tile--correct {
+  background: rgba(143, 163, 90, 0.18);
+  border-color: var(--ts-color-success);
+  color: var(--ts-color-success);
+}
+.ts-game-tile--incorrect {
+  background: rgba(143, 63, 44, 0.16);
+  border-color: var(--ts-color-error);
+  color: #D78A78;
+}
+.ts-game-tile--completed {
+  background: linear-gradient(180deg, #2A1F14, #15110D);
+  border-color: var(--ts-color-brass);
+  color: var(--ts-color-brass);
+}
+.ts-game-tile--next {
+  border-color: var(--ts-color-copper-bright);
+  box-shadow: 0 0 0 2px rgba(197, 106, 43, 0.25);
+}
+
+
+/* =====================================================================
+   14. UNLOCK MODAL (ceremonial — used only for stamp-earned moment)
+   ===================================================================== */
+.ts-unlock-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 6, 4, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ts-space-5);
+  z-index: 100;
+  animation: ts-fade-in var(--ts-motion-base) var(--ts-ease-standard);
+}
+.ts-unlock-modal {
+  width: 100%;
+  max-width: 360px;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.22), transparent 40%),
+    var(--ts-color-parchment);
+  color: var(--ts-color-text-on-parch);
+  border: 1px solid rgba(70, 45, 20, 0.5);
+  border-radius: var(--ts-radius-xl);
+  padding: var(--ts-space-8) var(--ts-space-6) var(--ts-space-6);
+  box-shadow:
+    0 28px 60px rgba(0, 0, 0, 0.55),
+    inset 0 0 32px rgba(80, 45, 20, 0.22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ts-space-4);
+  text-align: center;
+  animation: ts-modal-in var(--ts-motion-ceremonial) var(--ts-ease-stamp);
+}
+.ts-unlock-modal__eyebrow {
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(70, 45, 20, 0.7);
+}
+.ts-unlock-modal__title {
+  font-family: var(--ts-font-display);
+  font-size: 22px;
+  letter-spacing: var(--ts-letter-display);
+  text-transform: uppercase;
+  color: var(--ts-color-ink);
+  margin: 0;
+}
+.ts-unlock-modal__date {
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(70, 45, 20, 0.65);
+}
+@keyframes ts-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ts-modal-in {
+  0%   { opacity: 0; transform: scale(0.92) translateY(10px); }
+  60%  { opacity: 1; transform: scale(1.02) translateY(0);    }
+  100% { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-unlock-modal-backdrop,
+  .ts-unlock-modal { animation: none; }
+}
+
+
+/* =====================================================================
+   15. UTILITY: divider rule + stack/cluster spacing helpers
+   ===================================================================== */
+.ts-divider {
+  border: none;
+  border-top: 1px solid var(--ts-color-brass-line-soft);
+  margin: var(--ts-space-5) 0;
+}
+.ts-stack-2 > * + * { margin-top: var(--ts-space-2); }
+.ts-stack-3 > * + * { margin-top: var(--ts-space-3); }
+.ts-stack-4 > * + * { margin-top: var(--ts-space-4); }
+.ts-stack-6 > * + * { margin-top: var(--ts-space-6); }
+.ts-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ts-space-2);
+}
+
+
+/* =====================================================================
+   16. RESPONSIVE
+   ===================================================================== */
+@media (max-width: 420px) {
+  .ts-page-header__title { font-size: 24px; }
+  .ts-tale-card__art,
+  .ts-beer-card__art { flex-basis: 60px; }
+  .ts-progress-stat__num { font-size: 18px; }
+  .ts-game-stat__val { font-size: 14px; }
+}
