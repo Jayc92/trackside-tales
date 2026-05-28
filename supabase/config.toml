@@ -53,6 +53,13 @@ enable_confirmations = true
 [functions.validate-qr]
 verify_jwt = false
 
+# log-events edge function (ADMIN-v6.8A) — first-party event logger.
+# Anonymous guests must be able to log unlock / badge / game events,
+# so JWT verification is disabled. The function uses the service role
+# key internally to write to RLS-locked event tables.
+[functions.log-events]
+verify_jwt = false
+
 # Disable the local edge runtime container. On corporate networks with TLS
 # inspection the runtime can't fetch its Deno deps over HTTPS, which blocks
 # `supabase start` from going healthy. We deploy edge functions to Supabase
