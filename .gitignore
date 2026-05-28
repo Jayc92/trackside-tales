@@ -7,3 +7,6 @@ dist
 .env.local
 .env.*.local
 !.env.example
+
+# Supabase CLI version cache (managed by `supabase` CLI, not source).
+supabase/.temp/
