@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { parseQRCode } from '../services/qrValidation';
 import { validateQrRemote } from '../services/qrValidationRemote';
-import { setLatestQrReceipt } from '../services/qrReceiptStore';
-import { Tale } from '../app/types';
+import { getLatestQrReceipt, setLatestQrReceipt } from '../services/qrReceiptStore';
+import { logEvent, flushEvents } from '../services/eventLogger';
+import { BADGE_KEY_SCAN, Tale } from '../app/types';
 
 // ================== SCAN PAGE (v6.4 — Structured Design Pass) ==================
 // Visual rewrite to match the v6.0 reference. Scan / unlock / camera lifecycle
@@ -30,6 +31,30 @@ import { Tale } from '../app/types';
 //     they have no scanned `code` value (their canonical code would have
 //     to be reconstructed, which would muddy demo behavior). They keep
 //     the existing offline unlock contract verbatim.
+//
+// ADMIN-v6.8C: fire-and-forget event logging for the true scan/unlock +
+// scan-badge path only. Game events stay deferred to v6.8D; passport /
+// story pageviews remain out of scope per the v6.8 plan.
+//   • Logging is OPT-IN per call. handleDemoUnlock takes an optional
+//     opts.logScanEvent flag that defaults false. Only the real-scan
+//     path in processCode passes { logScanEvent: true }. Featured Tale
+//     row taps unlock exactly as before but emit NO events — Featured
+//     taps are not scans and must not pollute future direct/deep-link
+//     analytics buckets.
+//   • All logEvent calls run AFTER the local unlock dispatch and the
+//     scan-badge award have already committed. Logging never blocks
+//     unlockTale, awardScanBadge, or navToTale.
+//   • With USE_REMOTE_EVENTS off, every logEvent call is a no-op and
+//     the call sites are inert. Same posture as the v6.7 receipt hook.
+//   • Receipt attachment is best-effort: validateQrRemote's promise
+//     races the unlock dispatch, so the receipt is usually absent at
+//     logEvent time on the first scan. The 250ms debounce inside
+//     eventLogger gives it a chance to land; when it doesn't, the
+//     server still accepts the row with qr_code_id=NULL.
+//   • We do NOT clear the receipt store after flush — eventLogger's
+//     fire-and-forget API doesn't surface per-event success, and the
+//     store is already single-slot with a 5-minute TTL. Deferred to
+//     ADMIN-v6.8E if it turns out to matter in practice.
 
 declare const Html5Qrcode: unknown;
 
@@ -150,14 +175,86 @@ export function ScanPage() {
   );
   const scannerRef = useRef<unknown>(null);
 
-  const handleDemoUnlock = useCallback((taleId: string) => {
+  // ADMIN-v6.8C — analytics is opt-IN per call. The default branch
+  // (Featured Tale row taps, future non-scan callers) emits NO events.
+  // Only the real-scan path in processCode opts in via
+  // { logScanEvent: true }. This keeps the v6.8C analytics surface
+  // strictly limited to true scan/unlock + scan-badge — Featured taps
+  // are not scans and must not pollute future direct/deep-link
+  // analytics buckets.
+  //
+  // Visible behavior is unchanged in both branches: unlock dispatch +
+  // (conditional) scan-badge award + navigation happen exactly as
+  // before, in the same order, on the same tick. Logging always runs
+  // AFTER navigation so a slow logEvent / receipt read can never delay
+  // the unlock paint.
+  interface UnlockOpts { logScanEvent?: boolean }
+  const handleDemoUnlock = useCallback((
+    taleId: string,
+    opts: UnlockOpts = {},
+  ) => {
     const tale = tales.find((t) => t.id === taleId);
     if (!tale) return;
     const wasUnlocked = state.unlocked.has(taleId);
     unlockTale(taleId);
     if (!wasUnlocked) awardScanBadge(taleId);
     navToTale(tale);
-  }, [tales, state.unlocked, unlockTale, awardScanBadge, navToTale]);
+
+    // ---- v6.8C analytics: opt-in, fire-and-forget. ----
+    // Featured taps fall through this block entirely — no logEvent,
+    // no flushEvents, no receipt read. logEvent is itself a no-op when
+    // USE_REMOTE_EVENTS is off, so even on the scan path these calls
+    // are completely inert in default builds.
+    if (!opts.logScanEvent) return;
+
+    // Receipt is attached only when:
+    //   1. there is a stored receipt at all,
+    //   2. its taleSlug matches the tale being unlocked (no stale
+    //      cross-tale leak after rapid back-to-back scans), and
+    //   3. its receiptExp is in the future (the server rejects
+    //      expired receipts anyway, but we drop them client-side
+    //      to save the round-trip).
+    let receipt: string | undefined;
+    let receiptExp: number | undefined;
+    const stored = getLatestQrReceipt();
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (
+      stored &&
+      stored.taleSlug === taleId &&
+      typeof stored.receiptExp === 'number' &&
+      stored.receiptExp > nowSec
+    ) {
+      receipt    = stored.receipt;
+      receiptExp = stored.receiptExp;
+    }
+
+    logEvent({
+      type:     'tale_unlocked',
+      taleSlug: taleId,
+      source:   'scan',
+      ...(receipt !== undefined ? { receipt, receiptExp } : {}),
+    });
+
+    // Award badge_awarded only when the scan badge actually granted
+    // for the first time on this device. Mirrors the awardScanBadge
+    // gate above so we don't double-count on re-scans of an already
+    // unlocked tale. badgeKey uses the same BADGE_KEY_SCAN(id) shape
+    // the rest of the app holds in localStorage / state.
+    if (!wasUnlocked) {
+      logEvent({
+        type:     'badge_awarded',
+        taleSlug: taleId,
+        badgeKey: BADGE_KEY_SCAN(taleId),
+        via:      'scan',
+      });
+    }
+
+    // Nudge the queue toward the network. flushEvents itself is a
+    // no-op when the flag is off / no guestId / nothing queued, and
+    // it never throws. The await-less invocation keeps unlock paint
+    // priority intact.
+    void flushEvents(guestId);
+  }, [tales, state.unlocked, unlockTale, awardScanBadge, navToTale, guestId]);
 
   // ADMIN-v6.7 — fire-and-forget remote enrichment.
   //
@@ -197,7 +294,7 @@ export function ScanPage() {
       setScanSub("That code isn't a Trackside Tale. Try a Trackside can or choose a Featured Tale below.");
       return;
     }
-    handleDemoUnlock(result.taleId);
+    handleDemoUnlock(result.taleId, { logScanEvent: true });
     // Enrichment fires after the local unlock has dispatched. The
     // unlock UI is already committed at this point; whatever happens
     // on the network can't roll it back.
