@@ -1,0 +1,62 @@
+# Supabase config for the canonical Trackside Tales Vite app.
+# Run `supabase init` once if you ever need to regenerate this; it has
+# been hand-edited to use a separate port range from the reference
+# Next.js prototype at /Users/joseph.carfagno/app, so both stacks can
+# run side-by-side on the same machine without container collisions.
+project_id = "trackside-tales"
+
+[api]
+enabled = true
+port = 54421
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54422
+shadow_port = 54420
+major_version = 15
+
+[studio]
+enabled = true
+port = 54423
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+# Local mail-catcher. Default port 54324 collides with Cisco Secure Client
+# on corporate Macs; 55424 is well above the reserved range and avoids
+# the prototype project's 55324.
+[inbucket]
+port = 55424
+smtp_port = 55425
+pop3_port = 55426
+
+[auth]
+enabled = true
+# The canonical public app is a Vite SPA. Local dev runs at 5173 (vite default).
+# A future separate admin Next.js app will use a different origin entirely.
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_anonymous_sign_ins = true
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+# validate-qr edge function is planned for v6.5. The function does not
+# require a JWT — anonymous guests must be able to scan codes.
+[functions.validate-qr]
+verify_jwt = false
+
+# Disable the local edge runtime container. On corporate networks with TLS
+# inspection the runtime can't fetch its Deno deps over HTTPS, which blocks
+# `supabase start` from going healthy. We deploy edge functions to Supabase
+# Cloud directly and call them from the public app's contentService at
+# runtime.
+[edge_runtime]
+enabled = false
