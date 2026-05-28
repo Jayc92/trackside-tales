@@ -2403,3 +2403,463 @@
   .ts-next-step { grid-template-columns: 1fr; text-align: center; }
   .ts-next-step__art { margin: 0 auto; }
 }
+
+
+/* =====================================================================
+   19. MENU — page title, segmented tabs, Tale beer cards, resident /
+   N-A cards, food cards, kitchen intro panel.
+   v6.3: opt-in classes for the migrated Menu / Beers / Food page.
+   Scoped under .ts-menu-screen so legacy #page-beers markup is unaffected.
+   ===================================================================== */
+
+.ts-menu-screen {
+  padding: var(--ts-space-5) var(--ts-space-4) var(--ts-page-pad-bot);
+  color: var(--ts-color-ivory);
+}
+
+/* ---- 19a. Page title block (BEERS / FOOD) -------------------------- */
+.ts-menu-title-block {
+  text-align: center;
+  margin: var(--ts-space-4) 0 var(--ts-space-6);
+}
+.ts-menu-title-block__title {
+  font-family: var(--ts-font-display);
+  font-size: 44px;
+  letter-spacing: 0.06em;
+  color: var(--ts-color-ivory);
+  margin: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ts-space-3);
+  text-transform: uppercase;
+}
+.ts-menu-title-block__title::before,
+.ts-menu-title-block__title::after {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 1px;
+  background: var(--ts-color-brass-line);
+}
+.ts-menu-title-block__sub {
+  margin: var(--ts-space-3) auto 0;
+  color: var(--ts-color-ivory-dim, rgba(244, 233, 211, 0.7));
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+/* ---- 19b. Segmented tabs (TALES / RESIDENT / N/A / FOOD) ------------ */
+.ts-menu-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  background: rgba(20, 16, 12, 0.55);
+  margin-bottom: var(--ts-space-6);
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 134, 59, 0.10),
+    0 8px 18px rgba(0, 0, 0, 0.35);
+}
+.ts-menu-tab {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ts-color-ivory-dim, rgba(244, 233, 211, 0.7));
+  padding: 10px 6px;
+  min-height: 44px;
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--ts-radius-md);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  text-transform: uppercase;
+}
+.ts-menu-tab:hover {
+  color: var(--ts-color-ivory);
+  border-color: var(--ts-color-brass-line-soft);
+}
+.ts-menu-tab--active {
+  color: var(--ts-color-ivory);
+  background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
+  border-color: var(--ts-color-copper);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 240, 220, 0.25),
+    0 4px 12px var(--ts-color-copper-glow);
+}
+
+/* ---- 19c. Section header (TRACKSIDE TALES — ON TAP, etc.) ----------- */
+.ts-menu-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ts-space-3);
+  margin: var(--ts-space-6) 0 var(--ts-space-4);
+}
+.ts-menu-section-header__rule {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--ts-color-brass-line);
+}
+.ts-menu-section-header__text {
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--ts-color-brass);
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ts-space-2);
+}
+.ts-menu-section-header__glyph {
+  font-size: 14px;
+  color: var(--ts-color-brass);
+  opacity: 0.85;
+}
+
+/* ---- 19d. Beer card (Tale + Resident + N/A) ------------------------- */
+.ts-menu-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-4);
+}
+.ts-beer-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: var(--ts-space-4);
+  align-items: stretch;
+  padding: var(--ts-space-4);
+  background:
+    linear-gradient(180deg, rgba(34, 27, 20, 0.92), rgba(22, 18, 14, 0.92));
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 134, 59, 0.08),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+  cursor: default;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
+  color: inherit;
+  font: inherit;
+}
+.ts-beer-card--clickable {
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+.ts-beer-card--clickable:hover {
+  border-color: var(--ts-color-brass);
+  transform: translateY(-1px);
+}
+.ts-beer-card__art {
+  width: 92px;
+  height: 124px;
+  border-radius: var(--ts-radius-md);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(184, 134, 59, 0.10), transparent 60%),
+    linear-gradient(180deg, rgba(36, 30, 23, 0.9), rgba(18, 14, 10, 0.9));
+  border: 1px solid var(--ts-color-brass-line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ts-beer-card__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.ts-beer-card__art-fallback {
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--ts-color-brass);
+  text-align: center;
+  padding: 6px;
+}
+.ts-beer-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ts-beer-card__name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ts-space-2);
+  flex-wrap: wrap;
+}
+.ts-beer-card__name {
+  font-family: var(--ts-font-display);
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  color: var(--ts-color-ivory);
+  line-height: 1.2;
+  margin: 0;
+}
+.ts-beer-card__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--ts-radius-pill);
+  border: 1px solid var(--ts-color-brass-line);
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ts-color-brass);
+  background: rgba(184, 134, 59, 0.06);
+  white-space: nowrap;
+}
+.ts-beer-card__style {
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ts-color-brass);
+  letter-spacing: 0.01em;
+}
+.ts-beer-card__desc {
+  font-family: var(--ts-font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ts-color-ivory-dim, rgba(244, 233, 211, 0.78));
+  margin: 0;
+}
+.ts-beer-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ts-space-2);
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--ts-color-brass);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.ts-beer-card__meta-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ts-color-copper);
+  display: inline-block;
+}
+.ts-beer-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ts-space-2);
+  margin-top: var(--ts-space-3);
+}
+.ts-beer-card__primary {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--ts-color-copper);
+  background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
+  color: var(--ts-color-ivory);
+  padding: 10px 14px;
+  min-height: 40px;
+  border-radius: var(--ts-radius-md);
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: 0 6px 14px var(--ts-color-copper-glow);
+}
+.ts-beer-card__secondary {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--ts-color-brass-line);
+  background: rgba(20, 16, 12, 0.55);
+  color: var(--ts-color-ivory);
+  padding: 8px 14px;
+  min-height: 40px;
+  border-radius: var(--ts-radius-md);
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.ts-beer-card__secondary:hover { border-color: var(--ts-color-brass); }
+
+.ts-beer-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--ts-radius-pill);
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.ts-beer-card__status--unlocked {
+  color: #c8d8b3;
+  border: 1px solid rgba(146, 168, 96, 0.45);
+  background: rgba(146, 168, 96, 0.12);
+}
+.ts-beer-card__status--locked {
+  color: var(--ts-color-brass);
+  border: 1px solid var(--ts-color-brass-line);
+  background: rgba(184, 134, 59, 0.08);
+}
+
+/* N/A pill — reused tag style with N/A flavor */
+.ts-beer-card__tag--na {
+  color: #d8c79b;
+  border-color: rgba(216, 199, 155, 0.45);
+}
+
+/* ---- 19e. Kitchen intro panel ---------------------------------------- */
+.ts-kitchen-intro {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: var(--ts-space-4);
+  align-items: center;
+  padding: var(--ts-space-4);
+  margin-bottom: var(--ts-space-5);
+  background:
+    linear-gradient(180deg, rgba(34, 27, 20, 0.85), rgba(22, 18, 14, 0.85));
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  box-shadow: inset 0 0 0 1px rgba(184, 134, 59, 0.08);
+}
+.ts-kitchen-intro__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--ts-color-brass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(80% 80% at 50% 30%, rgba(197, 106, 43, 0.55), rgba(110, 49, 25, 0.85));
+  color: var(--ts-color-ivory);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.ts-kitchen-intro__copy {
+  font-family: var(--ts-font-body);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ts-color-ivory-dim, rgba(244, 233, 211, 0.8));
+}
+.ts-kitchen-intro__copy strong {
+  color: var(--ts-color-brass);
+  font-weight: 700;
+}
+
+/* ---- 19f. Food card -------------------------------------------------- */
+.ts-food-card {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: var(--ts-space-4);
+  align-items: stretch;
+  padding: var(--ts-space-4);
+  background:
+    linear-gradient(180deg, rgba(34, 27, 20, 0.92), rgba(22, 18, 14, 0.92));
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 134, 59, 0.08),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.ts-food-card__art {
+  width: 92px;
+  height: 92px;
+  border-radius: var(--ts-radius-md);
+  border: 1px solid var(--ts-color-brass-line-soft);
+  background:
+    repeating-linear-gradient(45deg, rgba(184, 134, 59, 0.08) 0 6px, transparent 6px 12px),
+    radial-gradient(80% 80% at 50% 30%, rgba(197, 106, 43, 0.30), transparent 70%),
+    linear-gradient(180deg, rgba(36, 30, 23, 0.9), rgba(18, 14, 10, 0.9));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ts-food-card__art-glyph {
+  font-size: 28px;
+  color: var(--ts-color-brass);
+}
+.ts-food-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ts-food-card__name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ts-space-2);
+}
+.ts-food-card__name {
+  font-family: var(--ts-font-display);
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  color: var(--ts-color-ivory);
+  line-height: 1.2;
+  margin: 0;
+}
+.ts-food-card__sub {
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ts-color-brass);
+}
+.ts-food-card__desc {
+  font-family: var(--ts-font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ts-color-ivory-dim, rgba(244, 233, 211, 0.78));
+  margin: 0;
+}
+.ts-food-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--ts-radius-pill);
+  border: 1px solid var(--ts-color-brass-line);
+  font-family: var(--ts-font-label);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--ts-color-brass);
+  background: rgba(184, 134, 59, 0.08);
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.ts-food-card__badge--pick {
+  color: var(--ts-color-ivory);
+  border-color: var(--ts-color-copper);
+  background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
+}
+
+/* ---- 19g. Responsive overrides --------------------------------------- */
+@media (max-width: 380px) {
+  .ts-menu-title-block__title { font-size: 36px; }
+  .ts-menu-title-block__title::before,
+  .ts-menu-title-block__title::after { width: 24px; }
+  .ts-menu-tab { font-size: 10px; letter-spacing: 0.10em; padding: 10px 4px; }
+  .ts-beer-card,
+  .ts-food-card { grid-template-columns: 76px 1fr; gap: var(--ts-space-3); }
+  .ts-beer-card__art { width: 76px; height: 104px; }
+  .ts-food-card__art { width: 76px; height: 76px; }
+  .ts-beer-card__name { font-size: 16px; }
+  .ts-food-card__name { font-size: 15px; }
+}

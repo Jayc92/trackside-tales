@@ -1,196 +1,301 @@
-import React, { useCallback } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import { Tale, Beer, FoodItem } from '../app/types';
 
-// ================== MENU PAGE (== golden #page-beers — THE TAP LIST) ==================
-// Mirrors the golden v4.6.1 #page-beers structure exactly:
-//   .beers-page-hero  (eyebrow + title + sub)
-//   .menu-jump-strip  with .menu-jump-tab links + .menu-jump-sep separators
-//   .section-label    (.section-label-text + .section-count) anchors
-//   .beer-list        with .beer-card.tales (for Tales) and .beer-card (for resident/NA)
-//   Each card: .beer-icon → .beer-info → .beer-action — populated by
-//   beerIconMarkup / renderBeerList in the golden file.
-// All sections render at once; the jump strip scrolls to each anchor (matches golden).
+// ================== MENU PAGE (v6.3 — Structured Design Pass) ==================
+// Visual rewrite to match v6.0 reference: large display title (BEERS / FOOD),
+// premium segmented tab control, and brass-framed dark cards for both beers
+// and food. Tab state is local UI only — no schema, route, badge, or scan-
+// logic changes.
+//
+// Hard constraints honored:
+//   • Routing unchanged (navToTale + nav('scan') still drive Tale Detail / Scan).
+//   • Badge keys, localStorage keys, and all unlock/award flows untouched.
+//   • Real data sources only (LOCAL_REGULARS / LOCAL_NON_ALC / LOCAL_FOOD /
+//     useApp().tales / state.unlocked).
+//   • Section-scoped under .ts-menu-screen so legacy classes can't bleed in.
 
-const ANCHOR_TALES    = 'beers-tales-anchor';
-const ANCHOR_RESIDENT = 'beers-resident-anchor';
-const ANCHOR_NA       = 'beers-na-anchor';
-const ANCHOR_FOOD     = 'beers-food-anchor';
+type TabId = 'tales' | 'resident' | 'na' | 'food';
 
-function BeerIcon({ image, label }: { image: string; label: string }) {
-  // Mirrors beerIconMarkup() in the golden. Image is appended only when present;
-  // .has-image is added on load so the rim/mark/label hide once the can image shows.
+interface TabSpec { id: TabId; label: string; }
+const TABS: TabSpec[] = [
+  { id: 'tales',    label: 'TALES' },
+  { id: 'resident', label: 'RESIDENT' },
+  { id: 'na',       label: 'N/A' },
+  { id: 'food',     label: 'FOOD' },
+];
+
+// ---- Menu Tabs --------------------------------------------------------------
+function MenuTabs({ active, onChange }: { active: TabId; onChange: (id: TabId) => void }) {
   return (
-    <div className="beer-icon">
-      {image ? (
-        <img
-          className="beer-icon-img"
-          src={image}
-          alt={`${label} can`}
-          onLoad={(e) => {
-            e.currentTarget.classList.add('loaded');
-            e.currentTarget.parentElement?.classList.add('has-image');
-          }}
-          onError={(e) => {
-            e.currentTarget.remove();
-          }}
-        />
-      ) : null}
-      <span className="beer-icon-label">{label}</span>
-      <span className="beer-icon-mark">◈</span>
-      <span className="beer-icon-rim" />
+    <div className="ts-menu-tabs" role="tablist" aria-label="Menu category">
+      {TABS.map((tab) => {
+        const isActive = active === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            className={`ts-menu-tab${isActive ? ' ts-menu-tab--active' : ''}`}
+            onClick={() => onChange(tab.id)}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
+// ---- Page title block -------------------------------------------------------
+function MenuTitleBlock({ activeTab }: { activeTab: TabId }) {
+  const isFood = activeTab === 'food';
+  return (
+    <div className="ts-menu-title-block">
+      <h1 className="ts-menu-title-block__title">
+        {isFood ? 'FOOD' : 'BEERS'}
+      </h1>
+      <div className="ts-menu-title-block__sub">
+        {isFood
+          ? 'Crafted flavors. Perfectly paired.'
+          : 'Explore our craft, on tap and beyond.'}
+      </div>
+    </div>
+  );
+}
+
+// ---- Section header (brass hairlines + label) -------------------------------
+function MenuSectionHeader({ text, glyph }: { text: string; glyph?: string }) {
+  return (
+    <div className="ts-menu-section-header" role="presentation">
+      <span className="ts-menu-section-header__rule" aria-hidden="true" />
+      <span className="ts-menu-section-header__text">
+        {glyph && <span className="ts-menu-section-header__glyph" aria-hidden="true">{glyph}</span>}
+        {text}
+      </span>
+      <span className="ts-menu-section-header__rule" aria-hidden="true" />
+    </div>
+  );
+}
+
+// ---- Beer art well (shared image-or-fallback) -------------------------------
+function BeerArt({ image, label }: { image: string; label: string }) {
+  return (
+    <div className="ts-beer-card__art">
+      {image ? (
+        <img
+          src={image}
+          alt=""
+          onError={(e) => {
+            const img = e.currentTarget;
+            img.style.display = 'none';
+          }}
+        />
+      ) : (
+        <span className="ts-beer-card__art-fallback">{label}</span>
+      )}
+    </div>
+  );
+}
+
+// ---- Tale beer card ---------------------------------------------------------
 interface TaleCardProps {
   tale: Tale;
   unlocked: boolean;
-  scanBadge: boolean;
-  gameBadge: boolean;
   onOpen: () => void;
+  onScan: () => void;
 }
-
-function TaleBeerCard({ tale, unlocked, scanBadge, gameBadge, onOpen }: TaleCardProps) {
+function TaleBeerCard({ tale, unlocked, onOpen, onScan }: TaleCardProps) {
   return (
-    <div
-      className={`beer-card tales${unlocked ? ' collected' : ''}`}
-      data-tale-tag={unlocked ? 'TALE' : 'SCAN STORY'}
-      onClick={onOpen}
+    <article
+      className={`ts-beer-card ts-beer-card--clickable`}
       role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       aria-label={`${tale.name} — ${tale.style}`}
     >
-      <BeerIcon image={tale.image} label={tale.abbr || tale.name} />
-      <div className="beer-info">
-        <div className="beer-name">
-          {tale.name}
-          <span className="tales-badge">TALES · {tale.year}</span>
+      <BeerArt image={tale.image} label={tale.abbr || tale.name} />
+      <div className="ts-beer-card__body">
+        <div className="ts-beer-card__name-row">
+          <h3 className="ts-beer-card__name">{tale.name}</h3>
+          <span className="ts-beer-card__tag">TALES · {tale.year}</span>
         </div>
-        <div className="beer-style">{tale.style}</div>
-        <div className="beer-detail">{tale.tagline}</div>
-        <div className="beer-abv">ABV {tale.abv} · IBU {tale.ibu}</div>
-      </div>
-      <div className="beer-action">
-        <div className={`scan-indicator${unlocked ? ' collected' : ''}`}>
-          {unlocked ? 'UNLOCKED' : 'SCAN STORY'}
+        <div className="ts-beer-card__style">{tale.style}</div>
+        <p className="ts-beer-card__desc">{tale.tagline}</p>
+        <div className="ts-beer-card__meta">
+          <span className="ts-beer-card__meta-dot" aria-hidden="true" />
+          ABV {tale.abv} · IBU {tale.ibu}
         </div>
-        {unlocked && (
-          <div className="beer-badges">
-            <span className={`beer-badge-chip${scanBadge ? ' earned' : ''}`}>STORY {scanBadge ? '✓' : '○'}</span>
-            <span className={`beer-badge-chip${gameBadge ? ' earned' : ''}`}>GAME {gameBadge ? '✓' : '○'}</span>
-          </div>
-        )}
+        <div className="ts-beer-card__actions">
+          {unlocked ? (
+            <>
+              <span className="ts-beer-card__status ts-beer-card__status--unlocked">
+                ✓ UNLOCKED
+              </span>
+              <button
+                type="button"
+                className="ts-beer-card__secondary"
+                onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              >
+                STORY
+              </button>
+              <button
+                type="button"
+                className="ts-beer-card__secondary"
+                onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              >
+                GAME
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="ts-beer-card__primary"
+              onClick={(e) => { e.stopPropagation(); onScan(); }}
+            >
+              SCAN STORY
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
-function ResidentBeerCard({ beer }: { beer: Beer }) {
+// ---- Resident / N-A beer card ----------------------------------------------
+function ResidentBeerCard({ beer, isNA = false }: { beer: Beer; isNA?: boolean }) {
   return (
-    <div className="beer-card">
-      <BeerIcon image={beer.image} label={beer.abbr || beer.name} />
-      <div className="beer-info">
-        <div className="beer-name">{beer.name}</div>
-        <div className="beer-style">{beer.style}</div>
-        {beer.tasting && <div className="beer-detail">{beer.tasting}</div>}
-        <div className="beer-abv">ABV {beer.abv} · IBU {beer.ibu}</div>
+    <article className="ts-beer-card" aria-label={`${beer.name} — ${beer.style}`}>
+      <BeerArt image={beer.image} label={beer.abbr || beer.name} />
+      <div className="ts-beer-card__body">
+        <div className="ts-beer-card__name-row">
+          <h3 className="ts-beer-card__name">{beer.name}</h3>
+          {isNA && (
+            <span className="ts-beer-card__tag ts-beer-card__tag--na">N/A</span>
+          )}
+        </div>
+        <div className="ts-beer-card__style">{beer.style}</div>
+        {beer.tasting && <p className="ts-beer-card__desc">{beer.tasting}</p>}
+        <div className="ts-beer-card__meta">
+          <span className="ts-beer-card__meta-dot" aria-hidden="true" />
+          ABV {beer.abv} · IBU {beer.ibu}
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
-function FoodRow({ item }: { item: FoodItem }) {
+// ---- Food card --------------------------------------------------------------
+// Pure visual sub-info: derives a subtitle and a "chef's pick" flag from the
+// existing FoodItem data so we don't change the data schema. The mapping is
+// keyed by item.name so it stays in sync if the menu data is reordered.
+const FOOD_VISUAL_META: Record<string, { sub: string; chefsPick?: boolean; glyph: string }> = {
+  'Other Side Of The Pillow': { sub: 'Pierogies',          glyph: '⌬' },
+  'CNJ Railyard':              { sub: 'Organic Greens Salad', glyph: '✿' },
+  'Broad Street Bully':        { sub: 'Steak Sandwich',     glyph: '✦' },
+  'Burger Flight':             { sub: 'Slider Trio',        glyph: '◈', chefsPick: true },
+};
+
+function FoodCard({ item }: { item: FoodItem }) {
+  const meta = FOOD_VISUAL_META[item.name] || { sub: '', glyph: '◈' };
   return (
-    <div className="food-item">
-      <div className="food-info">
-        <div className="food-name">{item.name}</div>
-        <div className="food-desc">{item.desc}</div>
+    <article className="ts-food-card" aria-label={item.name}>
+      <div className="ts-food-card__art" aria-hidden="true">
+        <span className="ts-food-card__art-glyph">{meta.glyph}</span>
       </div>
-    </div>
+      <div className="ts-food-card__body">
+        <div className="ts-food-card__name-row">
+          <h3 className="ts-food-card__name">{item.name}</h3>
+          <span className={`ts-food-card__badge${meta.chefsPick ? ' ts-food-card__badge--pick' : ''}`}>
+            {meta.chefsPick ? "CHEF'S PICK" : 'KITCHEN'}
+          </span>
+        </div>
+        {meta.sub && <div className="ts-food-card__sub">{meta.sub}</div>}
+        <p className="ts-food-card__desc">{item.desc}</p>
+      </div>
+    </article>
   );
 }
 
+// ================== MENU PAGE ROOT ==================
 export function MenuPage() {
-  const { state, navToTale, tales } = useApp();
-
-  const scrollToAnchor = useCallback((id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+  const { state, navToTale, nav, tales } = useApp();
+  const [activeTab, setActiveTab] = useState<TabId>('tales');
 
   return (
-    <div className="page active" id="page-beers">
+    <div className="page active ts-menu-screen" id="page-beers">
 
-      <div className="beers-page-hero">
-        <div className="beers-page-eyebrow">BETHLEHEM, PA · NOW POURING</div>
-        <div className="beers-page-title">THE TAP LIST</div>
-        <div className="beers-page-sub">
-          Trackside pours, resident beers, zero-proof options, and Wooden Match food highlights.
-        </div>
-      </div>
+      {/* ============== 1. PAGE TITLE ============== */}
+      <MenuTitleBlock activeTab={activeTab} />
 
-      <div className="menu-jump-strip">
-        <button className="menu-jump-tab" onClick={() => scrollToAnchor(ANCHOR_TALES)}>TALES</button>
-        <span className="menu-jump-sep">·</span>
-        <button className="menu-jump-tab" onClick={() => scrollToAnchor(ANCHOR_RESIDENT)}>RESIDENT</button>
-        <span className="menu-jump-sep">·</span>
-        <button className="menu-jump-tab" onClick={() => scrollToAnchor(ANCHOR_NA)}>N/A</button>
-        <span className="menu-jump-sep">·</span>
-        <button className="menu-jump-tab" onClick={() => scrollToAnchor(ANCHOR_FOOD)}>FOOD</button>
-      </div>
+      {/* ============== 2. SEGMENTED TABS ============== */}
+      <MenuTabs active={activeTab} onChange={setActiveTab} />
 
-      <div className="section-label" id={ANCHOR_TALES}>
-        <div className="section-label-text">TRACKSIDE TALES</div>
-        <div className="section-count">{tales.length} ON TAP</div>
-      </div>
-      <div className="beer-list" id="tales-list-beers">
-        {tales.map((tale) => (
-          <TaleBeerCard
-            key={tale.id}
-            tale={tale}
-            unlocked={state.unlocked.has(tale.id)}
-            scanBadge={state.scanBadges.has(tale.id)}
-            gameBadge={state.gameBadges.has(tale.id)}
-            onOpen={() => navToTale(tale)}
-          />
-        ))}
-      </div>
-
-      <div className="section-label" id={ANCHOR_RESIDENT}>
-        <div className="section-label-text">RESIDENT BEERS</div>
-        <div className="section-count">{LOCAL_REGULARS.length} ON TAP</div>
-      </div>
-      <div className="beer-list" id="regular-list">
-        {LOCAL_REGULARS.map((beer) => <ResidentBeerCard key={beer.name} beer={beer} />)}
-      </div>
-
-      <div className="section-label" id={ANCHOR_NA}>
-        <div className="section-label-text">NON-ALCOHOLIC</div>
-        <div className="section-count">{LOCAL_NON_ALC.length} ON TAP</div>
-      </div>
-      <div className="beer-list" id="na-list">
-        {LOCAL_NON_ALC.map((beer) => <ResidentBeerCard key={beer.name} beer={beer} />)}
-      </div>
-
-      <div className="section-label" id={ANCHOR_FOOD}>
-        <div className="section-label-text">WOODEN MATCH KITCHEN</div>
-        <div className="section-count">MENU</div>
-      </div>
-      {/* v5.1.1: inline JSX styles moved to polish.css under .food-list-frame.
-         The ::before pseudo-element now draws the brass accent strip that
-         used to be a sibling div. */}
-      <div className="food-list-frame">
-        <div className="food-note">
-          <div className="food-note-inner">
-            Food and full menu provided by <strong>The Wooden Match</strong>. Trackside Brewing's
-            partnership is beer-focused — their kitchen is exceptional on its own.
+      {/* ============== 3. ACTIVE TAB CONTENT ============== */}
+      {activeTab === 'tales' && (
+        <>
+          <MenuSectionHeader text="TRACKSIDE TALES — ON TAP" glyph="◈" />
+          <div className="ts-menu-cards">
+            {tales.map((tale) => (
+              <TaleBeerCard
+                key={tale.id}
+                tale={tale}
+                unlocked={state.unlocked.has(tale.id)}
+                onOpen={() => navToTale(tale)}
+                onScan={() => nav('scan')}
+              />
+            ))}
           </div>
-        </div>
-        <div id="food-list">
-          {LOCAL_FOOD.map((item) => <FoodRow key={item.name} item={item} />)}
-        </div>
-      </div>
+        </>
+      )}
+
+      {activeTab === 'resident' && (
+        <>
+          <MenuSectionHeader text="RESIDENT BEERS" glyph="◈" />
+          <div className="ts-menu-cards">
+            {LOCAL_REGULARS.map((beer) => (
+              <ResidentBeerCard key={beer.name} beer={beer} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'na' && (
+        <>
+          <MenuSectionHeader text="NON-ALCOHOLIC" glyph="◈" />
+          <div className="ts-menu-cards">
+            {LOCAL_NON_ALC.map((beer) => (
+              <ResidentBeerCard key={beer.name} beer={beer} isNA />
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'food' && (
+        <>
+          <MenuSectionHeader text="WOODEN MATCH KITCHEN" glyph="✦" />
+          <div className="ts-kitchen-intro">
+            <div className="ts-kitchen-intro__icon" aria-hidden="true">⌥</div>
+            <div className="ts-kitchen-intro__copy">
+              Food and full menu provided by <strong>The Wooden Match</strong>. Our Trackside
+              Brewing partnership is beer-focused — the kitchen is a featured companion offering.
+            </div>
+          </div>
+          <div className="ts-menu-cards">
+            {LOCAL_FOOD.map((item) => (
+              <FoodCard key={item.name} item={item} />
+            ))}
+          </div>
+        </>
+      )}
 
     </div>
   );
