@@ -21,6 +21,23 @@ export const USE_REMOTE_QR_VALIDATION = Boolean(
   import.meta.env.VITE_USE_REMOTE_QR_VALIDATION === 'true'
 );
 
+// ADMIN-v6.8B — first-party event logging (log-events edge function).
+// Deliberately separate from USE_REMOTE_CONTENT and
+// USE_REMOTE_QR_VALIDATION: any of the three may be on while the others
+// stay off. Defaults to OFF and only flips on when the deploy explicitly
+// opts in via env.
+//
+// No public-app wiring exists yet — this flag exists so the helper in
+// src/services/eventLogger.ts has something to gate on once
+// ADMIN-v6.8C/D wire it into the scan and game flows. With the flag
+// off, every logEvent() call is a no-op and zero network traffic is
+// generated.
+export const USE_REMOTE_EVENTS = Boolean(
+  SUPABASE_URL &&
+  SUPABASE_ANON_KEY &&
+  import.meta.env.VITE_USE_REMOTE_EVENTS === 'true'
+);
+
 // ---- Fetch helper ----
 export async function supabaseFetch(
   table: string,
