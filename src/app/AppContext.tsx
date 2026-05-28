@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
-import { AppState, PageId, Tale } from './types';
+import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
+import { AppState, PageId, Tale, Beer, FoodItem } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
 import { LOCAL_TALES } from '../data/tales';
+import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
+import {
+  fetchRemoteTales,
+  fetchRemoteRegulars,
+  fetchRemoteNonAlc,
+  fetchRemoteFood,
+} from '../services/contentService';
 
 // ================== STATE ==================
 
@@ -123,7 +130,15 @@ interface AppContextValue {
   setUser: (user: { name: string; email?: string } | null) => void;
   recordDate: (id: string) => void;
   resetDemo: () => void;
+  // ADMIN-v6.4 — content arrays. Local data is the first-render
+  // value; if `USE_REMOTE_CONTENT` is on AND the remote fetch
+  // succeeds with valid rows, the array is replaced after mount.
+  // Failures keep the local arrays. Consumers should treat these
+  // as the only source of truth.
   tales: Tale[];
+  regulars: Beer[];
+  nonAlc: Beer[];
+  food: FoodItem[];
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -131,6 +146,38 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const guestId = getOrCreateGuestId();
+
+  // ADMIN-v6.4 — remote content hydration (fail-safe).
+  // First render uses LOCAL_*. After mount, if USE_REMOTE_CONTENT
+  // is on, each fetcher independently swaps in remote rows when
+  // they validate. Any failure (no env vars, network error, RLS
+  // refusal, malformed JSON, zero valid rows) keeps the local
+  // array — there is no path that blanks the app.
+  const [tales,    setTales]    = useState<Tale[]>(LOCAL_TALES);
+  const [regulars, setRegulars] = useState<Beer[]>(LOCAL_REGULARS);
+  const [nonAlc,   setNonAlc]   = useState<Beer[]>(LOCAL_NON_ALC);
+  const [food,     setFood]     = useState<FoodItem[]>(LOCAL_FOOD);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Fire all four in parallel; each one is independent — a
+    // failure in one section never affects the others.
+    void fetchRemoteTales().then((rows) => {
+      if (!cancelled && rows) setTales(rows);
+    });
+    void fetchRemoteRegulars().then((rows) => {
+      if (!cancelled && rows) setRegulars(rows);
+    });
+    void fetchRemoteNonAlc().then((rows) => {
+      if (!cancelled && rows) setNonAlc(rows);
+    });
+    void fetchRemoteFood().then((rows) => {
+      if (!cancelled && rows) setFood(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Persist whenever state changes
   useEffect(() => {
@@ -188,7 +235,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setUser,
       recordDate,
       resetDemo,
-      tales: LOCAL_TALES,
+      tales,
+      regulars,
+      nonAlc,
+      food,
     }}>
       {children}
     </AppContext.Provider>

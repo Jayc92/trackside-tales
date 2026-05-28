@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../app/AppContext';
-import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import { Tale, Beer, FoodItem } from '../app/types';
+// ADMIN-v6.4: beer/food arrays now flow through useApp() so the
+// Menu page renders whichever source is active (local fallback or
+// remote-hydrated). Render markup unchanged.
 
 // ================== MENU PAGE (v6.3 — Structured Design Pass) ==================
 // Visual rewrite to match v6.0 reference: large display title (BEERS / FOOD),
@@ -227,7 +229,7 @@ function FoodCard({ item }: { item: FoodItem }) {
 
 // ================== MENU PAGE ROOT ==================
 export function MenuPage() {
-  const { state, navToTale, nav, tales } = useApp();
+  const { state, navToTale, nav, tales, regulars, nonAlc, food } = useApp();
   const [activeTab, setActiveTab] = useState<TabId>('tales');
 
   return (
@@ -261,7 +263,7 @@ export function MenuPage() {
         <>
           <MenuSectionHeader text="RESIDENT BEERS" glyph="◈" />
           <div className="ts-menu-cards">
-            {LOCAL_REGULARS.map((beer) => (
+            {regulars.map((beer) => (
               <ResidentBeerCard key={beer.name} beer={beer} />
             ))}
           </div>
@@ -272,7 +274,7 @@ export function MenuPage() {
         <>
           <MenuSectionHeader text="NON-ALCOHOLIC" glyph="◈" />
           <div className="ts-menu-cards">
-            {LOCAL_NON_ALC.map((beer) => (
+            {nonAlc.map((beer) => (
               <ResidentBeerCard key={beer.name} beer={beer} isNA />
             ))}
           </div>
@@ -290,7 +292,7 @@ export function MenuPage() {
             </div>
           </div>
           <div className="ts-menu-cards">
-            {LOCAL_FOOD.map((item) => (
+            {food.map((item) => (
               <FoodCard key={item.name} item={item} />
             ))}
           </div>
