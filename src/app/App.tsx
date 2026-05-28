@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useApp } from './AppContext';
 import { AppHeader } from '../components/AppHeader';
 import { BottomNav } from '../components/BottomNav';
+import { UnlockStampModal } from '../components/UnlockStampModal';
 import { HomePage } from '../pages/HomePage';
 import { MenuPage } from '../pages/MenuPage';
 import { TalesPage } from '../pages/TalesPage';
@@ -97,6 +98,10 @@ export function App() {
         <ActivePage page={state.page} />
       </main>
       <BottomNav />
+      {/* UI-v6.5: ceremonial unlock modal — overlays any active page when
+          a Tale transitions from locked → unlocked. Renders nothing when
+          state.lastUnlocked is null. Routing/badge/QR contracts unchanged. */}
+      <UnlockStampModal />
     </div>
   );
 }

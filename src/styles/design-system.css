@@ -3312,3 +3312,635 @@
   .ts-scan-fallback { grid-template-columns: 64px 1fr; }
   .ts-scan-fallback__seal { width: 64px; height: 64px; }
 }
+
+
+/* =====================================================================
+   21. UNLOCK STAMP — ceremonial parchment certificate overlay
+   UI-v6.5: rendered as a top-level modal when a Tale transitions
+   from locked → unlocked. Full-screen dark backdrop with a centered
+   parchment certificate, large circular passport stamp, sunburst glow,
+   metadata, and CTA stack. All classes scoped under .ts-unlock-screen
+   so legacy #unlock-overlay markup remains untouched.
+   ===================================================================== */
+
+/* ---- 21a. Backdrop ----------------------------------------------- */
+.ts-unlock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ts-space-5) var(--ts-space-4);
+  background: rgba(8, 6, 4, 0.78);
+  -webkit-backdrop-filter: blur(6px) saturate(0.9);
+  backdrop-filter: blur(6px) saturate(0.9);
+  overflow-y: auto;
+  animation: ts-unlock-backdrop-in 320ms var(--ts-ease-standard) both;
+}
+.ts-unlock-screen__scroll {
+  width: 100%;
+  max-width: 420px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ts-space-4);
+}
+
+/* ---- 21b. Certificate card --------------------------------------- */
+.ts-unlock-cert {
+  position: relative;
+  width: 100%;
+  background:
+    radial-gradient(140% 60% at 50% 0%, rgba(255, 220, 140, 0.18), transparent 55%),
+    linear-gradient(165deg, #ede0c0 0%, #e3d4ad 55%, #d4c498 100%);
+  color: var(--ts-color-ink);
+  border-radius: 6px;
+  padding: var(--ts-space-6) var(--ts-space-5) var(--ts-space-5);
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.6),
+    0 6px 18px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(70, 45, 20, 0.35),
+    inset 0 0 60px rgba(120, 80, 30, 0.10);
+  animation: ts-unlock-cert-in 520ms var(--ts-ease-stamp) both;
+  isolation: isolate;
+}
+/* Paper grain — subtle dotted noise via radial gradients */
+.ts-unlock-cert::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(rgba(80, 55, 20, 0.08) 1px, transparent 1.5px),
+    radial-gradient(rgba(80, 55, 20, 0.05) 1px, transparent 1.5px);
+  background-size: 7px 7px, 13px 13px;
+  background-position: 0 0, 3px 4px;
+  opacity: 0.55;
+  mix-blend-mode: multiply;
+  z-index: 0;
+}
+/* Inner brass linework */
+.ts-unlock-cert::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(120, 80, 30, 0.30);
+  box-shadow: inset 0 0 0 1px rgba(120, 80, 30, 0.10);
+  pointer-events: none;
+  z-index: 0;
+}
+/* Ticket-style corner notches */
+.ts-unlock-cert__notch {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: rgba(8, 6, 4, 0.78);
+  border-radius: 50%;
+  z-index: 2;
+  pointer-events: none;
+}
+.ts-unlock-cert__notch--tl { top: -7px; left: -7px; }
+.ts-unlock-cert__notch--tr { top: -7px; right: -7px; }
+.ts-unlock-cert__notch--bl { bottom: -7px; left: -7px; }
+.ts-unlock-cert__notch--br { bottom: -7px; right: -7px; }
+/* Side mid-edge ticket notches */
+.ts-unlock-cert__notch--ml { top: 50%; left: -7px; transform: translateY(-50%); }
+.ts-unlock-cert__notch--mr { top: 50%; right: -7px; transform: translateY(-50%); }
+
+/* ---- 21c. Vertical side rail labels ------------------------------ */
+.ts-unlock-cert__rail {
+  position: absolute;
+  top: 50%;
+  font-family: var(--ts-font-label);
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  color: rgba(70, 45, 20, 0.55);
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+}
+.ts-unlock-cert__rail--left {
+  left: 12px;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: left center;
+}
+.ts-unlock-cert__rail--right {
+  right: 12px;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: right center;
+}
+
+/* ---- 21d. Lower decorative metadata ------------------------------ */
+.ts-unlock-cert__serial {
+  position: absolute;
+  left: 14px;
+  bottom: 18px;
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: rgba(70, 45, 20, 0.55);
+  transform: rotate(-90deg);
+  transform-origin: left bottom;
+  pointer-events: none;
+  z-index: 1;
+}
+.ts-unlock-cert__watermark {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid rgba(70, 45, 20, 0.30);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ts-font-label);
+  font-size: 7px;
+  letter-spacing: 0.18em;
+  color: rgba(70, 45, 20, 0.45);
+  text-align: center;
+  line-height: 1.1;
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 1;
+}
+.ts-unlock-cert__watermark span {
+  font-family: var(--ts-font-display);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: rgba(70, 45, 20, 0.55);
+  display: block;
+}
+
+/* ---- 21e. Certificate inner content (above grain layer) --------- */
+.ts-unlock-cert__inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--ts-space-3);
+  padding: 0 var(--ts-space-3);
+}
+.ts-unlock-cert__eyebrow {
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.30em;
+  color: rgba(70, 45, 20, 0.65);
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ts-unlock-cert__eyebrow-star {
+  color: var(--ts-color-copper);
+  font-size: 9px;
+}
+
+/* ---- 21f. Stamp seal + sunburst glow ----------------------------- */
+.ts-unlock-stamp {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 6px auto 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Sunburst rays behind the stamp */
+.ts-unlock-stamp__rays {
+  position: absolute;
+  inset: -28px;
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      from 0deg,
+      rgba(255, 215, 130, 0.55) 0deg 6deg,
+      transparent 6deg 18deg,
+      rgba(255, 215, 130, 0.40) 18deg 22deg,
+      transparent 22deg 36deg,
+      rgba(255, 215, 130, 0.55) 36deg 42deg,
+      transparent 42deg 60deg,
+      rgba(255, 215, 130, 0.45) 60deg 64deg,
+      transparent 64deg 78deg,
+      rgba(255, 215, 130, 0.55) 78deg 84deg,
+      transparent 84deg 102deg,
+      rgba(255, 215, 130, 0.40) 102deg 108deg,
+      transparent 108deg 126deg,
+      rgba(255, 215, 130, 0.55) 126deg 132deg,
+      transparent 132deg 150deg,
+      rgba(255, 215, 130, 0.45) 150deg 156deg,
+      transparent 156deg 174deg,
+      rgba(255, 215, 130, 0.55) 174deg 180deg,
+      transparent 180deg 198deg,
+      rgba(255, 215, 130, 0.40) 198deg 204deg,
+      transparent 204deg 222deg,
+      rgba(255, 215, 130, 0.55) 222deg 228deg,
+      transparent 228deg 246deg,
+      rgba(255, 215, 130, 0.45) 246deg 252deg,
+      transparent 252deg 270deg,
+      rgba(255, 215, 130, 0.55) 270deg 276deg,
+      transparent 276deg 294deg,
+      rgba(255, 215, 130, 0.40) 294deg 300deg,
+      transparent 300deg 318deg,
+      rgba(255, 215, 130, 0.55) 318deg 324deg,
+      transparent 324deg 342deg,
+      rgba(255, 215, 130, 0.45) 342deg 348deg,
+      transparent 348deg 360deg
+    );
+  -webkit-mask: radial-gradient(closest-side, black 30%, transparent 75%);
+  mask: radial-gradient(closest-side, black 30%, transparent 75%);
+  filter: blur(0.4px);
+  opacity: 0.85;
+  pointer-events: none;
+  animation: ts-unlock-bloom 900ms var(--ts-ease-standard) both;
+}
+/* Soft warm glow under the stamp */
+.ts-unlock-stamp__glow {
+  position: absolute;
+  inset: -18px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 200, 110, 0.55), transparent 70%);
+  filter: blur(8px);
+  pointer-events: none;
+  animation: ts-unlock-bloom 900ms var(--ts-ease-standard) both;
+}
+/* Stamp body — antique red ink */
+.ts-unlock-stamp__seal {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  color: #a83a14;
+  border: 4px solid currentColor;
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 1px rgba(168, 58, 20, 0.35),
+    inset 0 0 22px rgba(168, 58, 20, 0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-5deg);
+  filter: saturate(0.9);
+  animation: ts-unlock-stamp-strike 600ms var(--ts-ease-stamp) 80ms both;
+}
+.ts-unlock-stamp__seal::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  opacity: 0.7;
+  pointer-events: none;
+}
+/* Faint ink-bleed/distress overlay */
+.ts-unlock-stamp__seal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(168, 58, 20, 0.10), transparent 35%),
+    radial-gradient(circle at 70% 70%, rgba(168, 58, 20, 0.08), transparent 30%);
+  mix-blend-mode: multiply;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Curved arc text — top + bottom */
+.ts-unlock-stamp__arc {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ts-unlock-stamp__arc text {
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 2.4px;
+  fill: currentColor;
+  font-weight: 700;
+}
+
+/* Inner blue ink emblem */
+.ts-unlock-stamp__emblem {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  border: 2px solid #1f2a3e;
+  color: #1f2a3e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(31, 42, 62, 0.04);
+  z-index: 1;
+}
+.ts-unlock-stamp__emblem-glyph {
+  font-size: 26px;
+  line-height: 1;
+}
+.ts-unlock-stamp__emblem-tag {
+  font-family: var(--ts-font-label);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  margin-top: 2px;
+}
+
+/* ---- 21g. Headline + meta + body --------------------------------- */
+.ts-unlock-cert__headline {
+  font-family: var(--ts-font-display);
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--ts-color-ink);
+  margin: var(--ts-space-2) 0 0;
+}
+.ts-unlock-cert__rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0;
+  color: rgba(70, 45, 20, 0.45);
+}
+.ts-unlock-cert__rule::before,
+.ts-unlock-cert__rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(70, 45, 20, 0.35);
+  max-width: 90px;
+}
+.ts-unlock-cert__rule-glyph {
+  font-size: 13px;
+  color: var(--ts-color-copper);
+}
+.ts-unlock-cert__person {
+  font-family: 'Playfair Display', var(--ts-font-display);
+  font-style: italic;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ts-color-ink);
+  margin: 2px 0 0;
+}
+.ts-unlock-cert__chapter {
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.30em;
+  color: var(--ts-color-copper);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.ts-unlock-cert__metarow {
+  font-family: var(--ts-font-label);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: rgba(70, 45, 20, 0.65);
+  text-transform: uppercase;
+  margin-top: 6px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 8px;
+}
+.ts-unlock-cert__metarow span + span::before {
+  content: '·';
+  margin-right: 8px;
+  color: rgba(70, 45, 20, 0.45);
+}
+.ts-unlock-cert__body {
+  font-family: var(--ts-font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(40, 28, 16, 0.95);
+  margin: var(--ts-space-3) auto 0;
+  max-width: 280px;
+}
+.ts-unlock-cert__body em,
+.ts-unlock-cert__body i {
+  font-style: italic;
+  color: #8b3a16;
+}
+
+/* ---- 21h. Mini-game prompt strip --------------------------------- */
+.ts-unlock-cert__divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: var(--ts-space-3) 0 var(--ts-space-2);
+  color: rgba(70, 45, 20, 0.45);
+  font-size: 10px;
+}
+.ts-unlock-cert__divider::before,
+.ts-unlock-cert__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(70, 45, 20, 0.30);
+  max-width: 90px;
+}
+.ts-unlock-cert__minigame {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  text-align: left;
+}
+.ts-unlock-cert__minigame-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(70, 45, 20, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: rgba(70, 45, 20, 0.7);
+}
+.ts-unlock-cert__minigame-text {
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(40, 28, 16, 0.85);
+}
+.ts-unlock-cert__minigame-text strong {
+  color: var(--ts-color-copper);
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* ---- 21i. CTAs --------------------------------------------------- */
+.ts-unlock-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  margin: var(--ts-space-4) auto 0;
+}
+.ts-unlock-action {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 18px;
+  font-family: var(--ts-font-label);
+  font-size: 13px;
+  letter-spacing: 0.20em;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: var(--ts-radius-md);
+  cursor: pointer;
+  transition:
+    transform var(--ts-motion-fast) var(--ts-ease-standard),
+    box-shadow var(--ts-motion-fast) var(--ts-ease-standard),
+    filter var(--ts-motion-fast) var(--ts-ease-standard);
+}
+.ts-unlock-action:active { transform: translateY(1px); }
+.ts-unlock-action__icon {
+  font-size: 14px;
+  opacity: 0.9;
+}
+.ts-unlock-action__caret {
+  font-size: 14px;
+  opacity: 0.85;
+}
+/* Primary — copper VIEW TALE */
+.ts-unlock-action--primary {
+  background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
+  color: var(--ts-color-text-on-copper);
+  border: 1px solid var(--ts-color-copper);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 220, 150, 0.20),
+    0 8px 18px var(--ts-color-copper-glow);
+}
+.ts-unlock-action--primary:hover { filter: brightness(1.05); }
+/* Secondary — dark/brass VIEW PASSPORT */
+.ts-unlock-action--secondary {
+  background: linear-gradient(180deg, #1c160f, #120c08);
+  color: var(--ts-color-text-on-dark);
+  border: 1px solid rgba(184, 134, 59, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 134, 59, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.45);
+}
+.ts-unlock-action--secondary:hover { filter: brightness(1.10); }
+
+/* ---- 21j. Quiet KEEP SCANNING action ----------------------------- */
+.ts-unlock-quiet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: var(--ts-space-4) auto 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 8px 12px;
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(70, 45, 20, 0.55);
+  cursor: pointer;
+}
+.ts-unlock-quiet::before,
+.ts-unlock-quiet::after {
+  content: '—';
+  color: rgba(70, 45, 20, 0.40);
+}
+.ts-unlock-quiet:hover { color: rgba(70, 45, 20, 0.85); }
+
+/* ---- 21k. Top close affordance ----------------------------------- */
+.ts-unlock-screen__close {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(184, 134, 59, 0.45);
+  background: rgba(20, 16, 12, 0.7);
+  color: var(--ts-color-text-on-dark);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 3;
+}
+.ts-unlock-screen__close:hover {
+  background: rgba(40, 30, 20, 0.85);
+  border-color: var(--ts-color-brass);
+}
+
+/* ---- 21l. Animations -------------------------------------------- */
+@keyframes ts-unlock-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ts-unlock-cert-in {
+  0%   { opacity: 0; transform: translateY(18px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes ts-unlock-stamp-strike {
+  0%   { opacity: 0;    transform: scale(2.0) rotate(-18deg); }
+  55%  { opacity: 0.85; transform: scale(1.18) rotate(-9deg); }
+  78%  { opacity: 1;    transform: scale(0.96) rotate(-4deg); }
+  100% { opacity: 1;    transform: scale(1)    rotate(-5deg); }
+}
+@keyframes ts-unlock-bloom {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 0.85; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-unlock-screen,
+  .ts-unlock-cert,
+  .ts-unlock-stamp__seal,
+  .ts-unlock-stamp__rays,
+  .ts-unlock-stamp__glow {
+    animation: none !important;
+  }
+  .ts-unlock-stamp__seal { transform: rotate(-5deg); }
+}
+
+/* ---- 21m. Responsive overrides ---------------------------------- */
+@media (max-width: 380px) {
+  .ts-unlock-cert { padding: var(--ts-space-5) var(--ts-space-4) var(--ts-space-4); }
+  .ts-unlock-stamp { width: 168px; height: 168px; }
+  .ts-unlock-stamp__seal { width: 144px; height: 144px; }
+  .ts-unlock-stamp__emblem { width: 80px; height: 80px; }
+  .ts-unlock-cert__headline { font-size: 24px; }
+  .ts-unlock-cert__person { font-size: 22px; }
+  .ts-unlock-cert__rail { font-size: 8px; }
+  .ts-unlock-cert__watermark { width: 48px; height: 48px; }
+  .ts-unlock-cert__watermark span { font-size: 12px; }
+}

@@ -131,6 +131,12 @@ export interface AppState {
    *  awarded game badge in this session, so the Passport can surface a
    *  "newly earned" treatment. Cleared after the Passport reads it. */
   lastEarnedGame: string | null;
+  /** UI-v6.5 — transient (non-persisted) signal: id of the most recently
+   *  unlocked Tale, so the app can surface the ceremonial "stamp earned"
+   *  modal exactly once. Cleared by user action (VIEW TALE / VIEW PASSPORT
+   *  / KEEP SCANNING / close). Persists nothing; never affects badge,
+   *  scan, or unlock contracts. */
+  lastUnlocked: string | null;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)

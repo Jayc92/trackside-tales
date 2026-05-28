@@ -10,6 +10,7 @@ const initialState: AppState = {
   currentTale: null,
   currentGame: null,
   lastEarnedGame: null,
+  lastUnlocked: null,
   ...loadState(),
 };
 
@@ -22,6 +23,7 @@ type Action =
   | { type: 'AWARD_SCAN_BADGE'; id: string }
   | { type: 'AWARD_GAME_BADGE'; id: string }
   | { type: 'CLEAR_LAST_EARNED' }
+  | { type: 'CLEAR_LAST_UNLOCKED' }
   | { type: 'SET_USER'; user: { name: string; email?: string } | null }
   | { type: 'RECORD_DATE'; id: string }
   | { type: 'RESET_DEMO' };
@@ -35,9 +37,17 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, currentTale: action.tale };
 
     case 'UNLOCK': {
+      const wasUnlocked = state.unlocked.has(action.id);
       const unlocked = new Set(state.unlocked);
       unlocked.add(action.id);
-      return { ...state, unlocked };
+      // UI-v6.5: surface the ceremonial unlock moment exactly once,
+      // only on the locked → unlocked transition. Re-visiting an already
+      // unlocked Tale must not re-trigger the modal.
+      return {
+        ...state,
+        unlocked,
+        lastUnlocked: wasUnlocked ? state.lastUnlocked : action.id,
+      };
     }
 
     case 'AWARD_SCAN_BADGE': {
@@ -65,6 +75,9 @@ function reducer(state: AppState, action: Action): AppState {
     case 'CLEAR_LAST_EARNED':
       return { ...state, lastEarnedGame: null };
 
+    case 'CLEAR_LAST_UNLOCKED':
+      return { ...state, lastUnlocked: null };
+
     case 'SET_USER':
       return { ...state, user: action.user };
 
@@ -87,6 +100,7 @@ function reducer(state: AppState, action: Action): AppState {
         gameBadges: new Set(),
         collectedDates: {},
         lastEarnedGame: null,
+        lastUnlocked: null,
       };
 
     default:
@@ -105,6 +119,7 @@ interface AppContextValue {
   awardScanBadge: (id: string) => void;
   awardGameBadge: (id: string) => void;
   clearLastEarned: () => void;
+  clearLastUnlocked: () => void;
   setUser: (user: { name: string; email?: string } | null) => void;
   recordDate: (id: string) => void;
   resetDemo: () => void;
@@ -151,12 +166,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'RECORD_DATE', id });
   }, []);
 
-  const awardScanBadge  = useCallback((id: string) => dispatch({ type: 'AWARD_SCAN_BADGE', id }),  []);
-  const awardGameBadge  = useCallback((id: string) => dispatch({ type: 'AWARD_GAME_BADGE', id }),  []);
-  const clearLastEarned = useCallback(() => dispatch({ type: 'CLEAR_LAST_EARNED' }), []);
-  const setUser         = useCallback((user: { name: string } | null) => dispatch({ type: 'SET_USER', user }), []);
-  const recordDate      = useCallback((id: string) => dispatch({ type: 'RECORD_DATE', id }), []);
-  const resetDemo       = useCallback(() => dispatch({ type: 'RESET_DEMO' }), []);
+  const awardScanBadge    = useCallback((id: string) => dispatch({ type: 'AWARD_SCAN_BADGE', id }),  []);
+  const awardGameBadge    = useCallback((id: string) => dispatch({ type: 'AWARD_GAME_BADGE', id }),  []);
+  const clearLastEarned   = useCallback(() => dispatch({ type: 'CLEAR_LAST_EARNED' }), []);
+  const clearLastUnlocked = useCallback(() => dispatch({ type: 'CLEAR_LAST_UNLOCKED' }), []);
+  const setUser           = useCallback((user: { name: string } | null) => dispatch({ type: 'SET_USER', user }), []);
+  const recordDate        = useCallback((id: string) => dispatch({ type: 'RECORD_DATE', id }), []);
+  const resetDemo         = useCallback(() => dispatch({ type: 'RESET_DEMO' }), []);
 
   return (
     <AppContext.Provider value={{
@@ -168,6 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       awardScanBadge,
       awardGameBadge,
       clearLastEarned,
+      clearLastUnlocked,
       setUser,
       recordDate,
       resetDemo,
