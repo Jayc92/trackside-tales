@@ -817,3 +817,768 @@
   .ts-progress-stat__num { font-size: 18px; }
   .ts-game-stat__val { font-size: 14px; }
 }
+
+
+/* =====================================================================
+   17. PASSPORT PAGE — identity plaque, rewards, stamp book, personalize
+   v6.1: opt-in classes for the migrated Passport/Profile screen.
+   Scoped under .ts-passport-screen so they cannot leak to v5.x pages.
+   ===================================================================== */
+
+.ts-passport-screen {
+  padding: var(--ts-space-5) var(--ts-space-4) var(--ts-page-pad-bot);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-6);
+  background: var(--ts-color-bg);
+  color: var(--ts-color-text);
+}
+
+/* ---------- 17.1 Identity plaque ---------- */
+.ts-id-plaque {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1A1208 0%, #0E0B07 100%);
+  border: 2px solid rgba(184, 134, 59, 0.55);
+  border-radius: var(--ts-radius-xl);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 220, 150, 0.06),
+    inset 0 0 32px rgba(0, 0, 0, 0.45),
+    0 18px 38px rgba(0, 0, 0, 0.45);
+  padding: var(--ts-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-4);
+}
+.ts-id-plaque::before,
+.ts-id-plaque::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle at 30% 30%, #D8AC5E, #5E4524 70%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.45), inset 0 0 2px rgba(0,0,0,0.6);
+}
+.ts-id-plaque::before { top: 10px; left: 10px; }
+.ts-id-plaque::after  { top: 10px; right: 10px; }
+
+.ts-id-plaque__watermark {
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-6deg);
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 2px solid rgba(184, 134, 59, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  opacity: 0.35;
+  text-align: center;
+}
+.ts-id-plaque__watermark::before,
+.ts-id-plaque__watermark::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1px dashed rgba(184, 134, 59, 0.22);
+}
+.ts-id-plaque__watermark::after {
+  inset: 18px;
+  border-style: solid;
+}
+.ts-id-plaque__watermark-top,
+.ts-id-plaque__watermark-bot {
+  font-family: var(--ts-font-label);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: var(--ts-color-brass);
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.ts-id-plaque__row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ts-space-3);
+  position: relative;
+  z-index: 2;
+}
+.ts-id-plaque__eyebrow {
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--ts-color-brass);
+  text-transform: uppercase;
+}
+.ts-id-plaque__code {
+  font-family: var(--ts-font-label);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--ts-color-text-secondary);
+}
+
+.ts-id-plaque__body {
+  display: flex;
+  align-items: center;
+  gap: var(--ts-space-4);
+  position: relative;
+  z-index: 2;
+}
+.ts-id-plaque__monogram {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, #2A1F14, #0E0A06 70%);
+  border: 1px solid rgba(184, 134, 59, 0.55);
+  box-shadow: inset 0 0 0 4px rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ts-font-display);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--ts-color-text);
+  flex-shrink: 0;
+}
+.ts-id-plaque__name {
+  font-family: var(--ts-font-display);
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--ts-color-text);
+  margin: 0 0 4px;
+}
+.ts-id-plaque__role {
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--ts-color-brass);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.ts-id-plaque__since {
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ts-color-text-secondary);
+}
+
+.ts-id-plaque__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--ts-color-brass-line-faint);
+  border-bottom: 1px solid var(--ts-color-brass-line-faint);
+  padding: var(--ts-space-3) 0;
+  position: relative;
+  z-index: 2;
+}
+.ts-id-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 var(--ts-space-1);
+  border-right: 1px solid var(--ts-color-brass-line-faint);
+  text-align: center;
+}
+.ts-id-stat:last-child { border-right: none; }
+.ts-id-stat__icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ts-color-brass);
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.ts-id-stat__num {
+  font-family: var(--ts-font-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ts-color-text);
+}
+.ts-id-stat__lbl {
+  font-family: var(--ts-font-label);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--ts-color-text-secondary);
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.ts-id-plaque__name-row {
+  display: flex;
+  gap: var(--ts-space-2);
+  align-items: stretch;
+  position: relative;
+  z-index: 2;
+}
+.ts-input {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 0 var(--ts-space-4);
+  background: rgba(8, 6, 4, 0.7);
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-md);
+  color: var(--ts-color-text);
+  font-family: var(--ts-font-body);
+  font-size: 14px;
+  outline: none;
+  transition: border-color var(--ts-motion-fast) var(--ts-ease-standard);
+}
+.ts-input::placeholder { color: var(--ts-color-text-muted); font-style: italic; }
+.ts-input:focus { border-color: var(--ts-color-brass); }
+.ts-input--with-icon { padding-left: 36px; }
+.ts-input-wrap {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ts-input-wrap__icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ts-color-brass);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.ts-btn--save {
+  flex: 0 0 auto;
+  background: linear-gradient(180deg, #B8863B, #8E672E);
+  color: var(--ts-color-text-on-copper);
+  border: 1px solid rgba(255, 220, 150, 0.45);
+  border-radius: var(--ts-radius-md);
+  min-height: 44px;
+  padding: 0 var(--ts-space-5);
+  font-family: var(--ts-font-label);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* ---------- 17.2 Taproom rewards panel ---------- */
+.ts-rewards-panel {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1A140D 0%, #0E0B07 100%);
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  box-shadow: var(--ts-shadow-card);
+  padding: var(--ts-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-4);
+}
+.ts-rewards-panel__row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ts-color-brass-line-faint);
+  padding-bottom: var(--ts-space-3);
+}
+.ts-rewards-panel__eyebrow {
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--ts-color-brass);
+  text-transform: uppercase;
+}
+.ts-rewards-panel__count {
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--ts-color-text-secondary);
+}
+.ts-rewards-panel__center {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ts-space-3);
+  padding: var(--ts-space-3) 0;
+  position: relative;
+  z-index: 2;
+}
+.ts-rewards-panel__headline {
+  display: flex;
+  align-items: center;
+  gap: var(--ts-space-3);
+  font-family: var(--ts-font-display);
+  font-size: 22px;
+  letter-spacing: var(--ts-letter-display);
+  text-transform: uppercase;
+  color: var(--ts-color-text);
+}
+.ts-rewards-panel__headline::before,
+.ts-rewards-panel__headline::after {
+  content: '';
+  width: 22px;
+  height: 1px;
+  background: var(--ts-color-brass-line);
+}
+.ts-rewards-panel__copy {
+  font-family: var(--ts-font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ts-color-text-secondary);
+  max-width: 320px;
+}
+.ts-rewards-panel__cta {
+  margin-top: var(--ts-space-2);
+  min-height: 48px;
+  padding: 0 var(--ts-space-6);
+  background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
+  color: var(--ts-color-text-on-copper);
+  border: 1px solid rgba(255, 190, 90, 0.55);
+  border-radius: var(--ts-radius-md);
+  font-family: var(--ts-font-label);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: var(--ts-shadow-copper-glow);
+}
+.ts-rewards-panel__foot {
+  border-top: 1px solid var(--ts-color-brass-line-faint);
+  padding-top: var(--ts-space-3);
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ts-color-text-muted);
+  line-height: 1.5;
+  text-align: left;
+}
+.ts-rewards-panel__watermark-l,
+.ts-rewards-panel__watermark-r {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 1px solid rgba(184, 134, 59, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(184, 134, 59, 0.30);
+  font-size: 28px;
+  pointer-events: none;
+  z-index: 1;
+}
+.ts-rewards-panel__watermark-l { left: -28px; }
+.ts-rewards-panel__watermark-r {
+  right: -28px;
+  flex-direction: column;
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  font-family: var(--ts-font-label);
+  color: rgba(184, 134, 59, 0.35);
+  text-transform: uppercase;
+  text-align: center;
+}
+.ts-rewards-panel__watermark-r::before {
+  content: '★';
+  font-size: 24px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+/* ---------- 17.3 Stamp book section header ---------- */
+.ts-stampbook-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-2);
+}
+.ts-stampbook-header__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ts-space-3);
+  font-family: var(--ts-font-label);
+  font-size: 12px;
+  letter-spacing: var(--ts-letter-label);
+  color: var(--ts-color-brass);
+  text-transform: uppercase;
+}
+.ts-stampbook-header__title::before,
+.ts-stampbook-header__title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ts-color-brass-line);
+  max-width: 60px;
+}
+.ts-stampbook-header__sub {
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ts-color-text-secondary);
+}
+
+/* ---------- 17.4 Open passport book ---------- */
+.ts-book {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: linear-gradient(135deg, #3A2814 0%, #241608 100%);
+  padding: var(--ts-space-3);
+  border-radius: var(--ts-radius-md);
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(184, 134, 59, 0.18);
+}
+.ts-book__page {
+  position: relative;
+  background:
+    radial-gradient(ellipse at top left, rgba(255, 245, 220, 0.55), transparent 70%),
+    linear-gradient(180deg, #E6D2A6 0%, #C8AE7A 100%);
+  color: var(--ts-color-ink);
+  padding: var(--ts-space-4);
+  min-height: 320px;
+  font-family: var(--ts-font-body);
+  font-size: 13px;
+  overflow: hidden;
+}
+.ts-book__page--left {
+  border-radius: var(--ts-radius-sm) 0 0 var(--ts-radius-sm);
+  box-shadow: inset -2px 0 6px rgba(60, 35, 15, 0.4);
+}
+.ts-book__page--right {
+  border-radius: 0 var(--ts-radius-sm) var(--ts-radius-sm) 0;
+  box-shadow: inset 2px 0 6px rgba(60, 35, 15, 0.4);
+}
+.ts-book__binding {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  pointer-events: none;
+  z-index: 2;
+}
+.ts-book__ring {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #D8AC5E, #5E4524 70%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.45), inset 0 0 2px rgba(0,0,0,0.6);
+}
+
+.ts-book__meta {
+  font-family: var(--ts-font-label);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: rgba(70, 45, 20, 0.65);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.ts-book__chapter {
+  font-family: var(--ts-font-label);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: rgba(70, 45, 20, 0.85);
+  text-transform: uppercase;
+  margin-bottom: var(--ts-space-2);
+}
+.ts-book__title {
+  font-family: var(--ts-font-display);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--ts-color-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 var(--ts-space-3);
+}
+.ts-book__seal {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #4A6F8F 0%, #1F3A52 80%);
+  border: 2px solid rgba(70, 45, 20, 0.5);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #E6D2A6;
+  font-family: var(--ts-font-label);
+  font-size: 7px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: var(--ts-space-3);
+}
+.ts-book__seal-icon {
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 1px;
+}
+.ts-book__checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-2);
+  margin-bottom: var(--ts-space-3);
+}
+.ts-book__check {
+  display: flex;
+  align-items: center;
+  gap: var(--ts-space-2);
+}
+.ts-book__check-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(70, 45, 20, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(70, 45, 20, 0.85);
+  background: transparent;
+  flex-shrink: 0;
+}
+.ts-book__check--earned .ts-book__check-dot {
+  background: rgba(70, 45, 20, 0.85);
+  color: #E6D2A6;
+  border-color: rgba(70, 45, 20, 0.85);
+}
+.ts-book__check-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.ts-book__check-lbl {
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--ts-color-ink);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.ts-book__check-state {
+  font-family: var(--ts-font-body);
+  font-size: 11px;
+  color: rgba(70, 45, 20, 0.75);
+  font-style: italic;
+}
+.ts-book__note {
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 11px;
+  color: rgba(70, 45, 20, 0.7);
+  line-height: 1.4;
+}
+.ts-book__compass {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0.18;
+}
+.ts-book__compass-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px solid rgba(70, 45, 20, 0.8);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ts-book__compass-circle::before,
+.ts-book__compass-circle::after {
+  content: '';
+  position: absolute;
+  background: rgba(70, 45, 20, 0.7);
+}
+.ts-book__compass-circle::before {
+  width: 2px;
+  height: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.ts-book__compass-circle::after {
+  height: 2px;
+  width: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ts-book__compass-star {
+  font-size: 28px;
+  color: rgba(70, 45, 20, 0.85);
+  z-index: 1;
+}
+
+/* ---------- 17.5 Book navigation row ---------- */
+.ts-book-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--ts-space-3);
+  margin-top: var(--ts-space-2);
+}
+.ts-book-nav__btn {
+  background: linear-gradient(180deg, #1A1208, #0E0B07);
+  color: var(--ts-color-text);
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-md);
+  min-height: 40px;
+  padding: 0 var(--ts-space-4);
+  font-family: var(--ts-font-label);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color var(--ts-motion-fast) var(--ts-ease-standard);
+}
+.ts-book-nav__btn:hover { border-color: var(--ts-color-brass); }
+.ts-book-nav__btn:disabled,
+.ts-book-nav__btn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; cursor: default; }
+.ts-book-nav__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ts-book-nav__dots {
+  display: flex;
+  align-items: center;
+  gap: var(--ts-space-2);
+}
+.ts-book-nav__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ts-color-brass-dim);
+  transition: background var(--ts-motion-fast) var(--ts-ease-standard);
+}
+.ts-book-nav__dot--active {
+  background: var(--ts-color-copper-bright);
+  box-shadow: 0 0 6px var(--ts-color-copper-glow);
+}
+.ts-book-nav__hint {
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 10px;
+  color: var(--ts-color-text-muted);
+}
+
+/* ---------- 17.6 Personalize panel ---------- */
+.ts-personalize {
+  background: linear-gradient(180deg, #1A140D 0%, #0E0B07 100%);
+  border: 1px solid var(--ts-color-brass-line);
+  border-radius: var(--ts-radius-lg);
+  box-shadow: var(--ts-shadow-card);
+  padding: var(--ts-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-4);
+  text-align: center;
+}
+.ts-personalize__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ts-space-3);
+  font-family: var(--ts-font-label);
+  font-size: 12px;
+  letter-spacing: var(--ts-letter-label);
+  color: var(--ts-color-brass);
+  text-transform: uppercase;
+}
+.ts-personalize__title::before,
+.ts-personalize__title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ts-color-brass-line);
+  max-width: 40px;
+}
+.ts-personalize__copy {
+  font-family: var(--ts-font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ts-color-text-secondary);
+}
+.ts-personalize__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ts-space-2);
+}
+.ts-personalize__cta {
+  width: 100%;
+  min-height: 52px;
+  background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
+  color: var(--ts-color-text-on-copper);
+  border: 1px solid rgba(255, 190, 90, 0.55);
+  border-radius: var(--ts-radius-md);
+  font-family: var(--ts-font-label);
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: var(--ts-shadow-copper-glow);
+}
+.ts-personalize__cta:hover { filter: brightness(1.05); }
+.ts-personalize__maybe {
+  background: transparent;
+  border: none;
+  color: var(--ts-color-text-secondary);
+  font-family: var(--ts-font-body);
+  font-style: italic;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.ts-personalize__maybe:hover { color: var(--ts-color-text); }
+.ts-personalize__reset {
+  background: transparent;
+  border: none;
+  color: var(--ts-color-text-muted);
+  font-family: var(--ts-font-label);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.ts-personalize__reset:hover { color: var(--ts-color-brass); }
+
+/* ---------- 17.7 Responsive ---------- */
+@media (max-width: 380px) {
+  .ts-id-plaque__name { font-size: 18px; }
+  .ts-id-stat__num { font-size: 18px; }
+  .ts-rewards-panel__headline { font-size: 18px; }
+  .ts-personalize__inputs { grid-template-columns: 1fr; }
+  .ts-book__page { padding: var(--ts-space-3); min-height: 280px; }
+  .ts-book__title { font-size: 18px; }
+  .ts-book__seal { width: 52px; height: 52px; }
+}

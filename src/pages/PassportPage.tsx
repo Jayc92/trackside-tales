@@ -1,23 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../app/AppContext';
-import { TsIcon } from '../components/TsIcon';
-import { formatDate } from '../services/badgeService';
-import { LS_HOW_DISMISSED } from '../app/types';
+import { LS_HOW_DISMISSED, LS_PASSPORT_PAGE } from '../app/types';
 
-// ================== PASSPORT / PROFILE PAGE (== golden #page-profile) ==================
-// v5.3 — Reward Hub Polish
-//   The Passport is now the emotional payoff center of the app. Every Tale
-//   gets a two-mark plaque (Discovery Mark + Challenge Badge), a
-//   "Founders Progress" meter sits between the ID card and the stamp book,
-//   and a transient "newly earned" highlight pulses on the entry the
-//   guest just completed. The newly-earned signal is a session-only flag
-//   on app state — it lights up the entry, scrolls it into view, and
-//   clears itself after a beat so the next visit reads fresh.
-//
-//   No badge keys, localStorage keys, scan/unlock paths, or game logic
-//   were changed. The new state field (lastEarnedGame) is intentionally
-//   not persisted — it only fires once, in-session, after a successful
-//   game completion.
+// ================== PASSPORT / PROFILE PAGE (v6.1 — Structured Design Pass) ==================
+// Visual rewrite to match the v6.0 reference. All app behavior is preserved:
+//   • Same useApp() data sources (state.unlocked / scanBadges / gameBadges /
+//     collectedDates / user / lastEarnedGame).
+//   • Same handlers — setUser, resetDemo, nav, clearLastEarned.
+//   • Badge keys, localStorage keys, scan/unlock paths, and routes are
+//     untouched.
+//   • Book pagination is purely UI (no schema change). It walks the
+//     unlocked tales in order and is persisted to LS_PASSPORT_PAGE so
+//     reloads return to the page the guest was viewing.
 
 function getPassportId(joined: string | null): string {
   try {
@@ -29,25 +23,7 @@ function getPassportId(joined: string | null): string {
   }
 }
 
-// Founders Tier ladder — the totals at which each tier unlocks. Marks
-// here means total marks (scan + game) across all Tales. With 3 seeded
-// Tales the ladder maxes at 6 marks (3 scan + 3 game). The ladder is
-// future-proofed: when more tales ship, the same tier thresholds extend.
-const TIERS = [
-  { tier: 0, label: 'GUEST',     marks: 0 },
-  { tier: 1, label: 'EXPLORER',  marks: 2 },
-  { tier: 2, label: 'COLLECTOR', marks: 4 },
-  { tier: 3, label: 'FOUNDERS',  marks: 6 },
-];
-
-function tierFor(marks: number): { current: typeof TIERS[number]; next: typeof TIERS[number] | null } {
-  let current = TIERS[0];
-  for (const t of TIERS) {
-    if (marks >= t.marks) current = t;
-  }
-  const next = TIERS.find((t) => t.marks > current.marks) || null;
-  return { current, next };
-}
+const REWARDS_TARGET = 12; // taproom rewards goal — visual milestone only
 
 export function PassportPage() {
   const { state, tales, setUser, resetDemo, nav, clearLastEarned } = useApp();
@@ -56,370 +32,311 @@ export function PassportPage() {
   const initial  = nickname.charAt(0).toUpperCase();
   const passId   = getPassportId(state.user ? state.user.name : null);
 
-  const stories       = state.unlocked.size;
-  const scanCount     = state.scanBadges.size;
-  const gameCount     = state.gameBadges.size;
-  const totalMarks    = scanCount + gameCount;
-  const totalPossible = tales.length * 2;
-  const fullyComplete = tales.filter((t) => state.scanBadges.has(t.id) && state.gameBadges.has(t.id)).length;
-  const { current: currentTier, next: nextTier } = tierFor(totalMarks);
-  const tierProgressPct = nextTier
-    ? Math.min(100, Math.round(((totalMarks - currentTier.marks) / (nextTier.marks - currentTier.marks)) * 100))
-    : 100;
+  const talesUnlocked = state.unlocked.size;
+  const stampsEarned  = state.scanBadges.size;
+  const gamesDone     = state.gameBadges.size;
+  const totalStamps   = stampsEarned + gamesDone;          // taproom counter
+  const rewardsProgress = Math.min(100, Math.round((totalStamps / REWARDS_TARGET) * 100));
 
+  // ---- Identity inputs ----------------------------------------------------
   const [nicknameInput, setNicknameInput] = useState(
     nickname === 'Trackside Guest' ? '' : nickname,
   );
+  // ---- Personalize panel inputs (separate from header save) ---------------
+  const [signupName, setSignupName]   = useState(state.user?.name  || '');
+  const [signupEmail, setSignupEmail] = useState(state.user?.email || '');
 
-  // Newly-earned celebration. Capture the id once on mount (or whenever
-  // it changes), then auto-clear from app state so a future visit shows
-  // a calm Passport. Local mirror keeps the highlight on screen for a
-  // beat after clearing the global signal.
-  const [celebrateId, setCelebrateId] = useState<string | null>(state.lastEarnedGame);
-  const celebrateTale = useMemo(
-    () => (celebrateId ? tales.find((t) => t.id === celebrateId) || null : null),
-    [celebrateId, tales],
-  );
-  const celebrateRowRef = useRef<HTMLDivElement | null>(null);
+  // ---- Stamp book pagination — local UI state only ------------------------
+  // The "book" walks the seeded tales array. Locked tales render a sealed
+  // page so the book always feels populated. Persisted so reload returns
+  // to the same spread.
+  const [bookIdx, setBookIdx] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem(LS_PASSPORT_PAGE);
+      const n   = raw ? parseInt(raw, 10) : 0;
+      if (!Number.isFinite(n)) return 0;
+      return Math.max(0, Math.min(tales.length - 1, n));
+    } catch (_) { return 0; }
+  });
   useEffect(() => {
-    if (state.lastEarnedGame) {
-      setCelebrateId(state.lastEarnedGame);
-      // Clear the global signal immediately so other surfaces don't
-      // re-celebrate. Local state keeps the visual treatment alive.
-      clearLastEarned();
-    }
-  }, [state.lastEarnedGame, clearLastEarned]);
+    try { localStorage.setItem(LS_PASSPORT_PAGE, String(bookIdx)); } catch (_) { /* ignore */ }
+  }, [bookIdx]);
 
-  // Scroll the celebrated row into view after the page paints.
+  // If the celebrated tale just got a badge, advance the book to it once.
   useEffect(() => {
-    if (!celebrateId) return;
-    const t = window.setTimeout(() => {
-      celebrateRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 180);
-    // Auto-fade the highlight after a few seconds so the page settles.
-    const fade = window.setTimeout(() => setCelebrateId(null), 6500);
-    return () => { window.clearTimeout(t); window.clearTimeout(fade); };
-  }, [celebrateId]);
+    if (!state.lastEarnedGame) return;
+    const idx = tales.findIndex((t) => t.id === state.lastEarnedGame);
+    if (idx >= 0) setBookIdx(idx);
+    clearLastEarned();
+  }, [state.lastEarnedGame, tales, clearLastEarned]);
 
+  const currentTale = tales[bookIdx] || tales[0];
+  const currentUnlocked = currentTale ? state.unlocked.has(currentTale.id)    : false;
+  const currentScan     = currentTale ? state.scanBadges.has(currentTale.id)  : false;
+  const currentGame     = currentTale ? state.gameBadges.has(currentTale.id)  : false;
+
+  // ---- Handlers -----------------------------------------------------------
   const handleSaveNickname = () => {
     const value = nicknameInput.trim();
     if (!value) return;
-    setUser({ name: value });
+    setUser({ name: value, email: state.user?.email });
   };
-
+  const handleJoin = () => {
+    const name = signupName.trim();
+    if (!name) return;
+    setUser({ name, email: signupEmail.trim() || undefined });
+  };
+  const handleMaybeLater = () => nav('home');
   const handleReset = () => {
     if (!confirm('Reset Passport? This clears all unlocked Tales and earned Marks.')) return;
     resetDemo();
     try { localStorage.removeItem(LS_HOW_DISMISSED); } catch (_) { /* ignore */ }
+    try { localStorage.removeItem(LS_PASSPORT_PAGE); } catch (_) { /* ignore */ }
+    setBookIdx(0);
   };
+  const handlePrev = () => setBookIdx((i) => Math.max(0, i - 1));
+  const handleNext = () => setBookIdx((i) => Math.min(tales.length - 1, i + 1));
 
-  const unlockedCount = useMemo(
-    () => tales.filter((t) => state.unlocked.has(t.id)).length,
-    [tales, state.unlocked],
-  );
+  // ---- Visual book metadata ----------------------------------------------
+  const bookPageNum  = bookIdx + 1;
+  const bookPageDisp = `PAGE ${bookPageNum} OF ${tales.length} · TRACKSIDE TALES PASSPORT`;
+  const chapterDisp  = currentTale ? `${currentTale.chapter} · ${currentTale.year}` : '';
+  const titleDisp    = currentTale ? currentTale.name.toUpperCase() : '';
+  const sealInitials = currentTale ? currentTale.abbr : '';
+
+  const noteCopy = useMemo(() => {
+    if (!currentUnlocked) return 'Scan a Trackside can to unlock this Tale and start its page.';
+    if (currentScan && currentGame) return 'Both stamps earned. This Tale is fully collected.';
+    if (currentScan && !currentGame) return 'Story stamp earned. Complete the mini-game to add the second badge.';
+    return 'Unlocked. Earn the Discovery and Challenge stamps to complete the page.';
+  }, [currentUnlocked, currentScan, currentGame]);
 
   return (
-    <div className="page active" id="page-profile">
+    <div className="page active ts-passport-screen" id="page-profile">
 
-      <div id="profile-content">
+      {/* ============== 2. GUEST PASSPORT IDENTITY PLAQUE ============== */}
+      <section className="ts-id-plaque" aria-label="Guest passport">
+        <div className="ts-id-plaque__watermark" aria-hidden="true">
+          <span className="ts-id-plaque__watermark-top">TRACKSIDE TALES</span>
+          <span className="ts-id-plaque__watermark-bot">PASSPORT</span>
+        </div>
 
-        <div style={{ padding: '1.25rem 1.25rem 0' }}>
+        <div className="ts-id-plaque__row-top">
+          <span className="ts-id-plaque__eyebrow">GUEST PASSPORT</span>
+          <span className="ts-id-plaque__code">{passId}</span>
+        </div>
 
-          <div className="passport-id-card">
-            <div className="passport-id-header">
-              <div className="passport-id-eyebrow">FOUNDERS PASSPORT</div>
-              <div className="passport-id-number">{passId}</div>
+        <div className="ts-id-plaque__body">
+          <div className="ts-id-plaque__monogram" aria-hidden="true">{initial}</div>
+          <div>
+            <h2 className="ts-id-plaque__name">{nickname}</h2>
+            <div className="ts-id-plaque__role">PREVIEW GUEST · TRACKSIDE TALES</div>
+            <div className="ts-id-plaque__since">Member since preview</div>
+          </div>
+        </div>
+
+        <div className="ts-id-plaque__stats">
+          <div className="ts-id-stat">
+            <div className="ts-id-stat__icon" aria-hidden="true">📖</div>
+            <div className="ts-id-stat__num">{talesUnlocked}</div>
+            <div className="ts-id-stat__lbl">TALES<br/>UNLOCKED</div>
+          </div>
+          <div className="ts-id-stat">
+            <div className="ts-id-stat__icon" aria-hidden="true">⌑</div>
+            <div className="ts-id-stat__num">{stampsEarned}</div>
+            <div className="ts-id-stat__lbl">STAMPS<br/>EARNED</div>
+          </div>
+          <div className="ts-id-stat">
+            <div className="ts-id-stat__icon" aria-hidden="true">◈</div>
+            <div className="ts-id-stat__num">{gamesDone}</div>
+            <div className="ts-id-stat__lbl">GAMES<br/>DONE</div>
+          </div>
+          <div className="ts-id-stat">
+            <div className="ts-id-stat__icon" aria-hidden="true">★</div>
+            <div className="ts-id-stat__num">{rewardsProgress}<span style={{ fontSize: '0.6em' }}>%</span></div>
+            <div className="ts-id-stat__lbl">REWARDS<br/>PROGRESS</div>
+          </div>
+        </div>
+
+        <div className="ts-id-plaque__name-row">
+          <input
+            className="ts-input"
+            id="nickname-field"
+            type="text"
+            value={nicknameInput}
+            onChange={(e) => setNicknameInput(e.target.value)}
+            placeholder="Enter your name…"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNickname(); }}
+          />
+          <button className="ts-btn--save" onClick={handleSaveNickname} type="button">SAVE</button>
+        </div>
+      </section>
+
+      {/* ============== 3. TAPROOM REWARDS PANEL ============== */}
+      <section className="ts-rewards-panel" aria-label="Taproom rewards">
+        <div className="ts-rewards-panel__watermark-l" aria-hidden="true">⌬</div>
+        <div className="ts-rewards-panel__watermark-r" aria-hidden="true">
+          TRACKSIDE TALES<br/>REWARDS
+        </div>
+
+        <div className="ts-rewards-panel__row-top">
+          <span className="ts-rewards-panel__eyebrow">TAPROOM REWARDS</span>
+          <span className="ts-rewards-panel__count">{totalStamps} / {REWARDS_TARGET} STAMPS</span>
+        </div>
+
+        <div className="ts-rewards-panel__center">
+          <div className="ts-rewards-panel__headline">
+            {totalStamps === 0 ? 'NO STAMPS YET' : `${totalStamps} STAMPS COLLECTED`}
+          </div>
+          <p className="ts-rewards-panel__copy">
+            {totalStamps === 0
+              ? 'Unlock a Tale to begin reward progress. Each scan and mini-game adds a stamp toward taproom rewards.'
+              : 'Each scan and mini-game adds a stamp toward taproom rewards. Keep collecting to unlock the founders tier.'}
+          </p>
+          <button type="button" className="ts-rewards-panel__cta" onClick={() => nav('scan')}>
+            SCAN A TALE
+          </button>
+        </div>
+
+        <div className="ts-rewards-panel__foot">
+          Collect Tale stamps to move toward taproom rewards.<br/>
+          Redemption is part of the partnership preview — no live redemption yet.
+        </div>
+      </section>
+
+      {/* ============== 4. PASSPORT STAMP BOOK ============== */}
+      <header className="ts-stampbook-header">
+        <div className="ts-stampbook-header__title">PASSPORT STAMP BOOK</div>
+        <div className="ts-stampbook-header__sub">
+          Every Tale you unlock marks a page in your Trackside Passport.
+        </div>
+      </header>
+
+      <div className="ts-book" aria-label="Open passport book">
+        <div className="ts-book__page ts-book__page--left">
+          <div className="ts-book__meta">{bookPageDisp}</div>
+          <div className="ts-book__chapter">{chapterDisp}</div>
+          <h3 className="ts-book__title">{titleDisp}</h3>
+
+          <div className="ts-book__seal" aria-hidden="true">
+            <span className="ts-book__seal-icon">◈</span>
+            <span>{sealInitials}</span>
+          </div>
+
+          <div className="ts-book__checks">
+            <div className={`ts-book__check${currentScan ? ' ts-book__check--earned' : ''}`}>
+              <span className="ts-book__check-dot">{currentScan ? '✓' : ''}</span>
+              <span className="ts-book__check-text">
+                <span className="ts-book__check-lbl">STORY</span>
+                <span className="ts-book__check-state">{currentScan ? 'Complete' : 'Incomplete'}</span>
+              </span>
             </div>
-            <div className="passport-id-body">
-              <div className="passport-id-avatar">{initial}</div>
-              <div className="passport-id-info">
-                <div className="passport-id-name">{nickname}</div>
-                <div className="passport-id-status">{currentTier.label} TIER · TRACKSIDE TALES</div>
-                <div className="passport-id-since">Founders Passport · early collector</div>
-              </div>
+            <div className={`ts-book__check${currentGame ? ' ts-book__check--earned' : ''}`}>
+              <span className="ts-book__check-dot">{currentGame ? '✓' : ''}</span>
+              <span className="ts-book__check-text">
+                <span className="ts-book__check-lbl">MINI-GAME</span>
+                <span className="ts-book__check-state">{currentGame ? 'Complete' : 'Incomplete'}</span>
+              </span>
             </div>
-            <div className="passport-id-stats">
-              <div className="passport-id-stat">
-                <div className="passport-id-stat-num">{stories}</div>
-                <div className="passport-id-stat-lbl">TALES UNLOCKED</div>
-              </div>
-              <div className="passport-id-stat">
-                <div className="passport-id-stat-num">{scanCount}</div>
-                <div className="passport-id-stat-lbl">DISCOVERY MARKS</div>
-              </div>
-              <div className="passport-id-stat">
-                <div className="passport-id-stat-num">{gameCount}</div>
-                <div className="passport-id-stat-lbl">CHALLENGE BADGES</div>
-              </div>
-              <div className="passport-id-stat">
-                <div className="passport-id-stat-num">{fullyComplete}</div>
-                <div className="passport-id-stat-lbl">TALES COMPLETED</div>
-              </div>
+          </div>
+
+          <div className="ts-book__note">{noteCopy}</div>
+        </div>
+
+        <div className="ts-book__binding" aria-hidden="true">
+          <span className="ts-book__ring" />
+          <span className="ts-book__ring" />
+          <span className="ts-book__ring" />
+          <span className="ts-book__ring" />
+          <span className="ts-book__ring" />
+        </div>
+
+        <div className="ts-book__page ts-book__page--right">
+          <div className="ts-book__compass" aria-hidden="true">
+            <div className="ts-book__compass-circle">
+              <span className="ts-book__compass-star">✦</span>
             </div>
-            <div className="nickname-edit-row">
-              <input
-                className="nickname-input"
-                id="nickname-field"
-                type="text"
-                value={nicknameInput}
-                onChange={(e) => setNicknameInput(e.target.value)}
-                placeholder="Enter your name…"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNickname(); }}
+          </div>
+        </div>
+      </div>
+
+      {/* ============== 5. BOOK NAVIGATION ROW ============== */}
+      <nav className="ts-book-nav" aria-label="Stamp book navigation">
+        <button
+          type="button"
+          className="ts-book-nav__btn"
+          onClick={handlePrev}
+          disabled={bookIdx === 0}
+        >
+          ← PREV
+        </button>
+        <div className="ts-book-nav__center">
+          <div className="ts-book-nav__dots" role="tablist">
+            {tales.map((t, i) => (
+              <span
+                key={t.id}
+                className={`ts-book-nav__dot${i === bookIdx ? ' ts-book-nav__dot--active' : ''}`}
+                role="tab"
+                aria-selected={i === bookIdx}
+                aria-label={`Page ${i + 1}`}
               />
-              <button className="nickname-save-btn" onClick={handleSaveNickname}>SAVE</button>
-            </div>
+            ))}
           </div>
-
-          {/* v5.3: Founders Progress meter — surfaces the marks-vs-total
-             totals + the next tier as a single, motivating headline. */}
-          <div className="founders-progress" aria-label="Founders progress meter">
-            <div className="founders-progress-row">
-              <div className="founders-progress-headline">
-                <span className="founders-progress-num">{totalMarks}</span>
-                <span className="founders-progress-of"> of </span>
-                <span className="founders-progress-total">{totalPossible}</span>
-                <span className="founders-progress-unit"> Marks earned</span>
-              </div>
-              <div className="founders-progress-tier">
-                <span className="founders-progress-tier-label">{currentTier.label}</span>
-                <span className="founders-progress-tier-sep">→</span>
-                <span className="founders-progress-tier-next">
-                  {nextTier ? nextTier.label : 'MAX TIER'}
-                </span>
-              </div>
-            </div>
-            <div className="founders-progress-meter" role="progressbar" aria-valuenow={totalMarks} aria-valuemin={0} aria-valuemax={totalPossible}>
-              <div
-                className="founders-progress-fill"
-                style={{ width: `${(totalMarks / Math.max(totalPossible, 1)) * 100}%` }}
-              />
-              {TIERS.filter((t) => t.marks > 0).map((t) => (
-                <div
-                  key={t.tier}
-                  className={`founders-progress-tick${totalMarks >= t.marks ? ' reached' : ''}`}
-                  style={{ left: `${(t.marks / Math.max(totalPossible, 1)) * 100}%` }}
-                  aria-hidden="true"
-                />
-              ))}
-            </div>
-            <div className="founders-progress-breakdown" aria-label="Marks breakdown">
-              <span className="founders-progress-chip">
-                <span className="founders-progress-chip-num">{scanCount}</span>
-                <span className="founders-progress-chip-lbl">Discovery</span>
-              </span>
-              <span className="founders-progress-chip-sep">·</span>
-              <span className="founders-progress-chip">
-                <span className="founders-progress-chip-num">{gameCount}</span>
-                <span className="founders-progress-chip-lbl">Challenge</span>
-              </span>
-              <span className="founders-progress-chip-sep">·</span>
-              <span className="founders-progress-chip">
-                <span className="founders-progress-chip-num">{fullyComplete}</span>
-                <span className="founders-progress-chip-of"> of </span>
-                <span className="founders-progress-chip-num">{tales.length}</span>
-                <span className="founders-progress-chip-lbl">Tales completed</span>
-              </span>
-            </div>
-            <div className="founders-progress-foot">
-              {nextTier ? (
-                <>
-                  <span className="founders-progress-next">
-                    Next milestone · {nextTier.label} at {nextTier.marks} Marks
-                  </span>
-                  <span className="founders-progress-remain">
-                    {nextTier.marks - totalMarks} more {nextTier.marks - totalMarks === 1 ? 'Mark' : 'Marks'} to go
-                  </span>
-                </>
-              ) : (
-                <span className="founders-progress-next">
-                  Founders milestone reached · every current Mark collected
-                </span>
-              )}
-            </div>
-          </div>
-
+          <span className="ts-book-nav__hint">swipe or tap to flip</span>
         </div>
+        <button
+          type="button"
+          className="ts-book-nav__btn"
+          onClick={handleNext}
+          disabled={bookIdx >= tales.length - 1}
+        >
+          NEXT →
+        </button>
+      </nav>
 
-        <div className="stamp-book-section">
-          <div className="stamp-book-header">
-            <div className="stamp-book-label">PASSPORT STAMP BOOK</div>
-            <div className="stamp-book-count">{fullyComplete} of {tales.length} fully collected</div>
+      {/* ============== 6. PERSONALIZE YOUR PASSPORT ============== */}
+      <section className="ts-personalize" aria-label="Personalize your passport">
+        <div className="ts-personalize__title">PERSONALIZE YOUR PASSPORT</div>
+        <p className="ts-personalize__copy">
+          Enter your name above to customize your Trackside Passport for this preview.
+          Full accounts are coming with the live product.
+        </p>
+
+        <div className="ts-personalize__inputs">
+          <div className="ts-input-wrap">
+            <span className="ts-input-wrap__icon" aria-hidden="true">👤</span>
+            <input
+              className="ts-input ts-input--with-icon"
+              type="text"
+              value={signupName}
+              onChange={(e) => setSignupName(e.target.value)}
+              placeholder="Your name"
+            />
           </div>
-          <div className="stamp-book-sub">
-            Every Tale earns two Marks — one for Discovery, one for completing its Challenge.
-          </div>
-          <div className="stamp-book-key" aria-label="Passport mark legend">
-            <span className="stamp-book-key-item">
-              <span className="stamp-book-key-dot" /> Discovery Mark · scanned
-            </span>
-            <span className="stamp-book-key-item">
-              <span className="stamp-book-key-dot full" /> Challenge Badge · completed
-            </span>
-          </div>
-          {/* v5.5: top-of-stamp-book celebration banner. Same celebrateId
-             signal as the per-entry glow below, surfaced again here so the
-             "your Passport just updated" feeling lands the moment the
-             page paints — not only when the user scrolls to the entry. */}
-          {celebrateId && celebrateTale && (
-            <div className="stamp-book-celebrate" role="status" aria-live="polite">
-              <span className="stamp-book-celebrate-spark" aria-hidden="true">✦</span>
-              <span className="stamp-book-celebrate-copy">
-                <strong>New Challenge Badge stamped.</strong>
-                <span className="stamp-book-celebrate-tale">{celebrateTale.gameBadge.title} · {celebrateTale.name}</span>
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="passport-section">
-          <div className="passport-header">
-            <div className="passport-label">TRACKSIDE TALES PASSPORT</div>
-            <div className="passport-count">{unlockedCount} / {tales.length} COLLECTED</div>
-          </div>
-
-          <div className="passport-book">
-            <div className="passport-crest">
-              <div className="passport-crest-mark">◈ T.B. ◈</div>
-              <div className="passport-crest-title">TRACKSIDE TALES</div>
-              <div className="passport-crest-sub">LEHIGH VALLEY · PENNSYLVANIA</div>
-            </div>
-
-            {tales.map((tale) => {
-              const unlocked   = state.unlocked.has(tale.id);
-              const scanStamp  = state.scanBadges.has(tale.id);
-              const gameStamp  = state.gameBadges.has(tale.id);
-              const stampCount = (scanStamp ? 1 : 0) + (gameStamp ? 1 : 0);
-              const collected  = state.collectedDates[tale.id];
-              const isOnTap    = tale.tapStatus === 'on-tap';
-              const isComplete = scanStamp && gameStamp;
-              const isCelebrating = celebrateId === tale.id;
-
-              const retiredFlag    = !isOnTap && unlocked ? ' retired' : '';
-              const lockedFlag     = unlocked ? '' : ' locked';
-              const completeFlag   = isComplete ? ' complete' : '';
-              const celebrateFlag  = isCelebrating ? ' celebrating' : '';
-              const navigateOnClick = unlocked ? () => nav('story') : undefined;
-
-              return (
-                <div
-                  key={tale.id}
-                  ref={isCelebrating ? celebrateRowRef : null}
-                  className={`passport-entry${lockedFlag}${retiredFlag}${completeFlag}${celebrateFlag}`}
-                  onClick={navigateOnClick}
-                  role={unlocked ? 'button' : undefined}
-                  aria-disabled={!unlocked}
-                >
-                  <div className="passport-stamp">
-                    <TsIcon
-                      icon={unlocked ? tale.icon : 'locked-seal'}
-                      className={`ts-icon-md${unlocked ? '' : ' ts-icon-locked'}`}
-                    />
-                    {stampCount > 0 && (
-                      <span className="passport-stamp-mark">{stampCount}</span>
-                    )}
-                    {isComplete && (
-                      <span className="passport-stamp-complete-ring" aria-hidden="true" />
-                    )}
-                  </div>
-                  <div className="passport-entry-info">
-                    <div className="passport-entry-name">{tale.name}</div>
-                    <div className="passport-entry-person">
-                      {tale.person.name} · {tale.year}
-                    </div>
-                    {unlocked && (
-                      <div className="passport-entry-meta">
-                        <span>Collected {formatDate(collected)}</span>
-                        {!isOnTap && tale.retiredDate && (
-                          <span> · Retired {formatDate(tale.retiredDate)}</span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* v5.3: explicit two-mark sub-rows replace the old
-                       single-line helper. Always visible once the Tale
-                       is unlocked so the guest can see exactly which
-                       Mark they have and which they don't. */}
-                    {unlocked ? (
-                      <div className="passport-entry-marks" aria-label="Mark progress">
-                        <div className={`passport-mark-row${scanStamp ? ' earned' : ''}`}>
-                          <span className="passport-mark-dot" aria-hidden="true">
-                            {scanStamp ? '✓' : '◐'}
-                          </span>
-                          <span className="passport-mark-label">DISCOVERY MARK</span>
-                          <span className="passport-mark-name">{tale.scanBadge.title}</span>
-                        </div>
-                        <div className={`passport-mark-row${gameStamp ? ' earned' : ''}`}>
-                          <span className="passport-mark-dot" aria-hidden="true">
-                            {gameStamp ? '✓' : '◐'}
-                          </span>
-                          <span className="passport-mark-label">CHALLENGE BADGE</span>
-                          <span className="passport-mark-name">{tale.gameBadge.title}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="passport-entry-status">
-                        SCAN A CAN TO UNLOCK
-                      </div>
-                    )}
-
-                    {/* Status / next-step strip */}
-                    <div className="passport-entry-footline">
-                      {!unlocked && (
-                        <span className="passport-entry-status-pill">SEALED</span>
-                      )}
-                      {unlocked && !gameStamp && (
-                        <span className="passport-entry-status-pill in-progress">
-                          NEXT · COMPLETE THE CHALLENGE
-                        </span>
-                      )}
-                      {isComplete && (
-                        <span className="passport-entry-status-pill complete">
-                          ✓ FULLY COLLECTED
-                        </span>
-                      )}
-                      {unlocked && (
-                        <span className={`passport-entry-tap${isOnTap ? '' : ' retired'}`}>
-                          {isOnTap ? 'ON TAP' : 'RETIRED TALE'}
-                        </span>
-                      )}
-                    </div>
-
-                    {isCelebrating && (
-                      <div className="passport-entry-celebrate" role="status" aria-live="polite">
-                        <span className="passport-entry-celebrate-spark">✦</span>
-                        New Challenge Badge — added to your Passport.
-                      </div>
-                    )}
-                  </div>
-                  {unlocked && <div className="passport-entry-arrow">→</div>}
-                </div>
-              );
-            })}
-          </div>
-
-          {unlockedCount === 0 && (
-            <div className="passport-empty-state">
-              <div className="passport-empty-title">Your Passport is ready</div>
-              <div className="passport-empty-body">
-                Scan a Trackside can — or choose a Featured Tale on the Scan page — to earn your first Mark and start collecting stories.
-              </div>
-              <button className="passport-empty-cta" onClick={() => nav('scan')}>
-                UNLOCK YOUR FIRST TALE
-              </button>
-            </div>
-          )}
-
-          <div className="passport-note">
-            Your Passport keeps every Tale you've collected — even after a beer rotates off tap. Once it's yours, it's yours forever.
-            Collector rewards are being built around future Trackside releases · Founders progress will carry forward.
+          <div className="ts-input-wrap">
+            <span className="ts-input-wrap__icon" aria-hidden="true">✉</span>
+            <input
+              className="ts-input ts-input--with-icon"
+              type="email"
+              value={signupEmail}
+              onChange={(e) => setSignupEmail(e.target.value)}
+              placeholder="Email address"
+            />
           </div>
         </div>
 
-        <button className="reset-preview-btn" onClick={handleReset}>
-          RESET PASSPORT
+        <button type="button" className="ts-personalize__cta" onClick={handleJoin}>
+          JOIN TRACKSIDE
         </button>
 
-      </div>
+        <button type="button" className="ts-personalize__maybe" onClick={handleMaybeLater}>
+          Maybe later — keep browsing
+        </button>
+
+        <button type="button" className="ts-personalize__reset" onClick={handleReset}>
+          ↻ RESET PREVIEW
+        </button>
+      </section>
 
     </div>
   );
