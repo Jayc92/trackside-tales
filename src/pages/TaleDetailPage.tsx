@@ -28,7 +28,10 @@ function timelineGlyph(title: string): string {
 }
 
 export function TaleDetailPage() {
-  const { state, awardGameBadge, nav } = useApp();
+  // ADMIN-v6.8D — `guestId` pulled through to GameOverlay so its event
+  // logger can flush against the current session id. AppContext already
+  // exposes guestId; no other context shape change.
+  const { state, awardGameBadge, nav, guestId } = useApp();
   const tale = state.currentTale;
   const [showGame, setShowGame] = useState(false);
 
@@ -348,6 +351,7 @@ export function TaleDetailPage() {
           alreadyEarned={hasGameBadge}
           successBadgeIcon={tale.gameBadge.icon}
           successBadgeTitle={tale.gameBadge.title}
+          guestId={guestId}
         />
       )}
 

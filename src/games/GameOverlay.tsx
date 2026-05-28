@@ -4,6 +4,7 @@ import { AllenTownPlanningGame } from './AllenTownPlanningGame';
 import { PackerRouteGame } from './PackerRouteGame';
 import { WoodenStationGame } from './WoodenStationGame';
 import { TsIcon } from '../components/TsIcon';
+import { logEvent, flushEvents } from '../services/eventLogger';
 
 // ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
 // First playable vertical slice. Renders against the golden CSS schema in
@@ -30,6 +31,23 @@ import { TsIcon } from '../components/TsIcon';
 //   - alreadyEarned prop suppresses double-awarding for users who
 //     already have the badge from a prior session.
 //   - No badge-key, localStorage-key, Supabase, scan, or QR changes.
+//
+// ADMIN-v6.8D: fire-and-forget event logging for the game lifecycle.
+// Three events emit from this file: game_started (on BEGIN), then
+// exactly one of game_completed (success path) or game_failed (lose
+// path). Failed retries can re-emit game_failed; success is terminal
+// for the overlay session.
+//   - logEvent / flushEvents are no-ops when USE_REMOTE_EVENTS is off.
+//   - Per-attempt attempts + durationMs included on completed/failed
+//     so admin queries can compute first-try rate, replay rate, and
+//     median time-to-complete without re-deriving from raw rows.
+//   - Child game components (AllenTownPlanningGame, PackerRouteGame,
+//     WoodenStationGame) are NOT touched. Their onWin/onLose callbacks
+//     remain the single funnels through which lifecycle transitions
+//     route, so all instrumentation lives at the funnel level here.
+//   - Logging runs AFTER the visible setPhase / state transition so a
+//     slow logEvent can never delay the phase paint. Same posture as
+//     ADMIN-v6.8C in ScanPage.
 
 type GamePhase = 'intro' | 'playing' | 'quiz' | 'success' | 'fail';
 
@@ -44,6 +62,10 @@ interface GameOverlayProps {
   /** Optional title for the success-state medallion label. Falls back to
    *  the game title from config. */
   successBadgeTitle?: string;
+  /** ADMIN-v6.8D — current session's tb_guest_id, passed at flush time
+   *  to log-events. Required because the analytics path is meaningless
+   *  without it; eventLogger no-ops when guestId is empty. */
+  guestId: string;
 }
 
 export function GameOverlay({
@@ -53,6 +75,7 @@ export function GameOverlay({
   alreadyEarned,
   successBadgeIcon = 'town-seal',
   successBadgeTitle,
+  guestId,
 }: GameOverlayProps) {
   const [phase, setPhase] = useState<GamePhase>('intro');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -62,6 +85,61 @@ export function GameOverlay({
   // as we leave the playing phase. ref so timers see the current value
   // without waiting for a re-render.
   const quizShowingRef = useRef(false);
+
+  // ADMIN-v6.8D — analytics dedupe + per-attempt metadata refs.
+  //
+  // gameStartedLoggedRef:    set true once we emit game_started so
+  //                          retries (and any defensive re-entry into
+  //                          'playing') don't re-emit a start.
+  // gameCompletedLoggedRef:  set true once we emit game_completed.
+  //                          'success' is terminal, so this also
+  //                          double-protects against any future code
+  //                          path that re-runs handleGameWin.
+  // gameFailedLoggedRef:     set true once we emit game_failed for the
+  //                          CURRENT attempt; cleared by retryGame so
+  //                          a second failure of a retried attempt
+  //                          legitimately re-emits.
+  // attemptsRef:             starts at 1, increments on retryGame.
+  //                          Surfaced on completed/failed payloads.
+  // gameStartedAtRef:        Date.now() set when game_started fires
+  //                          (and reset on retryGame). Used to compute
+  //                          per-attempt durationMs. 0 means "not yet
+  //                          started" — guards against negative
+  //                          durations if the overlay somehow reaches
+  //                          win/lose without intro→playing.
+  const gameStartedLoggedRef   = useRef(false);
+  const gameCompletedLoggedRef = useRef(false);
+  const gameFailedLoggedRef    = useRef(false);
+  const attemptsRef            = useRef(1);
+  const gameStartedAtRef       = useRef(0);
+
+  /** Compute per-attempt durationMs from gameStartedAtRef, or undefined
+   *  if we never recorded a start (defensive — shouldn't happen via the
+   *  BEGIN button path). The eventLogger wire shape drops `undefined`
+   *  fields so the server never sees a key it can't validate. */
+  const computeDurationMs = (): number | undefined => {
+    const startedAt = gameStartedAtRef.current;
+    if (!startedAt) return undefined;
+    const delta = Date.now() - startedAt;
+    return delta >= 0 ? delta : undefined;
+  };
+
+  // ADMIN-v6.8D — small helper kept inline so the lifecycle handlers
+  // below stay readable. Idempotent via gameCompletedLoggedRef. Always
+  // safe to call; no-ops when the flag is off via eventLogger itself.
+  const emitGameCompleted = useCallback(() => {
+    if (gameCompletedLoggedRef.current) return;
+    gameCompletedLoggedRef.current = true;
+    const durationMs = computeDurationMs();
+    logEvent({
+      type:     'game_completed',
+      taleSlug: config.taleId,
+      gameType: config.type,
+      attempts: attemptsRef.current,
+      ...(durationMs !== undefined ? { durationMs } : {}),
+    });
+    void flushEvents(guestId);
+  }, [config, guestId]);
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
   const handleGameWin = useCallback(() => {
@@ -74,15 +152,39 @@ export function GameOverlay({
     if (config.type === 'grid' || config.type === 'spike' || config.type === 'match') {
       if (!alreadyEarned) onBadgeAwarded(config.badgeKey);
       setPhase('success');
+      // ADMIN-v6.8D — direct-award branch (the only path reachable in
+      // current builds). game_completed emits AFTER the visible phase
+      // transition so a slow logEvent can never delay paint.
+      emitGameCompleted();
       return;
     }
     quizShowingRef.current = true;
     setPhase('quiz');
-  }, [config, alreadyEarned, onBadgeAwarded]);
+    // The quiz branch is dead code today (no current GameConfig has a
+    // non-grid/spike/match type) but stays for type safety. We do NOT
+    // emit game_completed here — completion is the badge-grant moment
+    // in handleAnswer below, not the moment we route to the quiz.
+  }, [config, alreadyEarned, onBadgeAwarded, emitGameCompleted]);
 
   const handleGameLose = useCallback(() => {
     setPhase('fail');
-  }, []);
+    // ADMIN-v6.8D — game_failed emits AFTER setPhase. Gated by
+    // gameFailedLoggedRef so a single onLose firing twice can't
+    // double-count, but retryGame clears the gate so a second
+    // failure of a retried attempt re-emits cleanly.
+    if (!gameFailedLoggedRef.current) {
+      gameFailedLoggedRef.current = true;
+      const durationMs = computeDurationMs();
+      logEvent({
+        type:     'game_failed',
+        taleSlug: config.taleId,
+        gameType: config.type,
+        attempts: attemptsRef.current,
+        ...(durationMs !== undefined ? { durationMs } : {}),
+      });
+      void flushEvents(guestId);
+    }
+  }, [config, guestId]);
 
   const handleAnswer = useCallback((idx: number) => {
     if (selectedOption !== null) return; // one answer per attempt
@@ -96,18 +198,54 @@ export function GameOverlay({
       window.setTimeout(() => {
         if (!alreadyEarned) onBadgeAwarded(config.badgeKey);
         setPhase('success');
+        // ADMIN-v6.8D — legacy quiz branch's success moment. Dead path
+        // today (no shipped GameConfig routes through here) but covered
+        // for forward-safety. Same idempotency contract as the inline
+        // branch: emitGameCompleted's ref gate ensures one emission per
+        // overlay session even if both branches somehow fire.
+        emitGameCompleted();
       }, 700);
     }
     // Wrong answer: stay on quiz panel, show the correct one highlighted,
     // and surface the RETRY GAME button (handled in render below).
-  }, [selectedOption, config, alreadyEarned, onBadgeAwarded]);
+  }, [selectedOption, config, alreadyEarned, onBadgeAwarded, emitGameCompleted]);
 
   const retryGame = useCallback(() => {
     setSelectedOption(null);
     setAnswerResult(null);
     quizShowingRef.current = false;
     setPhase('playing');
+    // ADMIN-v6.8D — bump attempts and re-arm the failed-event gate so
+    // a second failure on the retried attempt logs cleanly. We do NOT
+    // emit a fresh game_started here (per spec) — a retry is the same
+    // logical session continued. We DO reset gameStartedAtRef so the
+    // next durationMs is per-attempt rather than cumulative. We do NOT
+    // touch gameCompletedLoggedRef — success remains terminal for the
+    // overlay session even across retries.
+    attemptsRef.current        += 1;
+    gameStartedAtRef.current    = Date.now();
+    gameFailedLoggedRef.current = false;
   }, []);
+
+  // ADMIN-v6.8D — BEGIN handler. Visible behavior is identical to the
+  // previous inline arrow (setPhase 'playing'). The only addition is
+  // analytics: record the start timestamp, transition phase, then emit
+  // game_started exactly once per overlay session. Retries do NOT
+  // re-enter this handler — they go through retryGame, which sets phase
+  // directly without logging a new start.
+  const handleBegin = useCallback(() => {
+    gameStartedAtRef.current = Date.now();
+    setPhase('playing');
+    if (!gameStartedLoggedRef.current) {
+      gameStartedLoggedRef.current = true;
+      logEvent({
+        type:     'game_started',
+        taleSlug: config.taleId,
+        gameType: config.type,
+      });
+      void flushEvents(guestId);
+    }
+  }, [config, guestId]);
 
   // ── Phase renderers ──────────────────────────────────────────────────────
   const renderIntro = () => (
@@ -116,7 +254,7 @@ export function GameOverlay({
       <button
         type="button"
         className="game-start-btn"
-        onClick={() => setPhase('playing')}
+        onClick={handleBegin}
       >
         BEGIN
       </button>
