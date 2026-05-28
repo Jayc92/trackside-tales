@@ -265,23 +265,37 @@ export function TaleDetailPage() {
           </h3>
           <p className="ts-tale-challenge__copy">
             {showAsEarned     && 'Both Marks are now in your Trackside Passport. The Tale is fully collected.'}
-            {showAsActive     && 'Complete this short challenge to earn the second badge for this Tale.'}
+            {showAsActive     && 'Complete the short challenge below to earn the second badge for this Tale.'}
             {showAsComingSoon && "This Tale's challenge is on the way — coming soon."}
           </p>
-          <button
-            type="button"
-            className="ts-tale-challenge__primary"
-            onClick={() => showAsActive && setShowGame(true)}
-            disabled={!showAsActive}
-            aria-disabled={!showAsActive}
-          >
-            {showAsEarned     && '✓ CHALLENGE COMPLETE'}
-            {showAsActive     && '▶ PLAY TO EARN · ▦'}
-            {showAsComingSoon && 'COMING SOON'}
-          </button>
+          {/* v6.2.1 — Primary "PLAY TO EARN" CTA removed to dedupe with the
+              lower Next Step panel's PLAY MINI-GAME button. WATCH INTRO and
+              SHARE TALE remain as secondary visual actions.
+              UI-v6.6 — Both are no-op placeholders today. They render in a
+              softened "coming soon" treatment so they never visually compete
+              with the lower copper PLAY MINI-GAME CTA, and clicks are wired
+              to a safe no-op (preventing future accidental wiring). */}
           <div className="ts-tale-challenge__row">
-            <button type="button" className="ts-tale-challenge__btn">▶ WATCH INTRO</button>
-            <button type="button" className="ts-tale-challenge__btn">↗ SHARE TALE</button>
+            <button
+              type="button"
+              className="ts-tale-challenge__btn ts-tale-challenge__btn--placeholder"
+              onClick={(e) => e.preventDefault()}
+              title="Coming soon"
+              aria-disabled="true"
+            >
+              ▶ WATCH INTRO
+              <span className="ts-tale-challenge__btn-hint" aria-hidden="true">SOON</span>
+            </button>
+            <button
+              type="button"
+              className="ts-tale-challenge__btn ts-tale-challenge__btn--placeholder"
+              onClick={(e) => e.preventDefault()}
+              title="Coming soon"
+              aria-disabled="true"
+            >
+              ↗ SHARE TALE
+              <span className="ts-tale-challenge__btn-hint" aria-hidden="true">SOON</span>
+            </button>
           </div>
         </section>
       </div>

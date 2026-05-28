@@ -35,10 +35,15 @@ export function BottomNav() {
   // HOME and MENU are separate surfaces again (v5.0): HOME routes to the
   // restored HomePage at #/home, MENU routes to the tap-list MenuPage at
   // #/beers. Each highlights only on its own PageId.
+  //
+  // UI-v6.6 — Tale Detail (page === 'story') is a child of the Tales
+  // collection, so the TALES nav item should remain highlighted while the
+  // user is reading a Tale. Without this, no nav item lights up on
+  // #/story/{id}, which made the bottom nav feel "broken" on detail pages.
   const isActive = (item: NavItem): boolean => {
     if (item.domId === 'nav-home')     return state.page === 'home';
     if (item.domId === 'nav-beers')    return state.page === 'menu';
-    if (item.domId === 'nav-tales')    return state.page === 'tales';
+    if (item.domId === 'nav-tales')    return state.page === 'tales' || state.page === 'story';
     if (item.domId === 'nav-scan')     return state.page === 'scan';
     if (item.domId === 'nav-passport') return state.page === 'passport';
     return false;
