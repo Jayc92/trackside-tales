@@ -1,0 +1,30 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/lib/supabase/server", "@/lib/supabase/server"],
+            "message": "lib/supabase/server.ts holds the service-role Supabase factory. It must only be imported from Server Components, Route Handlers, or Server Actions. The 'server-only' import inside that file will already fail the build if a Client Component imports it; this lint rule is a second layer of defense. If you need anon-key access in a Client Component, import from '@/lib/supabase/browser' instead."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/lib/supabase/server.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "src/app/**/route.ts", "src/lib/auth/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
+}
