@@ -18,6 +18,23 @@ Copy `.env.example` → `.env` and fill in Supabase credentials if using remote 
 
 ---
 
+## Admin / back-office
+
+The internal Trackside Tales admin portal now lives in a separate private repo:
+
+`Jayc92/trackside-admin`
+
+The public app and admin app share the same Supabase project. Supabase schema migrations and public-app Edge Functions remain in this repo under:
+
+- `supabase/migrations/`
+- `supabase/functions/`
+
+Those files are the shared backend contract between the public app and the private admin app.
+
+The admin app is a private Next.js/Vercel application and does not deploy to GitHub Pages. The public customer app remains the only app built by this repo's GitHub Pages workflow.
+
+---
+
 ## Migration Progress
 
 ### ✅ Phase 1 — Project Structure
