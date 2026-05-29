@@ -12,6 +12,10 @@
           {
             "group": ["**/lib/supabase/auth", "@/lib/supabase/auth"],
             "message": "lib/supabase/auth.ts builds a per-request session client bound to next/headers cookies(). It must only be imported from Server Components, Route Handlers, Server Actions, or middleware. The 'server-only' import inside the file will fail the build if a Client Component imports it; this lint rule is a second layer of defense. If you need anon-key access in a Client Component, import from '@/lib/supabase/browser' instead."
+          },
+          {
+            "group": ["**/lib/admin/**", "@/lib/admin/**"],
+            "message": "lib/admin/* helpers transitively pull in the service-role Supabase client. They must only be imported from Server Components, Route Handlers, or Server Actions. The 'server-only' guard on lib/supabase/server.ts will fail the build if a Client Component imports it; this lint rule is a second layer of defense."
           }
         ]
       }
@@ -19,7 +23,7 @@
   },
   "overrides": [
     {
-      "files": ["src/lib/supabase/server.ts", "src/lib/supabase/auth.ts"],
+      "files": ["src/lib/supabase/server.ts", "src/lib/supabase/auth.ts", "src/lib/admin/**/*.ts"],
       "rules": {
         "no-restricted-imports": "off"
       }

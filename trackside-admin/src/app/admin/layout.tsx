@@ -13,11 +13,16 @@
 // /admin/**, it MUST call requireAdmin() at the top of its own
 // Server Component / Route Handler / Server Action.
 //
-// Visible nav:
-//   * Brand text + scaffold/version label
-//   * "Dashboard" link to /admin
+// Visible nav (v7.2):
+//   * Brand text
+//   * Dashboard / Tales / Beers / QR Codes / Activity links
 //   * Logged-in email
 //   * Sign-out button (POST <form> to /logout — POST-only, see route)
+//
+// Nav items are rendered as Next <Link> elements rather than plain
+// anchors so navigation between admin sub-pages is client-side; the
+// server still runs `requireAdmin()` on each transition because the
+// layout itself is `force-dynamic`.
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
@@ -44,13 +49,22 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <h1 className="font-serif text-2xl text-rail">
             Trackside Tales · Admin
           </h1>
-          <nav aria-label="Admin">
-            <Link
-              href="/admin"
-              className="text-sm uppercase tracking-widest text-ink/70 hover:text-rail"
-            >
-              Dashboard
-            </Link>
+          <nav aria-label="Admin" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            {[
+              { href: '/admin',          label: 'Dashboard' },
+              { href: '/admin/tales',    label: 'Tales' },
+              { href: '/admin/beers',    label: 'Beers / Menu' },
+              { href: '/admin/qr',       label: 'QR Codes' },
+              { href: '/admin/activity', label: 'Activity' },
+            ].map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className="text-sm uppercase tracking-widest text-ink/70 hover:text-rail"
+              >
+                {label}
+              </Link>
+            ))}
           </nav>
         </div>
         <div className="flex items-center gap-4">
