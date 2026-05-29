@@ -13,9 +13,9 @@
 // /admin/**, it MUST call requireAdmin() at the top of its own
 // Server Component / Route Handler / Server Action.
 //
-// Visible nav (v7.2):
+// Visible nav (v7.3):
 //   * Brand text
-//   * Dashboard / Tales / Beers / QR Codes / Activity links
+//   * Dashboard / Tales / Beers / Tap List / QR Codes / Activity links
 //   * Logged-in email
 //   * Sign-out button (POST <form> to /logout — POST-only, see route)
 //
@@ -54,6 +54,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               { href: '/admin',          label: 'Dashboard' },
               { href: '/admin/tales',    label: 'Tales' },
               { href: '/admin/beers',    label: 'Beers / Menu' },
+              { href: '/admin/tap-list', label: 'Tap List' },
               { href: '/admin/qr',       label: 'QR Codes' },
               { href: '/admin/activity', label: 'Activity' },
             ].map(({ href, label }) => (

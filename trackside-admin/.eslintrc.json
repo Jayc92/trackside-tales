@@ -29,7 +29,7 @@
       }
     },
     {
-      "files": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "src/app/**/route.ts", "src/lib/auth/**/*.ts", "middleware.ts"],
+      "files": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "src/app/**/route.ts", "src/app/**/actions.ts", "src/lib/auth/**/*.ts", "middleware.ts"],
       "rules": {
         "no-restricted-imports": "off"
       }

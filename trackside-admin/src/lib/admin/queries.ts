@@ -372,3 +372,159 @@ export async function listRecentActivity(
     return { ok: false, error: 'Could not load recent activity.' };
   }
 }
+
+// ---------- tap list (v7.3) ----------------------------------------------
+
+export interface TapListRowReadModel {
+  beer_slug:  string;
+  beer_name:  string | null;     // joined from beers
+  tap_number: number | null;
+  started_at: string;
+  ended_at:   string | null;
+  notes:      string | null;
+}
+
+/**
+ * Live pours: tap_list rows with ended_at IS NULL, plus the human
+ * beer name from the beers table for display. Sorted by started_at
+ * desc so the most recently tapped beer surfaces first.
+ *
+ * The join is implicit via PostgREST embedding (`beers ( name )`)
+ * because tap_list.beer_slug -> beers.slug has a real FK, which
+ * PostgREST resolves automatically.
+ */
+export async function listLiveTapList(): Promise<QueryResult<TapListRowReadModel[]>> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from('tap_list')
+      .select('beer_slug, tap_number, started_at, ended_at, notes, beers ( name )')
+      .is('ended_at', null)
+      .order('started_at', { ascending: false });
+
+    if (error) {
+      logQueryError('listLiveTapList', error);
+      return { ok: false, error: 'Could not load live pours.' };
+    }
+
+    // PostgREST embeds typed as `{ name } | { name }[]` depending on
+    // resolved cardinality. tap_list.beer_slug -> beers.slug is M:1
+    // (one beer per row), so the runtime shape is a single object,
+    // but the generated TS types describe it as an array. Normalize.
+    const rows = (data ?? []) as unknown as Array<{
+      beer_slug:  string;
+      tap_number: number | null;
+      started_at: string;
+      ended_at:   string | null;
+      notes:      string | null;
+      beers:      { name: string | null } | { name: string | null }[] | null;
+    }>;
+
+    return {
+      ok: true,
+      data: rows.map((r) => {
+        const beerObj = Array.isArray(r.beers) ? r.beers[0] ?? null : r.beers;
+        return {
+          beer_slug:  r.beer_slug,
+          beer_name:  beerObj?.name ?? null,
+          tap_number: r.tap_number,
+          started_at: r.started_at,
+          ended_at:   r.ended_at,
+          notes:      r.notes,
+        };
+      }),
+    };
+  } catch (err) {
+    logQueryError('listLiveTapList', err);
+    return { ok: false, error: 'Could not load live pours.' };
+  }
+}
+
+/**
+ * The N most recent ended pours, with the same shape as the live
+ * list. v7.3 is read-only for ended pours; staff cannot resurrect
+ * them. They serve as scrollback for "what was on tap last night?".
+ */
+export async function listRecentEndedTapList(
+  limit: number = 25,
+): Promise<QueryResult<TapListRowReadModel[]>> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from('tap_list')
+      .select('beer_slug, tap_number, started_at, ended_at, notes, beers ( name )')
+      .not('ended_at', 'is', null)
+      .order('ended_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      logQueryError('listRecentEndedTapList', error);
+      return { ok: false, error: 'Could not load recent pours.' };
+    }
+
+    // PostgREST embeds typed as `{ name } | { name }[]` depending on
+    // resolved cardinality. tap_list.beer_slug -> beers.slug is M:1
+    // (one beer per row), so the runtime shape is a single object,
+    // but the generated TS types describe it as an array. Normalize.
+    const rows = (data ?? []) as unknown as Array<{
+      beer_slug:  string;
+      tap_number: number | null;
+      started_at: string;
+      ended_at:   string | null;
+      notes:      string | null;
+      beers:      { name: string | null } | { name: string | null }[] | null;
+    }>;
+
+    return {
+      ok: true,
+      data: rows.map((r) => {
+        const beerObj = Array.isArray(r.beers) ? r.beers[0] ?? null : r.beers;
+        return {
+          beer_slug:  r.beer_slug,
+          beer_name:  beerObj?.name ?? null,
+          tap_number: r.tap_number,
+          started_at: r.started_at,
+          ended_at:   r.ended_at,
+          notes:      r.notes,
+        };
+      }),
+    };
+  } catch (err) {
+    logQueryError('listRecentEndedTapList', err);
+    return { ok: false, error: 'Could not load recent pours.' };
+  }
+}
+
+export interface ActiveBeerOption {
+  slug: string;
+  name: string;
+}
+
+/**
+ * Beers eligible to appear in the "tap a beer" dropdown. We surface
+ * is_active=true regardless of status (draft/published), because a
+ * beer can pour internally before its public copy is published.
+ *
+ * The Server Action re-validates active-ness on submit via the
+ * fn_tap_start function — this list is a UI affordance, not a
+ * security boundary.
+ */
+export async function listActiveBeerOptions(): Promise<QueryResult<ActiveBeerOption[]>> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from('beers')
+      .select('slug, name')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) {
+      logQueryError('listActiveBeerOptions', error);
+      return { ok: false, error: 'Could not load beers.' };
+    }
+    return { ok: true, data: (data ?? []) as ActiveBeerOption[] };
+  } catch (err) {
+    logQueryError('listActiveBeerOptions', err);
+    return { ok: false, error: 'Could not load beers.' };
+  }
+}

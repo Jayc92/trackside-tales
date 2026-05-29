@@ -3,12 +3,12 @@
 Private admin portal for Trackside Tales. **Not for customer use.**
 
 This is the admin/back-office companion to the public Vite SPA. For
-v7.0–v7.2 the admin scaffold lives nested inside the public-app repo
+v7.0–v7.3 the admin scaffold lives nested inside the public-app repo
 at `trackside-app/trackside-admin/` for cheap iteration; it will be
-extracted to its own private GitHub repo before the first
-write-capable phase (likely v7.3 or v7.4). The two apps share a
-Supabase project but have different deploy targets, different auth
-models, and different security postures.
+extracted to its own private GitHub repo at ADMIN-v7.4A, before the
+Beer / Menu CRUD phase. The two apps share a Supabase project but
+have different deploy targets, different auth models, and different
+security postures.
 
 | | Public app (`trackside-app/`) | Admin app (`trackside-app/trackside-admin/`) |
 |---|---|---|
@@ -16,36 +16,152 @@ models, and different security postures.
 | Auth | Anonymous guest IDs | Supabase Auth (magic link, v7.1) |
 | Supabase keys | Anon only | Anon **and** service-role |
 | Deploy | GitHub Pages (static) | Vercel (server runtime) |
-| Repo | Public (`trackside-tales`) | Currently nested in the public repo; private repo after v7.3 split |
+| Repo | Public (`trackside-tales`) | Currently nested in the public repo; private repo at ADMIN-v7.4A split |
 
 ---
 
-## ADMIN-v7.1 status
+## ADMIN-v7.3 status
 
-This is the **auth checkpoint**. The shell now authenticates and
-gates, but reads no data:
+This is the **first write-capable phase** and the audit-log
+checkpoint. The admin app can now mutate one tightly-scoped slice
+of operational state — the live tap list — and every successful
+mutation is recorded in a transactional audit log.
 
-- Authentication — magic-link sign-in via Supabase Auth. `/admin/**`
-  is gated by `requireAdmin()` which validates the JWT and confirms
-  `app_metadata.role === 'admin'`. Unauthenticated or non-admin users
-  are redirected to `/login`.
-- No data reads — `lib/supabase/server.ts` (service-role) is wired
-  but still unused. `lib/supabase/auth.ts` (anon-key session client)
-  exists only for sign-in / sign-out / `getUser` / code exchange.
-- No CRUD, no dashboard data, no analytics.
+What's new in v7.3:
+
+- **Tap-list management** — at `/admin/tap-list`:
+  - Pour a beer (start a row in `public.tap_list`)
+  - End a live pour (set `ended_at`)
+  - Edit notes on a live pour
+- **Audit log** — new `public.admin_actions` table. Every
+  successful tap-list mutation writes one row here in the **same
+  database transaction** as the mutation itself. Service-role only
+  (RLS enabled, no policies). Append-only.
+- **Transactional Postgres functions** — `fn_tap_start`,
+  `fn_tap_end`, `fn_tap_edit_notes`. All mutations route through
+  these via `supabase.rpc(...)` so audit drift is impossible.
+- **Server Actions** — three new actions in
+  `src/app/admin/tap-list/actions.ts`. Each calls `requireAdmin()`
+  first, Zod-validates the FormData, calls the mutation helper,
+  and redirects back with `?ok=...` / `?err=...` for banner state.
+- **No new client components.** Forms POST to Server Actions; the
+  page is a Server Component; banner state lives in the URL.
+
+What v7.3 does **not** introduce:
+- No DELETE on tap_list (pour history is append-only).
+- No retroactive `started_at` editing (`fn_tap_start` always uses
+  `now()` server-side).
+- No mutations on any table other than `tap_list` and
+  `admin_actions`.
+- No public-app changes; no RLS changes on existing tables; no
+  Edge Function changes; no QR / localStorage / badge-key changes.
 
 Real surfaces arrive in subsequent phases:
 
 | Phase | Adds |
 |---|---|
-| ADMIN-v7.2 | Read-only dashboard: overview tiles, content lists, activity feed |
-| ADMIN-v7.3 | Tap-list management |
-| ADMIN-v7.4 | Beer / menu CRUD |
+| ADMIN-v7.2 | Read-only dashboard: overview tiles, content lists, activity feed (DONE) |
+| ADMIN-v7.3 | Tap-list management + transactional `admin_actions` audit log (DONE) |
+| ADMIN-v7.4A | Repo split: extract `trackside-admin/` into private GitHub repo |
+| ADMIN-v7.4B | Beer / menu CRUD |
 | ADMIN-v7.5 | Tale CRUD with Zod validation mirroring `contentService.ts` |
 | ADMIN-v7.6 | QR management |
 | ADMIN-v7.7 | Media uploads (Supabase Storage) |
 | ADMIN-v7.8 | Analytics views |
-| ADMIN-v7.9 | Rewards / tiers + audit log |
+| ADMIN-v7.9 | Rewards / tiers + audit-log viewer (`/admin/audit`) |
+
+### v7.3 migration
+
+A single new migration was added at
+`supabase/migrations/20260602000000_admin_actions_and_tap_fns.sql`.
+It:
+
+1. Creates `public.admin_actions`:
+   ```sql
+   create table public.admin_actions (
+     id           bigserial primary key,
+     actor_id     uuid not null references auth.users(id) on delete restrict,
+     actor_email  text not null,
+     action       text not null check (action in ('tap.start', 'tap.end', 'tap.edit_notes')),
+     target_kind  text not null,
+     target_key   text not null,
+     payload      jsonb not null default '{}'::jsonb,
+     created_at   timestamptz not null default now()
+   );
+   ```
+   - RLS enabled with **no policies** (service-role only, same
+     posture as `qr_codes`, `media_assets`, and the `*_events`
+     tables).
+   - Indexes on `(actor_id, created_at desc)`,
+     `(action, created_at desc)`, and `(created_at desc)` for the
+     v7.9 audit viewer.
+   - `actor_email` is denormalized at action time so audit history
+     stays readable even if the user later changes email or is
+     hidden from `auth.users`.
+   - `actor_id` uses `on delete restrict`: an admin cannot be
+     deleted while audit history references them. Audit-trail
+     integrity outranks user-row tidiness.
+
+2. Creates three stored functions:
+   - `fn_tap_start(p_actor, p_email, p_beer_slug, p_tap_number, p_notes)` —
+     INSERT tap_list + INSERT admin_actions in one transaction.
+     Raises `P0001` if the beer is not active or does not exist.
+     `started_at` is always `now()` (no retroactive starts).
+   - `fn_tap_end(p_actor, p_email, p_beer_slug, p_started_at)` —
+     UPDATE tap_list (only where `ended_at is null`) + INSERT
+     admin_actions. Raises `P0002` if no live row matches.
+   - `fn_tap_edit_notes(p_actor, p_email, p_beer_slug, p_started_at, p_notes)` —
+     UPDATE tap_list notes + INSERT admin_actions, with the
+     pre-edit value captured under a `for update` row lock so two
+     concurrent editors can't interleave.
+   - All three are `security invoker` with `set search_path =
+     public` (lock down schema-shadowing).
+
+### Audit table contract
+
+- Append-only. **No UPDATE, no DELETE** on `admin_actions` is ever
+  performed by the app. Future audit retention policies (if any)
+  will land at the database / migration level, not in app code.
+- Service-role only. The table has RLS enabled with no policies,
+  and there is no anon-readable surface. The v7.9 audit viewer
+  will read it through the same service-role admin query layer
+  used for other admin-only tables.
+- Actor identity comes ONLY from `requireAdmin()` server-side.
+  The Server Actions pass `{ id, email }` from the verified JWT
+  into the mutation helpers; any `actor_id` arriving in a form
+  field is a privilege-escalation attempt and is ignored.
+- Every successful tap-list mutation writes exactly one
+  `admin_actions` row in the same transaction. There is no path
+  in app code that writes `tap_list` without also writing
+  `admin_actions` — the contract is enforced by the Postgres
+  functions, not by application convention.
+
+### v7.3 rollback plan
+
+Full unwind, in reverse dependency order:
+
+```sql
+drop function if exists public.fn_tap_edit_notes(uuid, text, text, timestamptz, text);
+drop function if exists public.fn_tap_end(uuid, text, text, timestamptz);
+drop function if exists public.fn_tap_start(uuid, text, text, int, text);
+drop table if exists public.admin_actions;
+```
+
+All four objects are introduced in
+`20260602000000_admin_actions_and_tap_fns.sql` and nothing earlier
+references them, so the unwind is safe.
+
+App-side rollback, if ever needed:
+1. Revert the migration (above).
+2. Remove `src/app/admin/tap-list/` (page + actions).
+3. Remove `src/lib/admin/mutations.ts`.
+4. Remove the three tap-list helpers from `src/lib/admin/queries.ts`
+   (`listLiveTapList`, `listRecentEndedTapList`,
+   `listActiveBeerOptions`).
+5. Remove the `Tap List` nav link from `src/app/admin/layout.tsx`.
+
+The other admin surfaces (v7.2 dashboard / lists) are read-only
+and do not depend on v7.3 objects.
 
 ---
 
@@ -216,10 +332,10 @@ their session via Supabase admin API.
 
 **GitHub repo strategy:**
 
-- Phase 1 (v7.0–v7.2): the admin app lives nested inside the existing
+- Phase 1 (v7.0–v7.3): the admin app lives nested inside the existing
   public `trackside-tales` repo at `trackside-app/trackside-admin/`
   for cheap iteration. No deploy infrastructure is wired here yet.
-- Phase 2 (v7.3+): extract into a new private repo
+- Phase 2 (v7.4A+): extract into a new private repo
   `Jayc92/trackside-admin` via `git filter-repo`, preserving history.
   The public-app repo (`trackside-tales`) must stay public on the
   free GitHub Pages tier; admin is **private from day one of the
@@ -262,13 +378,24 @@ src/
       route.ts                 POST-only sign-out
     admin/
       layout.tsx               gate: calls requireAdmin() before render
-      page.tsx                 placeholder dashboard (gated)
+      page.tsx                 dashboard (read-only, v7.2)
+      tales/page.tsx           tales list (read-only, v7.2)
+      beers/page.tsx           beers + food lists (read-only, v7.2)
+      tap-list/
+        page.tsx               tap-list management UI (v7.3, write)
+        actions.ts             Server Actions: tap.start / end / edit-notes (v7.3)
+      qr/page.tsx              QR codes list (read-only, v7.2)
+      activity/page.tsx        merged activity feed (read-only, v7.2)
   lib/
     supabase/
       server.ts                service-role factory — `import 'server-only'`
       browser.ts               anon factory — Client Components only
       auth.ts                  per-request session client (anon key,
                                cookie-bound) — `import 'server-only'`
+    admin/
+      queries.ts               read helpers (service-role) — `import 'server-only'`
+      mutations.ts             write helpers (service-role, RPC-only) —
+                               `import 'server-only'` (v7.3)
     auth/
       requireAdmin.ts          gate: getUser + app_metadata.role check
 ```
