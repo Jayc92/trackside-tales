@@ -20,20 +20,24 @@ models, and different security postures.
 
 ---
 
-## ADMIN-v7.0 status
+## ADMIN-v7.1 status
 
-This is the **scaffold checkpoint**. The shell builds and deploys but
-does nothing yet:
+This is the **auth checkpoint**. The shell now authenticates and
+gates, but reads no data:
 
-- No authentication — `/admin` is unguarded placeholder content.
-- No data reads — `lib/supabase/server.ts` is wired but unused.
+- Authentication — magic-link sign-in via Supabase Auth. `/admin/**`
+  is gated by `requireAdmin()` which validates the JWT and confirms
+  `app_metadata.role === 'admin'`. Unauthenticated or non-admin users
+  are redirected to `/login`.
+- No data reads — `lib/supabase/server.ts` (service-role) is wired
+  but still unused. `lib/supabase/auth.ts` (anon-key session client)
+  exists only for sign-in / sign-out / `getUser` / code exchange.
 - No CRUD, no dashboard data, no analytics.
 
 Real surfaces arrive in subsequent phases:
 
 | Phase | Adds |
 |---|---|
-| ADMIN-v7.1 | Magic-link login, `requireAdmin` gate, `app_metadata.role='admin'` allowlist |
 | ADMIN-v7.2 | Read-only dashboard: overview tiles, content lists, activity feed |
 | ADMIN-v7.3 | Tap-list management |
 | ADMIN-v7.4 | Beer / menu CRUD |
@@ -83,6 +87,7 @@ GitHub Pages deploy never enters this folder.
 |---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | client + server | yes | Inlined into the browser bundle |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server | yes | Inlined into the browser bundle |
+| `NEXT_PUBLIC_SITE_URL` | client + server | prod-required | Origin used for magic-link `redirectTo`. Must match a Supabase "Redirect URLs" entry. Falls back to request host in dev. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | yes (for any data work) | **NEVER** prefix with `NEXT_PUBLIC_`. Bypasses RLS. |
 
 ### Service-role key — critical security note
@@ -113,13 +118,95 @@ Supabase project. It is the equivalent of a database admin password.
 npm run dev
 ```
 
-The placeholder pages should render at:
+The pages should render at:
 
-- `/` — public landing ("Trackside Tales Admin · Sign-in required")
-- `/admin` — placeholder dashboard shell
+- `/` — public landing ("Trackside Tales — Admin · Sign-in required")
+- `/login` — magic-link sign-in form
+- `/auth/callback` — exchanges the magic-link code for a session, then
+  redirects to `/admin`
+- `/admin` — gated placeholder dashboard. Hitting it without an admin
+  session redirects to `/login`.
+- `/logout` — POST-only endpoint; the layout's "Sign out" button is
+  the only intended trigger.
 
-There is no auth enforcement yet — anyone with the URL can reach
-`/admin`. That changes in v7.1.
+---
+
+## Auth setup
+
+The admin shell uses Supabase Auth magic-link sign-in. There is no
+self-service sign-up; users are added by SQL bootstrap (below) and the
+`shouldCreateUser: false` flag on `signInWithOtp` ensures the public
+sign-in form cannot create new `auth.users` rows.
+
+### 1. Configure Supabase redirect URLs
+
+Supabase will refuse to issue a magic link unless the `redirectTo`
+value matches an entry in its allowlist.
+
+Supabase dashboard → **Authentication → URL Configuration → Redirect
+URLs** → add:
+
+```
+http://localhost:3000/auth/callback
+https://your-admin-domain.example.com/auth/callback
+```
+
+Replace the production line with the real Vercel domain once known.
+The `/auth/callback` path is required — Supabase matches the full URL.
+
+### 2. Set `NEXT_PUBLIC_SITE_URL`
+
+- Local dev: optional (the login page falls back to the request host).
+- Production (Vercel, scope = Production): **required**, e.g.
+  `https://your-admin-domain.example.com`. No trailing slash.
+
+### 3. Bootstrap the first admin
+
+Authentication is allowlist-only via
+`auth.users.raw_app_meta_data.role = 'admin'`. There is no admin UI to
+manage this yet — granting and revoking admin happens via SQL. Use
+the Supabase dashboard SQL editor (or `psql` against the project) and
+run as the project owner:
+
+```sql
+-- 1. Create the auth.users row by inviting the email from the
+--    Supabase dashboard → Authentication → Users → "Invite user".
+--    The invite email is itself a magic link; the user can click it
+--    to land in /auth/callback. (You can also create the row by
+--    running an initial signInWithOtp from psql, but the dashboard
+--    invite is the simplest path.)
+--
+-- 2. Promote that user to admin:
+
+update auth.users
+set raw_app_meta_data =
+  coalesce(raw_app_meta_data, '{}'::jsonb)
+  || jsonb_build_object('role', 'admin')
+where email = 'you@example.com';
+
+-- 3. Verify:
+
+select email, raw_app_meta_data ->> 'role' as role
+from auth.users
+where email = 'you@example.com';
+```
+
+`raw_app_meta_data` is server-controlled and cannot be modified via
+the client SDK. Do **not** use `raw_user_meta_data` for the role
+flag — that field is user-editable and a privilege-escalation hazard.
+
+To revoke admin, set the role back to null:
+
+```sql
+update auth.users
+set raw_app_meta_data = raw_app_meta_data - 'role'
+where email = 'you@example.com';
+```
+
+The user's existing JWT will continue to claim `role = 'admin'` until
+it expires (~1 hour by default). For immediate revocation, also
+delete their refresh tokens from `auth.refresh_tokens` or invalidate
+their session via Supabase admin API.
 
 ---
 
@@ -160,19 +247,30 @@ Vercel project configuration (set up at v7.1 / v7.2):
 ## Architecture boundaries
 
 ```
+middleware.ts                  session-refresh middleware (anon key only)
 src/
   app/
     layout.tsx                 root layout
-    page.tsx                   public landing (sign-in required notice)
+    page.tsx                   public landing → /login
+    login/
+      page.tsx                 magic-link sign-in (Server Component +
+                               server action; enumeration-resistant)
+    auth/
+      callback/
+        route.ts               exchanges OTP code for session
+    logout/
+      route.ts                 POST-only sign-out
     admin/
-      layout.tsx               (placeholder; auth gate lands v7.1)
-      page.tsx                 (placeholder dashboard)
+      layout.tsx               gate: calls requireAdmin() before render
+      page.tsx                 placeholder dashboard (gated)
   lib/
     supabase/
       server.ts                service-role factory — `import 'server-only'`
       browser.ts               anon factory — Client Components only
+      auth.ts                  per-request session client (anon key,
+                               cookie-bound) — `import 'server-only'`
     auth/
-      requireAdmin.ts          (placeholder; real impl v7.1)
+      requireAdmin.ts          gate: getUser + app_metadata.role check
 ```
 
 **The `server` / `browser` split is the single most important security

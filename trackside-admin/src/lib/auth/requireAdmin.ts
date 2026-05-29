@@ -1,22 +1,42 @@
-// ================== TRACKSIDE ADMIN — requireAdmin (placeholder) ==================
-// v7.0 scaffold stub. The real implementation lands in ADMIN-v7.1 and
-// will:
+// ================== TRACKSIDE ADMIN — requireAdmin ==================
+// Server-only authorization gate for every admin route. Wired into
+// the /admin layout in v7.1; future protected route handlers and
+// server actions also call it before doing any work.
 //
-//   1. Read the Supabase session from request cookies via @supabase/ssr.
-//   2. Reject (redirect to /login) if no session is present.
-//   3. Reject (403) if `user.app_metadata.role !== 'admin'`.
-//   4. Return the resolved user object so callers can show "logged in
-//      as <email>".
+// Allowlist mechanism:
+//   * `auth.users.raw_app_meta_data.role === 'admin'`
+//   * `app_metadata` is server-controlled — users cannot edit it via
+//     the client SDK. NEVER use `user_metadata` for the role check;
+//     `user_metadata` is user-editable.
+//   * Bootstrap the first admin via Supabase SQL editor (see README).
 //
-// `app_metadata` is server-controlled and cannot be edited by users —
-// that's the whole reason it (not user_metadata) is the allowlist
-// surface. First admin is bootstrapped via a one-time SQL update on
-// auth.users.raw_app_meta_data, documented in the v7.1 prompt.
+// Why getUser, not getSession:
+//   * `getSession()` returns whatever the cookie says without
+//     verifying signatures, which is fine for "are we logged in"
+//     UX hints but not for an authorization gate.
+//   * `getUser()` calls Supabase auth and validates the JWT, which
+//     is what a security boundary needs.
 //
-// In v7.0 there is intentionally no fallback "let everyone in" path.
-// Calling this function MUST throw — we want any caller that
-// accidentally lands in v7.0 to surface as a hard error during
-// development, not as a silently-permissive admin route.
+// Why redirect, not throw:
+//   * Throwing inside a Server Component renders the Next 500 page,
+//     which leaks more than we want and breaks the user flow.
+//   * `redirect()` from `next/navigation` short-circuits the render
+//     and produces a clean navigation to /login. The thrown
+//     `NEXT_REDIRECT` exception is caught by Next's framework
+//     boundary; tests that need to assert on it can use
+//     `isRedirectError`.
+//
+// What this function does NOT do:
+//   * Does NOT touch the service-role client. The service-role
+//     factory is independent and is only used AFTER this gate has
+//     resolved.
+//   * Does NOT log denials. Auth telemetry is deferred to a later
+//     phase; the layout-level gate is the single chokepoint where
+//     such logging would land.
+
+import 'server-only';
+import { redirect } from 'next/navigation';
+import { createAuthClient } from '@/lib/supabase/auth';
 
 export interface AdminUser {
   id:    string;
@@ -24,16 +44,32 @@ export interface AdminUser {
 }
 
 /**
- * Placeholder. Always throws in v7.0.
+ * Server-side admin gate. Returns the authenticated admin user, or
+ * redirects (server-side) to /login if the request is unauthenticated
+ * or the user is not on the `app_metadata.role='admin'` allowlist.
  *
- * The export shape (Promise<AdminUser>) matches the v7.1 contract so
- * the call sites we'll add in v7.2+ can be written today and not
- * rewritten when v7.1 lands.
+ * Callers can rely on the return value being a valid admin — the
+ * function never returns null/undefined; it either resolves to a
+ * concrete `AdminUser` or terminates rendering via `redirect`.
  */
 export async function requireAdmin(): Promise<AdminUser> {
-  throw new Error(
-    '[trackside-admin] requireAdmin() is not wired yet. ' +
-      'Authentication lands in ADMIN-v7.1. Do not gate any route on ' +
-      'this function in v7.0 — it will fail every request by design.',
-  );
+  const supabase = createAuthClient();
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error || !data?.user) {
+    redirect('/login');
+  }
+
+  const user = data.user;
+  // app_metadata is server-controlled. user_metadata is user-editable
+  // and MUST NOT be used for role checks.
+  const role = (user.app_metadata as { role?: unknown } | null)?.role;
+  if (role !== 'admin') {
+    redirect('/login');
+  }
+
+  return {
+    id:    user.id,
+    email: user.email ?? '',
+  };
 }
