@@ -27,11 +27,15 @@
 --   * No CREATE on tales/beers/qr_codes/guest_profiles/reward_tiers,
 --     or on any legacy demo table. They already exist.
 --   * No ALTER on any existing table.
---   * No new RLS policies. tap_list is service-role only.
+--   * No new RLS policies. RLS is enabled on tap_list with ZERO
+--     policies — direct anon/public access is denied; admin access
+--     is via the service-role client only. This mirrors the
+--     production state verified after catch-up apply.
 --   * No new triggers.
 --   * No data is inserted.
 --   * Idempotent: every CREATE uses IF NOT EXISTS so the file is safe
---     to re-run on a partially applied database.
+--     to re-run on a partially applied database. ALTER TABLE …
+--     ENABLE ROW LEVEL SECURITY is a no-op when RLS is already on.
 --
 -- Apply order:
 --   1. This file (creates tap_list + indexes)
@@ -87,10 +91,24 @@ create index if not exists tap_list_live_by_beer_idx
   on public.tap_list (beer_slug)
   where ended_at is null;
 
--- No RLS, no policies, no triggers. tap_list is service-role only;
--- the v7.3 admin app talks to it through fn_tap_* (created by the
--- next migration), which run security invoker under service role.
--- Public app does not read tap_list directly in v7.3.
+-- Service-role-only posture. RLS is enabled on tap_list; NO policies
+-- are created. With RLS enabled and zero policies, direct anon and
+-- authenticated access via PostgREST is denied — only the service-
+-- role client (which bypasses RLS) can read or write. The v7.3 admin
+-- app reaches tap_list exclusively through the fn_tap_* functions
+-- (created by 20260602000000_admin_actions_and_tap_fns.sql), which
+-- run security invoker and are called from service-role contexts.
+-- The public app does not read tap_list directly in v7.3.
+--
+-- This mirrors the production state verified after catch-up apply.
+-- The Supabase Dashboard SQL Editor's "Potential issue detected" RLS
+-- warning that fired against an earlier draft of this migration is
+-- mitigated by this statement; without it, a public-schema table
+-- with RLS off is reachable by anon/authenticated keys via PostgREST.
+--
+-- Same posture pattern v7.3 uses for public.admin_actions and v6.3
+-- uses for qr_codes / media_assets / *_events.
+alter table public.tap_list enable row level security;
 
 -- ============================================================
 -- Verification (read-only) — run AFTER applying the migration block
@@ -108,6 +126,8 @@ create index if not exists tap_list_live_by_beer_idx
 --       If this returns 0 rows, the FK from tap_list.beer_slug
 --       cannot enforce parent uniqueness. Stop and investigate.
 --   V7. No triggers crept onto tap_list (expected: 0 rows).
+--   V8. tap_list has RLS enabled with zero policies (expected:
+--       relrowsecurity = true, policy_count = 0).
 --
 -- The exact verification queries are kept in the v7.4A.2D planning
 -- artifact rather than inlined here so this file remains a pure
