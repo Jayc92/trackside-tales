@@ -2427,3 +2427,246 @@
   .stamp-book-celebrate-copy strong { font-size: 0.7rem; letter-spacing: 0.12em; }
   .stamp-book-celebrate-tale { font-size: 0.78rem; }
 }
+
+/* =====================================================================
+   UI-v6.7A — SHARED GAME SHELL POLISH
+   ---------------------------------------------------------------------
+   Presentation-only upgrade of the GameOverlay chrome. Three pieces:
+
+   1. Cinematic intro card — themed emblem plate, eyebrow, era stamp,
+      flavor line, staged entrance. Wraps the existing .game-instructions
+      OBJECTIVE panel; does not replace it.
+   2. Already-earned replay banner + fail-state emblem/eyebrow.
+   3. prefers-reduced-motion guards for EVERY game animation (the ones
+      below plus the v5.1.x game keyframes earlier in this file and the
+      orchestrator chrome in app.css — polish.css loads after app.css,
+      so guards here win the cascade).
+
+   No selector here is read by game logic. Class names are new except
+   where noted, so nothing in app.css is redefined.
+   ===================================================================== */
+
+/* ── Intro card ──────────────────────────────────────────────────── */
+.game-intro-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Staged entrance — each layer rises in sequence. Composited transform/
+   opacity only; fully disabled under reduced motion below. */
+@keyframes gameIntroRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.game-intro-plate    { animation: gameIntroRise 0.45s var(--ease-out-quart) 0.05s both; }
+.game-intro-eyebrow  { animation: gameIntroRise 0.45s var(--ease-out-quart) 0.16s both; }
+.game-intro-era      { animation: gameIntroRise 0.45s var(--ease-out-quart) 0.24s both; }
+.game-intro-flavor   { animation: gameIntroRise 0.45s var(--ease-out-quart) 0.32s both; }
+.game-intro-card .game-instructions { animation: gameIntroRise 0.45s var(--ease-out-quart) 0.42s both; }
+.game-intro-card .game-start-btn    { animation: gameIntroRise 0.45s var(--ease-out-quart) 0.54s both; }
+
+/* Emblem plate — brass medallion blank holding the game's TsIcon. */
+.game-intro-plate {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  background:
+    radial-gradient(circle at 35% 32%, rgba(224, 161, 90, 0.22), transparent 60%),
+    linear-gradient(150deg, #342612, #1c1409);
+  border: 1.5px solid rgba(201, 130, 63, 0.65);
+  box-shadow:
+    0 0 22px rgba(224, 161, 90, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.45);
+  margin-bottom: 0.85rem;
+}
+.game-intro-plate .ts-icon-lg {
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6));
+}
+.game-intro-plate-ring {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 1px dashed rgba(201, 130, 63, 0.4);
+  pointer-events: none;
+}
+
+.game-intro-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.34em;
+  color: var(--ember);
+  margin-bottom: 0.4rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Era stamp — "ANNO 1762" between two hairline rules. */
+.game-intro-era {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 250px;
+  margin-bottom: 0.8rem;
+  font-family: 'IM Fell English', 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  color: var(--aged);
+}
+.game-intro-era-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 130, 63, 0.45), transparent);
+}
+
+.game-intro-flavor {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--parchment);
+  max-width: 310px;
+  margin-bottom: 1.1rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+
+/* ── Already-earned replay banner ────────────────────────────────── */
+.game-earned-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.8rem;
+  margin-bottom: 1.1rem;
+  background:
+    linear-gradient(135deg, rgba(224, 161, 90, 0.1), transparent 70%),
+    rgba(28, 20, 8, 0.85);
+  border: 1px solid rgba(201, 130, 63, 0.45);
+  border-left: 3px solid var(--brass);
+  border-radius: 2px;
+  animation: gameIntroRise 0.45s var(--ease-out-quart) both;
+}
+.game-earned-banner-seal {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 130, 63, 0.6);
+  color: var(--gold);
+  background: rgba(224, 161, 90, 0.08);
+}
+.game-earned-banner-text {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--steam);
+}
+.game-earned-banner-text strong {
+  display: block;
+  font-family: 'Source Code Pro', monospace;
+  font-style: normal;
+  font-size: 0.5rem;
+  letter-spacing: 0.26em;
+  color: var(--gold);
+  margin-bottom: 0.15rem;
+}
+
+/* ── Fail state emblem + eyebrow ─────────────────────────────────── */
+.game-fail-emblem {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(201, 130, 63, 0.55);
+  background: linear-gradient(150deg, #241b10, #15100a);
+  border: 1.5px solid rgba(201, 130, 63, 0.35);
+  box-shadow: inset 0 -5px 12px rgba(0, 0, 0, 0.5);
+  margin-bottom: 0.9rem;
+  filter: saturate(0.7);
+}
+.game-fail-eyebrow {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.46rem;
+  letter-spacing: 0.32em;
+  color: rgba(192, 78, 24, 0.85);
+  margin-bottom: 0.35rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* ── Reduced-motion guards for the game layer ────────────────────────
+   Two groups:
+   (a) animations whose END state IS the visible state (forwards/both
+       fill establishing visibility) — force the end state, then disable;
+   (b) purely decorative motion — disable outright. Static highlight
+       styling on .hinted/.armed-target/.lit remains, so no gameplay
+       information is lost without motion. */
+@media (prefers-reduced-motion: reduce) {
+  /* (a) building icons draw in via stroke-dashoffset → must end drawn */
+  .allen-bldg-stroke line,
+  .allen-bldg-stroke rect,
+  .allen-bldg-stroke path,
+  .allen-bldg-stroke polyline,
+  .allen-bldg-stroke circle {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .allen-bldg-stroke circle[fill="currentColor"] {
+    animation: none;
+    opacity: 1;
+  }
+
+  /* (b) decorative motion — entrance, pulse, shake, flicker, rays */
+  .game-intro-plate,
+  .game-intro-eyebrow,
+  .game-intro-era,
+  .game-intro-flavor,
+  .game-intro-card .game-instructions,
+  .game-intro-card .game-start-btn,
+  .game-earned-banner,
+  .allen-cell.pulsing,
+  .allen-cell.wrong,
+  .allen-map-zone-crosshair,
+  .allen-map-zone-label,
+  .allen-map-zone.hinted,
+  .allen-quiz-overlay,
+  .allen-planning-note,
+  .allen-reconsider,
+  .allen-approve,
+  .allen-element-card.placed,
+  .allen-element-card.armed,
+  .packer-junction-spike,
+  .packer-junction.hinted .packer-junction-marker,
+  .packer-junction.armed-target .packer-junction-marker,
+  .packer-segment-lit,
+  .wm-room.lit,
+  .wm-room.lit .wm-flame,
+  .wm-room.hinted .wm-room-frame,
+  .game-medallion,
+  .game-medallion-rays,
+  .game-success-badge {
+    animation: none;
+  }
+
+  /* Timer warning keeps its cue without the pulse: hold the warn color. */
+  .game-time-warn {
+    animation: none;
+    color: var(--ember);
+  }
+}

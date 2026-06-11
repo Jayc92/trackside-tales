@@ -321,14 +321,18 @@ export function TaleDetailPage() {
               : 'Complete the mini-game to finish this Passport page.'}
           </p>
           <div className="ts-next-step__btns">
+            {/* UI-v6.7A — earned Tales can re-open the game as a replay.
+                GameOverlay shows its already-earned banner and the
+                alreadyEarned gate keeps the badge from re-awarding, so
+                replay is purely for fun. Coming-soon stays disabled. */}
             <button
               type="button"
               className="ts-next-step__primary"
-              onClick={() => showAsActive && setShowGame(true)}
-              disabled={!showAsActive}
-              aria-disabled={!showAsActive}
+              onClick={() => !showAsComingSoon && setShowGame(true)}
+              disabled={showAsComingSoon}
+              aria-disabled={showAsComingSoon}
             >
-              {showAsEarned     && '✓ MINI-GAME COMPLETE'}
+              {showAsEarned     && '↻ REPLAY MINI-GAME'}
               {showAsActive     && '🎮 PLAY MINI-GAME'}
               {showAsComingSoon && 'MINI-GAME COMING SOON'}
             </button>

@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { GameConfig } from './gameConfigs';
+import { GameConfig, GameType } from './gameConfigs';
 import { AllenTownPlanningGame } from './AllenTownPlanningGame';
 import { PackerRouteGame } from './PackerRouteGame';
 import { WoodenStationGame } from './WoodenStationGame';
@@ -48,8 +48,71 @@ import { logEvent, flushEvents } from '../services/eventLogger';
 //   - Logging runs AFTER the visible setPhase / state transition so a
 //     slow logEvent can never delay the phase paint. Same posture as
 //     ADMIN-v6.8C in ScanPage.
+//
+// UI-v6.7A: presentation-only shell pass.
+//   - Cinematic intro card (themed emblem plate, eyebrow, era stamp,
+//     flavor line) wrapped around the existing OBJECTIVE panel + BEGIN.
+//   - Already-earned replay banner on the intro when alreadyEarned is
+//     true; BEGIN relabels to PLAY AGAIN. Award gating is unchanged.
+//   - Fail state gets a themed emblem + per-game eyebrow.
+//   - No prop, phase, analytics, or badge-flow changes. SHELL_THEMES is
+//     a static lookup keyed by the frozen GameType strings.
 
 type GamePhase = 'intro' | 'playing' | 'quiz' | 'success' | 'fail';
+
+// UI-v6.7A — per-game shell theming for the intro card and fail state.
+// Presentation-only: icons come from the existing TsIcon library, copy is
+// static, and nothing here feeds back into game logic, badges, or
+// analytics. Keyed by the frozen GameType strings (grid/spike/match).
+interface ShellTheme {
+  /** TsIcon name for the intro plate + fail emblem. */
+  icon: string;
+  /** Small-caps line above the title plate, e.g. "SURVEYOR'S COMMISSION". */
+  eyebrow: string;
+  /** Period stamp under the eyebrow, e.g. "ANNO 1762". */
+  era: string;
+  /** One-line cinematic framing shown above the OBJECTIVE panel. */
+  flavor: string;
+  /** Small-caps line above "NOT QUITE" on the fail screen. */
+  failEyebrow: string;
+}
+
+const SHELL_THEMES: Record<GameType, ShellTheme> = {
+  grid: {
+    icon: 'survey-grid',
+    eyebrow: "SURVEYOR'S COMMISSION",
+    era: 'ANNO 1762',
+    flavor:
+      'William Allen has drawn the lines of a new town. The survey table is yours.',
+    failEyebrow: 'THE SURVEY STANDS UNFINISHED',
+  },
+  spike: {
+    icon: 'rail-spike',
+    eyebrow: "ENGINEER'S ORDERS",
+    era: 'ANNO 1855',
+    flavor:
+      'Asa Packer is building the Lehigh Valley line. Every junction waits on your spike.',
+    failEyebrow: 'THE LINE STOPS SHORT',
+  },
+  match: {
+    icon: 'station-lantern',
+    eyebrow: "KEEPER'S CHARGE",
+    era: 'ANNO 1868',
+    flavor:
+      'The old station has been dark since 1967. One match stands between memory and loss.',
+    failEyebrow: 'THE MATCH GUTTERS OUT',
+  },
+};
+
+// Fallback for any future unwired GameType so the shell never renders
+// without a theme (mirrors the defensive fallback in renderPlaying).
+const DEFAULT_THEME: ShellTheme = {
+  icon: 'town-seal',
+  eyebrow: 'TRACKSIDE CHALLENGE',
+  era: 'TRACKSIDE TALES',
+  flavor: 'A piece of the Tale is waiting to be earned.',
+  failEyebrow: 'THE CHALLENGE STANDS',
+};
 
 interface GameOverlayProps {
   config: GameConfig;
@@ -248,18 +311,51 @@ export function GameOverlay({
   }, [config, guestId]);
 
   // ── Phase renderers ──────────────────────────────────────────────────────
-  const renderIntro = () => (
-    <div className="game-canvas-wrap">
-      <p className="game-instructions">{config.instructions}</p>
-      <button
-        type="button"
-        className="game-start-btn"
-        onClick={handleBegin}
-      >
-        BEGIN
-      </button>
-    </div>
-  );
+  // UI-v6.7A — cinematic intro card. The old intro was a bare paragraph +
+  // BEGIN. This version stages the same content as a ceremony: themed
+  // emblem plate → title → flavor line → OBJECTIVE panel → BEGIN, with an
+  // already-earned banner above when the badge is held. handleBegin stays
+  // the single start funnel; replaying with the badge held never re-awards
+  // (alreadyEarned gate in handleGameWin is untouched).
+  const renderIntro = () => {
+    const theme = SHELL_THEMES[config.type] ?? DEFAULT_THEME;
+    return (
+      <div className="game-canvas-wrap">
+        <div className="game-intro-card">
+          {alreadyEarned && (
+            <div className="game-earned-banner" role="status">
+              <span className="game-earned-banner-seal" aria-hidden="true">
+                <TsIcon icon={successBadgeIcon} className="ts-icon-sm" />
+              </span>
+              <span className="game-earned-banner-text">
+                <strong>BADGE ALREADY STAMPED</strong>
+                Replay for the story — your Passport keeps the original.
+              </span>
+            </div>
+          )}
+          <div className="game-intro-plate" aria-hidden="true">
+            <span className="game-intro-plate-ring" />
+            <TsIcon icon={theme.icon} className="ts-icon-lg" />
+          </div>
+          <div className="game-intro-eyebrow">{theme.eyebrow}</div>
+          <div className="game-intro-era" aria-hidden="true">
+            <span className="game-intro-era-rule" />
+            <span>{theme.era}</span>
+            <span className="game-intro-era-rule" />
+          </div>
+          <p className="game-intro-flavor">{theme.flavor}</p>
+          <p className="game-instructions">{config.instructions}</p>
+          <button
+            type="button"
+            className="game-start-btn"
+            onClick={handleBegin}
+          >
+            {alreadyEarned ? 'PLAY AGAIN' : 'BEGIN'}
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const renderPlaying = () => {
     if (config.type === 'grid') {
@@ -425,9 +521,17 @@ export function GameOverlay({
           : config.type === 'match'
             ? 'The station is still dark — give it another pass.'
             : 'The challenge isn\'t complete yet — give it another pass.';
+    // UI-v6.7A — themed fail emblem (dimmed plate + the game's own icon)
+    // replaces the bare ○ glyph, with a per-game eyebrow line. Buttons and
+    // handlers are unchanged: retryGame keeps its attempt/analytics
+    // semantics, SKIP still closes.
+    const theme = SHELL_THEMES[config.type] ?? DEFAULT_THEME;
     return (
       <div className="game-fail active">
-        <div className="game-fail-mark">○</div>
+        <div className="game-fail-emblem" aria-hidden="true">
+          <TsIcon icon={theme.icon} className="ts-icon-lg" />
+        </div>
+        <div className="game-fail-eyebrow">{theme.failEyebrow}</div>
         <h3 className="game-fail-title">NOT QUITE</h3>
         <p className="game-fail-msg">{failMsg}</p>
         <div className="game-success-btns">
