@@ -321,6 +321,12 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
   const [hoverZoneId, setHoverZoneId] = useState<string | null>(null);
   const [hintZoneId, setHintZoneId]   = useState<string | null>(null);
 
+  // UI-v6.7B — transient presentation-only state: the zone of the most
+  // recent WRONG placement, so the board can show a red-ink survey
+  // correction at the spot the player tried. Cleared on a timer; never
+  // read by placement, mistake, timer, or win/lose logic.
+  const [wrongZoneId, setWrongZoneId] = useState<string | null>(null);
+
   // v5.1.13: track the elementId that triggered the parchment so we can
   // surface both the element NAME and its reason. Previously we stored
   // just the quote text, which lost the connection to which element
@@ -443,7 +449,12 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
     } else {
       // v5.1.11: parchment slide-up instead of red flash.
       // v5.1.12: element-specific wrongReason for the quote.
+      // UI-v6.7B: red-ink survey correction on the attempted zone —
+      // presentation only, cleared after the stroke finishes. Mistake
+      // counting and fail timing below are unchanged.
       triggerReconsider(elementId);
+      setWrongZoneId(zoneId);
+      window.setTimeout(() => setWrongZoneId(null), 900);
       setMovesLeft((m) => {
         const nextMoves = Math.max(0, m - 1);
         if (nextMoves <= 0) window.setTimeout(triggerLose, 480);
@@ -607,7 +618,10 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
 
 
   return (
-    <div className="allen-planning-game">
+    // UI-v6.7B: allen-survey-game scopes this phase's polish to the W.A.
+    // game only — Packer and Wooden Match also carry .allen-planning-game
+    // on their roots, so that class can't isolate Allen-specific styling.
+    <div className="allen-planning-game allen-survey-game">
 
       {/* HUD strip — diegetic instruments, v5.1.13 plainspoken labels.
          Period flavour is preserved via the sundial glyph, brass pips
@@ -801,12 +815,16 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
           const targeted = !filled && hoverZoneId === zone.id;
           const isArmedTarget = !filled && focusedElementId !== null && zone.correctElement === focusedElementId;
           const hinted = hintZoneId === zone.id;
+          // UI-v6.7B: transient red-ink correction marker on the zone of
+          // the last wrong placement. Class is purely visual.
+          const inkWrong = wrongZoneId === zone.id;
           const cls = [
             'allen-map-zone',
             filled        ? 'filled'        : '',
             targeted      ? 'targeted'      : '',
             isArmedTarget ? 'armed-target'  : '',
             hinted        ? 'hinted'        : '',
+            inkWrong      ? 'ink-wrong'     : '',
           ].filter(Boolean).join(' ');
           return (
             <button
@@ -825,7 +843,13 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
               aria-label={`${zone.label} site${filled ? ' — placed' : ''}`}
             >
               {filled && elementHere ? (
-                <BuildingForElement id={elementHere} />
+                <>
+                  <BuildingForElement id={elementHere} />
+                  {/* UI-v6.7B: parchment stamp impression behind the
+                      building — a brass seal ring that presses in once
+                      on placement (decoration only). */}
+                  <span className="allen-zone-stamp" aria-hidden="true" />
+                </>
               ) : (
                 <>
                   {/* Faint dot marker when empty; brass crosshair when armed for this zone */}
@@ -1036,7 +1060,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
          left/top + transform conflict that produced the visible offset. */}
       {draggingElementId && dragPos && createPortal(
         <div
-          className="allen-drag-ghost"
+          className="allen-drag-ghost allen-drag-ghost--survey"
           style={{
             transform: `translate3d(${dragPos.x}px, ${dragPos.y}px, 0) translate(-50%, -50%)`,
           }}
