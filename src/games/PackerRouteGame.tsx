@@ -173,6 +173,12 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
   >(null);
   const [approveElementId, setApproveElementId] = useState<string | null>(null);
 
+  // UI-v6.7C — transient presentation-only state: the junction of the
+  // most recent rejected placement (wrong junction OR out-of-order), so
+  // the board can flash a rail-spark there. Cleared on a timer; never
+  // read by placement, ordering, mistake, timer, or win/lose logic.
+  const [sparkZoneId, setSparkZoneId] = useState<string | null>(null);
+
   const [activeQuizElementId, setActiveQuizElementId] = useState<string | null>(null);
   const [quizSelected, setQuizSelected] = useState<number | null>(null);
   const [quizResult, setQuizResult]     = useState<'correct' | 'wrong' | null>(null);
@@ -272,6 +278,11 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
       // Card-to-junction match check
       if (zone.correctElement !== elementId) {
         triggerReconsider(elementId, 'wrong');
+        // UI-v6.7C: rail-spark at the rejected junction — visual only,
+        // cleared after the spark burst finishes. Mistake counting and
+        // fail timing below are unchanged.
+        setSparkZoneId(zoneId);
+        window.setTimeout(() => setSparkZoneId(null), 700);
         setMovesLeft((m) => {
           const next = Math.max(0, m - 1);
           if (next <= 0) window.setTimeout(triggerLose, 480);
@@ -288,6 +299,9 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
         const prevZone = ZONES.find((z) => z.order === zone.order - 1);
         if (prevZone && !placements[prevZone.id]) {
           triggerReconsider(elementId, 'out-of-order');
+          // UI-v6.7C: same rail-spark on out-of-order attempts.
+          setSparkZoneId(zoneId);
+          window.setTimeout(() => setSparkZoneId(null), 700);
           setMovesLeft((m) => {
             const next = Math.max(0, m - 1);
             if (next <= 0) window.setTimeout(triggerLose, 480);
@@ -482,6 +496,20 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
   // Junctions, sorted west→east — used both for rendering the rail and
   // for hint targeting.
   const zonesByOrder = ZONES.slice().sort((a, b) => a.order - b.order);
+
+  // UI-v6.7C — the next layable junction (smallest-order unfilled zone
+  // whose western neighbour is laid, or the western terminus). Purely a
+  // readability cue on the board; same derivation handleHint already
+  // uses, never consulted by placement logic.
+  const nextStopZoneId = (() => {
+    const candidates = zonesByOrder.filter((z) => !placements[z.id]);
+    const target = candidates.find((z) => {
+      if (z.order === 0) return true;
+      const prev = ZONES.find((pz) => pz.order === z.order - 1);
+      return !!(prev && placements[prev.id]);
+    });
+    return target?.id ?? null;
+  })();
 
 
   return (
@@ -717,12 +745,19 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
           const isArmedTarget =
             !filled && focusedElementId !== null && zone.correctElement === focusedElementId;
           const hinted = hintZoneId === zone.id;
+          // UI-v6.7C: presentation-only flags — spark on the junction of
+          // the last rejected attempt; next-stop dispatch cue on the only
+          // junction that can legally be laid right now.
+          const sparking = sparkZoneId === zone.id;
+          const isNextStop = !filled && nextStopZoneId === zone.id;
           const cls = [
             'packer-junction',
             filled        ? 'filled'       : '',
             targeted      ? 'targeted'     : '',
             isArmedTarget ? 'armed-target' : '',
             hinted        ? 'hinted'       : '',
+            sparking      ? 'sparking'     : '',
+            isNextStop    ? 'next-stop'    : '',
           ].filter(Boolean).join(' ');
           return (
             <button
@@ -743,9 +778,19 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
               {filled && elementHere ? (
                 <div className="packer-junction-spike" aria-hidden="true">
                   <span className="packer-junction-numeral">{toRoman(zone.order + 1)}</span>
+                  {/* UI-v6.7C: spike-hit ring — a brass shockwave that
+                      expands once when the junction is laid. */}
+                  <span className="packer-spike-ring" />
                 </div>
               ) : (
                 <>
+                  {/* UI-v6.7C: rail-spark burst on a rejected attempt —
+                      four short ember strokes flying off the rail. */}
+                  {sparking && (
+                    <span className="packer-spark" aria-hidden="true">
+                      <i /><i /><i /><i />
+                    </span>
+                  )}
                   {isArmedTarget ? (
                     <svg className="packer-junction-crosshair allen-map-zone-crosshair" viewBox="0 0 24 24" aria-hidden="true">
                       <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="0.8" />
@@ -933,7 +978,7 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
       {/* Portal drag ghost (same Portal/transform pattern as W.A.) */}
       {draggingElementId && dragPos && createPortal(
         <div
-          className="allen-drag-ghost"
+          className="allen-drag-ghost allen-drag-ghost--rail"
           style={{
             transform: `translate3d(${dragPos.x}px, ${dragPos.y}px, 0) translate(-50%, -50%)`,
           }}

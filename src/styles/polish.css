@@ -2864,3 +2864,188 @@
   /* The armed-card lift and drag-ghost tilt are static transforms,
      not motion — they stay. */
 }
+
+
+/* =====================================================================
+   UI-v6.7C — PACKER PILSNER TARGETED POLISH
+   ---------------------------------------------------------------------
+   Presentation-only pass over PackerRouteGame. Five pieces:
+
+   1. Spike-hit ring (.packer-spike-ring): a brass shockwave expanding
+      once when a junction is laid, over the existing spike pop.
+   2. Rail-spark (.packer-spark): four ember strokes flying off the
+      junction on a rejected attempt (wrong junction or out-of-order).
+      Warm forge-spark tones, not arcade neon.
+   3. Next-stop dispatch cue (.packer-junction.next-stop): a steady
+      brass halo + NEXT STOP flag on the one junction that can legally
+      be laid right now. Static styling — visible without motion.
+   4. Dispatch-board HUD: darker board field, brass row pins, punched-
+      ticket edge under the values. Same markup/values as before.
+   5. Rail drag ghost (--rail modifier): flat-level carry + iron
+      shadow, distinct from the survey ghost's pen tilt.
+
+   No selector here is read by game logic. New motion is guarded at the
+   bottom of this section.
+   ===================================================================== */
+
+/* ── 1. Spike-hit ring ───────────────────────────────────────────── */
+.packer-spike-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(224, 161, 90, 0.8);
+  pointer-events: none;
+  opacity: 0;
+  animation: packerSpikeRing 0.6s ease-out 0.1s;
+}
+@keyframes packerSpikeRing {
+  0%   { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* ── 2. Rail-spark on rejected attempts ──────────────────────────── */
+.packer-spark {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.packer-spark i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 196, 110, 0.95), rgba(192, 78, 24, 0));
+  box-shadow: 0 0 5px rgba(255, 170, 80, 0.6);
+  transform-origin: left center;
+  animation: packerSparkFly 0.55s ease-out both;
+}
+.packer-spark i:nth-child(1) { rotate: -135deg; }
+.packer-spark i:nth-child(2) { rotate:  -45deg; animation-delay: 0.04s; }
+.packer-spark i:nth-child(3) { rotate:  -160deg; animation-delay: 0.08s; width: 8px; }
+.packer-spark i:nth-child(4) { rotate:  -20deg;  animation-delay: 0.1s;  width: 8px; }
+@keyframes packerSparkFly {
+  0%   { transform: translateX(2px)  scaleX(0.4); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translateX(20px) scaleX(1);   opacity: 0; }
+}
+/* The junction marker itself takes a brief iron shudder — small, fast,
+   physical. Same penalty semantics; purely visual. */
+.packer-junction.sparking .packer-junction-marker {
+  animation: packerSpikeShudder 0.3s ease;
+  border-color: rgba(192, 78, 24, 0.75);
+  box-shadow: 0 0 8px rgba(192, 78, 24, 0.5);
+}
+@keyframes packerSpikeShudder {
+  0%, 100% { transform: translateX(0); }
+  30%      { transform: translateX(-2px); }
+  70%      { transform: translateX(2px); }
+}
+
+/* ── 3. Next-stop dispatch cue ───────────────────────────────────── */
+/* Steady (non-animated) brass halo on the single legally-layable
+   junction, so the next move reads at a glance even with motion off.
+   Deliberately quieter than .hinted (the paid hint) and .armed-target
+   (the live crosshair): a waiting signal, not a command. */
+.packer-junction.next-stop .packer-junction-marker {
+  width: 12px;
+  height: 12px;
+  border-color: rgba(224, 161, 90, 0.85);
+  background: rgba(224, 161, 90, 0.12);
+  box-shadow:
+    0 0 8px rgba(224, 161, 90, 0.45),
+    0 0 0 3px rgba(224, 161, 90, 0.12);
+}
+.packer-junction.next-stop::after {
+  content: 'NEXT STOP';
+  position: absolute;
+  bottom: -0.05rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.34rem;
+  letter-spacing: 0.22em;
+  color: rgba(224, 161, 90, 0.75);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+/* The crosshair (armed) and hint states carry their own strong signals —
+   drop the flag while they're active so the junction shows one voice. */
+.packer-junction.next-stop.armed-target::after,
+.packer-junction.next-stop.hinted::after {
+  content: none;
+}
+
+/* ── 4. Dispatch-board HUD ───────────────────────────────────────── */
+/* Iron board field + brass row pins in the corners. Same grid, same
+   values; chrome only. Scoped to the Packer root. */
+.packer-route-game .game-hud {
+  background:
+    radial-gradient(circle at 4px 4px, rgba(224, 161, 90, 0.5) 1px, transparent 1.5px),
+    radial-gradient(circle at calc(100% - 4px) 4px, rgba(224, 161, 90, 0.5) 1px, transparent 1.5px),
+    linear-gradient(180deg, rgba(16, 12, 8, 0.55), transparent 45%),
+    linear-gradient(90deg, rgba(201, 130, 63, 0.07), transparent 55%),
+    var(--iron-2);
+  border-color: rgba(201, 130, 63, 0.55);
+}
+.packer-route-game .game-hud-stat {
+  border-right: 1px solid rgba(201, 130, 63, 0.32);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.45);
+}
+.packer-route-game .game-hud-stat:last-child {
+  border-right: none;
+  box-shadow: none;
+}
+/* Punched-ticket edge — a row of punch holes under each value, like a
+   conductor's clipped ticket. */
+.packer-route-game .game-hud-val::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 0.28rem;
+  height: 3px;
+  background-image: radial-gradient(circle, rgba(20, 14, 6, 0.9) 1.1px, transparent 1.4px);
+  background-size: 7px 3px;
+  background-repeat: repeat-x;
+  border-top: 1px solid rgba(201, 130, 63, 0.35);
+  pointer-events: none;
+}
+.packer-route-game .game-hud-stat { padding-bottom: 0.72rem; }
+.packer-route-game .game-hud-label { color: #b9a47e; }
+
+/* ── 5. Rail drag ghost ──────────────────────────────────────────── */
+/* Carried level (rails are laid flat) with a heavier iron shadow —
+   reads as a rail section in hand, distinct from the survey pen tilt. */
+.allen-drag-ghost--rail {
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.7),
+    0 3px 8px rgba(0, 0, 0, 0.55),
+    0 0 16px rgba(224, 161, 90, 0.3);
+  border-color: rgba(224, 161, 90, 0.9);
+}
+/* Armed card press feel, scoped to Packer (W.A. has its own lift). */
+.packer-route-game .allen-element-card.armed {
+  transform: translateY(-3px);
+}
+.packer-route-game .allen-element-card:active {
+  cursor: grabbing;
+}
+
+/* ── Reduced-motion guards for UI-v6.7C ──────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  /* Spark + ring + shudder: skip the motion; the rejected attempt is
+     still fully communicated by the static PACKER RECONSIDERS / OUT OF
+     ORDER parchment and the mistake pips. */
+  .packer-spike-ring,
+  .packer-spark i,
+  .packer-junction.sparking .packer-junction-marker {
+    animation: none;
+  }
+  /* Hold the spark state's static ember tint on the marker so the
+     rejected junction still flashes a location cue without motion. */
+  .packer-junction.sparking .packer-junction-marker {
+    border-color: rgba(192, 78, 24, 0.75);
+    box-shadow: 0 0 8px rgba(192, 78, 24, 0.5);
+  }
+  /* .next-stop is static by design — nothing to guard. */
+}
