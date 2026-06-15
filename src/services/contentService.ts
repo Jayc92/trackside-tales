@@ -1,4 +1,4 @@
-// ================== CONTENT SERVICE (ADMIN-v6.4) ==================
+// ================== CONTENT SERVICE (ADMIN-v6.4 + v7.4B.M.5.1) ==================
 // Read-only remote content loader. Fetches published+active rows
 // from Supabase and maps them into the public app's existing
 // `Tale`, `Beer`, and `FoodItem` shapes.
@@ -22,6 +22,44 @@
 //     local base64 `CAN_IMAGES` lookup so swapping to remote does
 //     not produce empty cans.
 //
+// ADMIN-v7.4B.M.5.1 (Tale adapter):
+//   The Tale read path is a hybrid adapter. Production's
+//   `public.tales` carries scalar metadata + `timeline`/`map_points`
+//   jsonb but does NOT carry the rich Tale fields the public app
+//   renders today (abbr, person, scanBadge, gameBadge, barSummary,
+//   stillHere, image, full game-config copy). The adapter:
+//
+//     1. Reads only the columns production actually has (10 scalars
+//        + 2 jsonb arrays + 1 text = `story_body`).
+//     2. Renames production slugs → public-app slugs via
+//        talePresentationPack.PROD_TO_APP_SLUG (production carries
+//        long forms `packer-pilsner` / `wooden-match-amber`; the
+//        rest of the public app keys on short forms `packer-pils` /
+//        `wooden-match` for QR / localStorage / badges / routes /
+//        game configs / unlock modal — none of those are renamed).
+//     3. Drops rows whose post-rename slug has no presentation pack
+//        (with console warning), so an unknown production tale
+//        never crashes the page.
+//     4. Wraps `story_body` text into a single StoryBlock paragraph
+//        (the canonical app type expects an array of blocks). When
+//        story_body is blank, falls back to LOCAL_TALES.story[].
+//     5. Validates production `timeline` and `map_points` jsonb
+//        against the canonical TimelineEvent / MapPin shape; falls
+//        back to LOCAL_TALES values if the array is empty/malformed.
+//     6. Validates production `mini_game_type` matches the local
+//        GameConfig.type. The full game config (title, instructions,
+//        success copy) always comes from the presentation pack.
+//     7. Everything else (abbr, style, abv, ibu, tagline, icon,
+//        unlockSeal, person, personBio, mapTitle, scanBadge,
+//        gameBadge, barSummary, stillHere, image) is read from the
+//        slug-keyed presentation pack — same content the app
+//        renders today when remote is disabled.
+//
+//   Net effect: when USE_REMOTE_CONTENT flips on (a future M.5.2
+//   gate), production's editable fields (title/year/chapter/tap
+//   status/timeline/map_points/story_body) become live; everything
+//   else stays presentationally identical to the all-local mode.
+//
 // This service is read-only by phase rule. No writes (badges,
 // events, guest progress) belong here — those will be wired through
 // edge functions in ADMIN-v6.5.
@@ -33,31 +71,24 @@ import {
   StoryBlock,
   MapPin,
   TimelineEvent,
-  Badge,
-  GameConfig,
-  BarSummary,
-  StillHere,
-  PersonInfo,
 } from '../app/types';
 import { supabaseFetch, USE_REMOTE_CONTENT } from './supabaseClient';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC } from '../data/menu';
+import {
+  appSlugFromProdSlug,
+  getPresentationPack,
+} from './talePresentationPack';
 
 // ------------ image fallback bridge ------------
 // Remote rows do not yet carry CDN image URLs. Until they do, we
 // fall back to the embedded base64 cans from src/data/canImages.ts
 // via the local Tale/Beer arrays. Keying:
-//   * tales:  slug == Tale.id (stable, matches DB primary key)
+//   * tales:  the M.5.1 adapter pulls `image` from the presentation
+//             pack keyed by public-app slug (talePresentationPack.ts).
+//             No bridge needed in this file.
 //   * beers:  display name (LOCAL_REGULARS / LOCAL_NON_ALC have no
 //             slug field today; name is stable + unique).
-
-const LOCAL_TALE_IMAGE_BY_ID: Record<string, string> = LOCAL_TALES.reduce(
-  (acc, t) => {
-    acc[t.id] = t.image;
-    return acc;
-  },
-  {} as Record<string, string>,
-);
 
 const LOCAL_BEER_IMAGE_BY_NAME: Record<string, string> = [
   ...LOCAL_REGULARS,
@@ -95,22 +126,6 @@ function asArrayOfObj(v: unknown): Record<string, unknown>[] | null {
 
 // ------------ row mappers ------------
 
-function mapStoryBlocks(v: unknown): StoryBlock[] {
-  const rows = asArrayOfObj(v) ?? [];
-  const out: StoryBlock[] = [];
-  for (const r of rows) {
-    const type = asString(r.type);
-    if (type !== 'p' && type !== 'quote' && type !== 'h2' && type !== 'h3') continue;
-    const block: StoryBlock = { type };
-    const text = asString(r.text);
-    const cite = asString(r.cite);
-    if (text !== null) block.text = text;
-    if (cite !== null) block.cite = cite;
-    out.push(block);
-  }
-  return out;
-}
-
 function mapPins(v: unknown): MapPin[] {
   const rows = asArrayOfObj(v) ?? [];
   const out: MapPin[] = [];
@@ -142,116 +157,142 @@ function mapTimeline(v: unknown): TimelineEvent[] {
   return out;
 }
 
-function mapBadge(v: unknown): Badge | null {
-  if (!isObj(v)) return null;
-  const icon = asString(v.icon);
-  const title = asString(v.title);
-  const desc = asString(v.desc);
-  if (!icon || !title || !desc) return null;
-  return { icon, title, desc };
+/**
+ * Wrap the production `story_body` text column into a single
+ * StoryBlock paragraph. Production schema stores story prose as
+ * one TEXT column; the public app renders an array of typed
+ * blocks (`p` | `quote` | `h2` | `h3`). M.5.1 maps the simplest
+ * possible shape: one paragraph block holding the entire body.
+ *
+ * If story_body is blank/null, returns an empty array; the caller
+ * (mapTaleRow) falls back to the presentation pack's local story.
+ */
+function wrapStoryBody(v: unknown): StoryBlock[] {
+  if (typeof v !== 'string') return [];
+  const text = v.trim();
+  if (text.length === 0) return [];
+  return [{ type: 'p', text }];
 }
 
-function mapGame(v: unknown): GameConfig | null {
-  if (!isObj(v)) return null;
-  const type = asString(v.type);
-  if (type !== 'grid' && type !== 'spike' && type !== 'match') return null;
-  const title = asString(v.title);
-  const instructions = asString(v.instructions);
-  const successTitle = asString(v.successTitle);
-  const successMsg = asString(v.successMsg);
-  if (!title || !instructions || !successTitle || !successMsg) return null;
-  return { type, title, instructions, successTitle, successMsg };
-}
-
-function mapBarSummary(v: unknown): BarSummary | null {
-  if (!isObj(v)) return null;
-  const who = asString(v.who);
-  const why = asString(v.why);
-  const beer = asString(v.beer);
-  if (!who || !why || !beer) return null;
-  return { who, why, beer };
-}
-
-function mapStillHere(v: unknown): StillHere[] {
-  const rows = asArrayOfObj(v) ?? [];
-  const out: StillHere[] = [];
-  for (const r of rows) {
-    const place = asString(r.place);
-    const detail = asString(r.detail);
-    if (!place || !detail) continue;
-    out.push({ place, detail });
-  }
-  return out;
-}
-
-function mapPerson(v: unknown): PersonInfo | null {
-  if (!isObj(v)) return null;
-  const name = asString(v.name);
-  const dates = asString(v.dates);
-  const role = asString(v.role);
-  const initials = asString(v.initials);
-  if (!name || !dates || !role || !initials) return null;
-  const person: PersonInfo = { name, dates, role, initials };
-  const portrait = asString(v.portrait);
-  if (portrait) person.portrait = portrait;
-  return person;
-}
-
+/**
+ * Adapter: production tales row → public-app Tale.
+ *
+ * Production carries: slug (long form), name, title, year,
+ * chapter_label, story_body, timeline (jsonb), map_points (jsonb),
+ * tap_status, mini_game_type, sort_order, status, is_active,
+ * updated_at. Plus a few unused-by-app fields (subtitle,
+ * person_or_place, intro_type, intro_asset_url, stamp_image_url,
+ * id, beer_id, venue_id, created_at).
+ *
+ * The presentation pack supplies: abbr, style, abv, ibu, tagline,
+ * icon, unlockSeal, person, personBio, mapTitle, scanBadge,
+ * gameBadge, barSummary, stillHere, image, full game-config copy.
+ *
+ * Drop conditions:
+ *   * Missing or non-string slug.
+ *   * Missing or non-string name OR title (the canonical Tale type
+ *     requires both; we won't fabricate them from the local pack).
+ *   * Production slug not in PROD_TO_APP_SLUG (unknown new tale).
+ *   * Public-app slug has no presentation pack
+ *     (LOCAL_TALES doesn't contain it — should be unreachable
+ *     because PROD_TO_APP_SLUG and LOCAL_TALES are aligned, but
+ *     defensive).
+ *   * Production `mini_game_type` does not match the local
+ *     game.type (e.g. production says 'spike' for wa-lager, which
+ *     is hardcoded as 'grid' in the Allen Town game). Mismatch
+ *     would break the GameOverlay's switch statement; safer to
+ *     drop than to render a broken game.
+ *
+ * Each drop logs a console.warn so operators can debug without
+ * crashing the page.
+ */
 function mapTaleRow(row: Record<string, unknown>): Tale | null {
-  const id = asString(row.slug);
-  const name = asString(row.name);
-  const title = asString(row.title);
-  if (!id || !name || !title) return null;
+  const prodSlug = asString(row.slug);
+  const name     = asString(row.name);
+  const title    = asString(row.title);
+  if (!prodSlug || !name || !title) return null;
 
-  const person = mapPerson(row.person);
-  const scanBadge = mapBadge(row.scan_badge);
-  const gameBadge = mapBadge(row.game_badge);
-  const game = mapGame(row.game);
-  const barSummary = mapBarSummary(row.bar_summary);
-  // These three are required by the Tale type; if any is missing,
-  // the row is unrenderable — drop it.
-  if (!person || !scanBadge || !gameBadge || !game || !barSummary) return null;
+  const appSlug = appSlugFromProdSlug(prodSlug);
+  if (!appSlug) {
+    console.warn(
+      `[trackside] Remote tale slug "${prodSlug}" is not in the presentation slug map — dropping row.`,
+    );
+    return null;
+  }
 
+  const pack = getPresentationPack(appSlug);
+  if (!pack) {
+    console.warn(
+      `[trackside] Remote tale slug "${prodSlug}" → app slug "${appSlug}" has no presentation pack — dropping row.`,
+    );
+    return null;
+  }
+
+  // Game-type guard: production's mini_game_type must match the
+  // local pack's game.type. Mismatch indicates a content edit that
+  // would break GameOverlay's component dispatch — drop the row.
+  const miniGameType = asString(row.mini_game_type);
+  if (miniGameType !== null && miniGameType !== pack.game.type) {
+    console.warn(
+      `[trackside] Remote tale "${prodSlug}" mini_game_type="${miniGameType}" disagrees with local game.type="${pack.game.type}" — dropping row.`,
+    );
+    return null;
+  }
+
+  // Tap status: production CHECK constraint already restricts the
+  // value; the type guard mirrors the canonical enum. Falls back to
+  // 'on-tap' for any unexpected value (including NULL).
   const tapStatusRaw = asString(row.tap_status);
   const tapStatus: Tale['tapStatus'] =
     tapStatusRaw === 'on-tap' || tapStatusRaw === 'retired' || tapStatusRaw === 'coming-soon'
       ? tapStatusRaw
       : 'on-tap';
 
-  // Image fallback: prefer remote can_image_url; otherwise the local
-  // base64 can keyed by slug. If neither exists, drop the row — the
-  // public Tale Detail page assumes a non-empty `image`.
-  const remoteImage = asString(row.can_image_url);
-  const image = remoteImage || LOCAL_TALE_IMAGE_BY_ID[id] || '';
-  if (!image) return null;
+  // Story: production stores story_body as one text column; wrap
+  // into a single paragraph block. If story_body is blank, fall
+  // back to the local story array (which carries multiple typed
+  // blocks including quotes and inline HTML emphasis).
+  const wrappedStory = wrapStoryBody(row.story_body);
+  const story = wrappedStory.length > 0 ? wrappedStory : pack.fallbackStory;
+
+  // Timeline: prefer production jsonb if it validates as ≥1 event;
+  // otherwise local fallback. mapTimeline drops malformed entries.
+  const remoteTimeline = mapTimeline(row.timeline);
+  const timeline = remoteTimeline.length > 0 ? remoteTimeline : pack.fallbackTimeline;
+
+  // Map points: same posture as timeline.
+  const remotePins = mapPins(row.map_points);
+  const pins = remotePins.length > 0 ? remotePins : pack.fallbackPins;
 
   return {
-    id,
+    id:          appSlug,
     name,
-    abbr: asStringOr(row.abbr, ''),
-    image,
-    style: asStringOr(row.style, ''),
-    abv: asStringOr(row.abv, ''),
-    ibu: asStringOr(row.ibu, ''),
-    tagline: asStringOr(row.tagline, ''),
-    icon: asStringOr(row.icon, ''),
-    unlockSeal: asStringOr(row.unlock_seal, ''),
-    person,
-    personBio: asStringOr(row.person_bio, ''),
-    chapter: asStringOr(row.chapter, ''),
-    year: asStringOr(row.year, ''),
+    abbr:        pack.abbr,
+    image:       pack.image,
+    style:       pack.style,
+    abv:         pack.abv,
+    ibu:         pack.ibu,
+    tagline:     pack.tagline,
+    icon:        pack.icon,
+    unlockSeal:  pack.unlockSeal,
+    person:      pack.person,
+    personBio:   pack.personBio,
+    chapter:     asStringOr(row.chapter_label, ''),
+    year:        asStringOr(row.year, ''),
     title,
-    story: mapStoryBlocks(row.story),
-    mapTitle: asStringOr(row.map_title, ''),
-    pins: mapPins(row.pins),
-    timeline: mapTimeline(row.timeline),
-    scanBadge,
-    gameBadge,
-    game,
+    story,
+    mapTitle:    pack.mapTitle,
+    pins,
+    timeline,
+    scanBadge:   pack.scanBadge,
+    gameBadge:   pack.gameBadge,
+    game:        pack.game,
     tapStatus,
-    retiredDate: asString(row.retired_date),
-    barSummary,
-    stillHere: mapStillHere(row.still_here),
+    // Production has no `retired_date` column today; the Tale type
+    // allows null and the detail page renders it conditionally.
+    retiredDate: null,
+    barSummary:  pack.barSummary,
+    stillHere:   pack.stillHere,
   };
 }
 
@@ -291,11 +332,26 @@ function mapFoodRow(row: Record<string, unknown>): FoodItem | null {
 
 // ------------ public fetchers ------------
 
+// M.5.1: production-safe column subset only. The earlier canonical
+// SELECT (abbr, abv, ibu, style, tagline, icon, unlock_seal,
+// scan_badge, game_badge, game, bar_summary, still_here, person,
+// person_bio, map_title, hero_image_url, can_image_url, retired_date,
+// display_order) referenced columns absent from production
+// public.tales — flipping USE_REMOTE_CONTENT on would have produced
+// PostgREST 42703 errors. The adapter pulls those fields from the
+// presentation pack instead. Production-only columns we read here:
+//   * slug             — primary key; renamed via PROD_TO_APP_SLUG
+//   * name, title      — required by the canonical Tale type
+//   * year             — rendered in hero header
+//   * chapter_label    — production's name for canonical `chapter`
+//   * story_body       — text; wrapped into one StoryBlock paragraph
+//   * timeline         — jsonb; production's M.2 editor matches shape
+//   * map_points       — jsonb; production's M.2 editor matches shape
+//   * tap_status       — enum; matches Tale['tapStatus'] verbatim
+//   * mini_game_type   — guard against game-type drift
 const TALE_SELECT =
-  'slug,name,abbr,abv,ibu,style,tagline,icon,unlock_seal,chapter,year,title,' +
-  'story,pins,timeline,scan_badge,game_badge,game,bar_summary,still_here,' +
-  'person,person_bio,map_title,hero_image_url,can_image_url,tap_status,' +
-  'retired_date,display_order';
+  'slug,name,title,year,chapter_label,story_body,' +
+  'timeline,map_points,tap_status,mini_game_type,sort_order,updated_at';
 
 const BEER_SELECT =
   'slug,name,abbr,category,style,abv,ibu,tasting,can_image_url,display_order';
@@ -315,7 +371,9 @@ export async function fetchRemoteTales(): Promise<Tale[] | null> {
   try {
     const rows = (await supabaseFetch(
       'tales',
-      `select=${TALE_SELECT}&${PUBLISHED_FILTER}&order=display_order.asc`,
+      // M.5.1: order by `sort_order` (production column) instead of
+      // canonical `display_order` (which doesn't exist on prod).
+      `select=${TALE_SELECT}&${PUBLISHED_FILTER}&order=sort_order.asc`,
     )) as unknown;
     if (!Array.isArray(rows)) return null;
     const mapped = rows
