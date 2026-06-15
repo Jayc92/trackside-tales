@@ -3049,3 +3049,199 @@
   }
   /* .next-stop is static by design — nothing to guard. */
 }
+
+
+/* =====================================================================
+   UI-v6.7D — WOODEN MATCH TARGETED POLISH
+   ---------------------------------------------------------------------
+   Presentation-only pass over WoodenStationGame. Five pieces:
+
+   1. Display-case snap-in (.wm-room-case): a brass case edge that
+      settles around the artifact when its room is restored, plus a
+      warm light bloom sweeping out from the room.
+   2. Archive mismatch (.wm-room.faltered): the room's frame gutters
+      amber (a candle catching draft, not a red alarm) and a small
+      sepia ARCHIVE MISMATCH stamp presses in at an angle.
+   3. Deciding focus (.wm-room.deciding): while a room's preservation
+      question is open, its frame brightens and holds a steady lantern
+      ring; sibling rooms hush slightly. Static styling — readable
+      with motion off.
+   4. Archive-ledger HUD: aged register field, brass binding rivets,
+      ruled ledger line under the values. Markup/values unchanged.
+   5. Tap feedback: a gentle press scale on un-restored rooms.
+
+   No selector here is read by game logic. New motion is guarded at
+   the bottom of this section.
+   ===================================================================== */
+
+/* ── 1. Display-case snap-in on restore ──────────────────────────── */
+.wm-room-case {
+  position: absolute;
+  inset: 3%;
+  border: 1.5px solid rgba(224, 161, 90, 0.55);
+  border-radius: 3px;
+  pointer-events: none;
+  /* Corner brackets via gradients — reads as a museum case edge. */
+  background:
+    linear-gradient(rgba(224, 161, 90, 0.9), rgba(224, 161, 90, 0.9)) 0 0 / 8px 1.5px,
+    linear-gradient(rgba(224, 161, 90, 0.9), rgba(224, 161, 90, 0.9)) 0 0 / 1.5px 8px,
+    linear-gradient(rgba(224, 161, 90, 0.9), rgba(224, 161, 90, 0.9)) 100% 100% / 8px 1.5px,
+    linear-gradient(rgba(224, 161, 90, 0.9), rgba(224, 161, 90, 0.9)) 100% 100% / 1.5px 8px;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 0 12px rgba(224, 161, 90, 0.12),
+    0 0 10px rgba(224, 161, 90, 0.15);
+  animation: wmCaseSettle 0.55s var(--ease-out-quart) both;
+}
+@keyframes wmCaseSettle {
+  0%   { transform: scale(1.18); opacity: 0; }
+  60%  { transform: scale(0.98); opacity: 1; }
+  100% { transform: scale(1); }
+}
+/* Light bloom — one soft amber wave expanding past the room edge as
+   it's restored, layered under the existing .wm-room-glow. */
+.wm-room.lit .wm-room-glow::after {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at center,
+    rgba(255, 196, 100, 0.28), transparent 70%);
+  animation: wmBloomOut 0.9s ease-out both;
+  pointer-events: none;
+}
+@keyframes wmBloomOut {
+  0%   { transform: scale(0.7); opacity: 0; }
+  35%  { opacity: 1; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+/* ── 2. Archive mismatch on a wrong decision ─────────────────────── */
+/* Amber gutter — the room's frame flickers like a flame catching a
+   draft. Warm browns, deliberately NOT error-red. */
+.wm-room.faltered .wm-room-frame {
+  border-color: rgba(192, 110, 40, 0.8);
+  animation: wmGutter 0.5s ease-in-out 2;
+}
+@keyframes wmGutter {
+  0%, 100% { box-shadow: inset 0 0 10px rgba(192, 110, 40, 0.1); opacity: 1; }
+  40%      { box-shadow: inset 0 0 16px rgba(192, 110, 40, 0.3); opacity: 0.65; }
+  70%      { opacity: 0.9; }
+}
+/* Sepia stamp — presses in slightly rotated, like a curator's rubber
+   stamp on a record card. Auto-clears with falteredRoomId (2.2s). */
+.wm-room-mismatch {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  padding: 0.18rem 0.45rem;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+  color: rgba(210, 140, 90, 0.95);
+  border: 1px solid rgba(178, 100, 48, 0.75);
+  border-radius: 2px;
+  background: rgba(28, 16, 8, 0.88);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-6deg);
+  animation: wmStampIn 0.3s var(--ease-out-quart) both;
+}
+@keyframes wmStampIn {
+  0%   { transform: translate(-50%, -50%) rotate(-6deg) scale(1.6); opacity: 0; }
+  60%  { transform: translate(-50%, -50%) rotate(-6deg) scale(0.95); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(-6deg) scale(1); }
+}
+
+/* ── 3. Deciding-room focus ──────────────────────────────────────── */
+/* The room under decision holds a steady lantern ring; the question
+   panel below names the same artifact. Static — no motion required to
+   read it. Sibling rooms hush so the lit room owns the eye. */
+.wm-room.deciding .wm-room-frame {
+  border-color: rgba(224, 161, 90, 0.9);
+  border-style: solid;
+  box-shadow:
+    inset 0 0 14px rgba(224, 161, 90, 0.22),
+    0 0 16px rgba(224, 161, 90, 0.4),
+    0 0 0 3px rgba(224, 161, 90, 0.14);
+}
+.wm-room.deciding .wm-room-icon {
+  filter: drop-shadow(0 0 5px rgba(224, 161, 90, 0.55));
+}
+.wm-room.deciding .wm-room-zone { color: var(--gold); }
+/* Hush the others while one room is deciding. The :has() guard keeps
+   this progressive — without support, rooms simply stay full-bright. */
+.wm-floor-wrap:has(.wm-room.deciding) .wm-room:not(.deciding):not(.lit) {
+  opacity: 0.55;
+}
+
+/* ── 4. Archive-ledger HUD ───────────────────────────────────────── */
+/* Aged register paper band + brass binding rivets down the left of
+   each column, ruled ledger line under the values. Scoped to the
+   Wooden Match root; same markup and counts. */
+.wm-station-game .game-hud {
+  background:
+    radial-gradient(circle at 5px 50%, rgba(224, 161, 90, 0.45) 1px, transparent 1.6px),
+    linear-gradient(180deg, rgba(244, 226, 188, 0.045) 0%, transparent 38%),
+    linear-gradient(90deg, rgba(140, 92, 40, 0.1), transparent 60%),
+    var(--iron-2);
+  border-color: rgba(201, 130, 63, 0.5);
+}
+.wm-station-game .game-hud-stat {
+  border-right: 1px solid rgba(201, 130, 63, 0.28);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.42);
+}
+.wm-station-game .game-hud-stat:last-child {
+  border-right: none;
+  box-shadow: none;
+}
+.wm-station-game .game-hud-label { color: #b9a47e; }
+/* Ruled ledger line — single hand-ruled rule with a dotted entry row,
+   like a restoration logbook. */
+.wm-station-game .game-hud-val::after {
+  content: '';
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 0.3rem;
+  height: 3px;
+  border-top: 1px solid rgba(201, 130, 63, 0.38);
+  background-image: radial-gradient(circle, rgba(201, 130, 63, 0.3) 0.7px, transparent 1px);
+  background-size: 5px 3px;
+  background-position: 0 1.5px;
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+.wm-station-game .game-hud-stat { padding-bottom: 0.72rem; }
+
+/* ── 5. Tap feedback on un-restored rooms ────────────────────────── */
+.wm-station-game .wm-room:not(.lit):not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* ── Reduced-motion guards for UI-v6.7D ──────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  /* Case + bloom: hold the settled case, skip the sweep. The restored
+     state is fully carried by the lit room, caption, and case frame. */
+  .wm-room-case {
+    animation: none;
+  }
+  .wm-room.lit .wm-room-glow::after {
+    animation: none;
+    opacity: 0;
+  }
+  /* Gutter + stamp: no flicker; the mismatch stamp appears settled and
+     stays its full 2.2s window, so the cue isn't motion-dependent. */
+  .wm-room.faltered .wm-room-frame {
+    animation: none;
+    border-color: rgba(192, 110, 40, 0.8);
+    box-shadow: inset 0 0 14px rgba(192, 110, 40, 0.25);
+  }
+  .wm-room-mismatch {
+    animation: none;
+  }
+  /* .deciding focus and the room hush are static by design. */
+}

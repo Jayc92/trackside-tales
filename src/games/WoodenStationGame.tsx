@@ -473,10 +473,20 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing }: Wooden
         {ROOMS.map((room) => {
           const isLit = restored.has(room.id);
           const isHinted = hintRoomId === room.id;
+          // UI-v6.7D — presentation-only flags. deciding: this room's
+          // preservation question is open (focus its frame, hush the
+          // rest). faltered: the last wrong decision was about this
+          // room (amber gutter-flicker + archive mismatch stamp while
+          // the existing parchment shows). Neither is read by game
+          // logic; falteredRoomId/activeQuizRoomId timing unchanged.
+          const isDeciding = activeQuizRoomId === room.id;
+          const isFaltered = falteredRoomId === room.id;
           const cls = [
             'wm-room',
-            isLit ? 'lit' : '',
-            isHinted ? 'hinted' : '',
+            isLit      ? 'lit'      : '',
+            isHinted   ? 'hinted'   : '',
+            isDeciding ? 'deciding' : '',
+            isFaltered ? 'faltered' : '',
           ].filter(Boolean).join(' ');
           return (
             <button
@@ -496,6 +506,9 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing }: Wooden
             >
               <div className="wm-room-glow" aria-hidden="true" />
               <div className="wm-room-frame" aria-hidden="true" />
+              {/* UI-v6.7D: display-case snap-in — a brass case edge that
+                  settles around the artifact when the room is restored. */}
+              {isLit && <span className="wm-room-case" aria-hidden="true" />}
               <div className="wm-room-art" aria-hidden="true">
                 <IconForRoom id={room.id} />
               </div>
@@ -505,6 +518,13 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing }: Wooden
               </div>
               {isLit && (
                 <div className="wm-room-caption">{room.restoredCaption}</div>
+              )}
+              {/* UI-v6.7D: archive-mismatch stamp on the room of the
+                  last wrong decision — clears with falteredRoomId. */}
+              {isFaltered && (
+                <span className="wm-room-mismatch" aria-hidden="true">
+                  ARCHIVE MISMATCH
+                </span>
               )}
             </button>
           );
