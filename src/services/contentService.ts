@@ -1,4 +1,4 @@
-// ================== CONTENT SERVICE (ADMIN-v6.4 + v7.4B.M.5.1) ==================
+// ================== CONTENT SERVICE (ADMIN-v6.4 + v7.4B.M.5.1 + v7.4B.M.5.2.2) ==================
 // Read-only remote content loader. Fetches published+active rows
 // from Supabase and maps them into the public app's existing
 // `Tale`, `Beer`, and `FoodItem` shapes.
@@ -8,9 +8,13 @@
 //     LOCAL_FOOD) is the source of truth at first render. Every
 //     fetcher below returns null when remote content is unavailable
 //     or malformed; AppContext keeps the local arrays in that case.
-//   * `USE_REMOTE_CONTENT` is true only when both VITE_SUPABASE_URL
-//     and VITE_SUPABASE_ANON_KEY are set (see supabaseClient.ts).
-//     Without them, every fetcher short-circuits to null.
+//   * Per-category gates (M.5.2.2): each fetcher short-circuits to
+//     null unless its USE_REMOTE_<CATEGORY> flag is true. Each flag
+//     requires Supabase URL+anon key configured AND the matching
+//     VITE_USE_REMOTE_<CATEGORY> env var set to the literal string
+//     'true'. All flags default to false. Categories are
+//     independent: enabling Tales does not enable beers, food, or
+//     rewards. See supabaseClient.ts for the flag definitions.
 //   * Fetch errors, network failures, and RLS misconfiguration all
 //     surface as `null` — never as a thrown exception that could
 //     bubble into a render and blank the app.
@@ -55,10 +59,11 @@
 //        slug-keyed presentation pack — same content the app
 //        renders today when remote is disabled.
 //
-//   Net effect: when USE_REMOTE_CONTENT flips on (a future M.5.2
-//   gate), production's editable fields (title/year/chapter/tap
-//   status/timeline/map_points/story_body) become live; everything
-//   else stays presentationally identical to the all-local mode.
+//   Net effect: when USE_REMOTE_TALES is enabled (per the M.5.2.2
+//   per-category flag — see supabaseClient.ts), production's
+//   editable fields (title/year/chapter/tap_status/timeline/
+//   map_points/story_body) become live; everything else stays
+//   presentationally identical to the all-local mode.
 //
 // This service is read-only by phase rule. No writes (badges,
 // events, guest progress) belong here — those will be wired through
@@ -72,7 +77,13 @@ import {
   MapPin,
   TimelineEvent,
 } from '../app/types';
-import { supabaseFetch, USE_REMOTE_CONTENT } from './supabaseClient';
+import {
+  supabaseFetch,
+  USE_REMOTE_TALES,
+  USE_REMOTE_BEERS,
+  USE_REMOTE_FOOD,
+  USE_REMOTE_REWARDS,
+} from './supabaseClient';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC } from '../data/menu';
 import {
@@ -337,7 +348,7 @@ function mapFoodRow(row: Record<string, unknown>): FoodItem | null {
 // scan_badge, game_badge, game, bar_summary, still_here, person,
 // person_bio, map_title, hero_image_url, can_image_url, retired_date,
 // display_order) referenced columns absent from production
-// public.tales — flipping USE_REMOTE_CONTENT on would have produced
+// public.tales — flipping USE_REMOTE_TALES on would have produced
 // PostgREST 42703 errors. The adapter pulls those fields from the
 // presentation pack instead. Production-only columns we read here:
 //   * slug             — primary key; renamed via PROD_TO_APP_SLUG
@@ -367,7 +378,10 @@ const REWARD_TIER_SELECT = 'id,name,stamps_required,perks';
 const PUBLISHED_FILTER = 'is_active=eq.true&status=eq.published';
 
 export async function fetchRemoteTales(): Promise<Tale[] | null> {
-  if (!USE_REMOTE_CONTENT) return null;
+  // M.5.2.2: gated on the per-category USE_REMOTE_TALES flag, not
+  // the global Supabase-configured boolean. Tales can be enabled
+  // independently of beers, food, or reward tiers.
+  if (!USE_REMOTE_TALES) return null;
   try {
     const rows = (await supabaseFetch(
       'tales',
@@ -389,7 +403,16 @@ export async function fetchRemoteTales(): Promise<Tale[] | null> {
 async function fetchRemoteBeersByCategory(
   category: 'regular' | 'non-alc',
 ): Promise<Beer[] | null> {
-  if (!USE_REMOTE_CONTENT) return null;
+  // M.5.2.2: gated on USE_REMOTE_BEERS. Both regular and non-alc
+  // beer fetchers funnel through this helper, so a single flag
+  // covers both categories. Production's `beers` table currently
+  // doesn't carry the canonical SELECT column set this fetcher
+  // expects (production has short_description / description /
+  // sort_order; this fetcher's BEER_SELECT references abbr /
+  // tasting / display_order). Flipping USE_REMOTE_BEERS on against
+  // current production would produce PostgREST 400. Keep this off
+  // until a future M.5.3 phase reconciles the beer adapter.
+  if (!USE_REMOTE_BEERS) return null;
   try {
     const rows = (await supabaseFetch(
       'beers',
@@ -418,7 +441,14 @@ export function fetchRemoteNonAlc(): Promise<Beer[] | null> {
 }
 
 export async function fetchRemoteFood(): Promise<FoodItem[] | null> {
-  if (!USE_REMOTE_CONTENT) return null;
+  // M.5.2.2: gated on USE_REMOTE_FOOD. Production's food_items
+  // table currently carries only id, name, category, is_active,
+  // updated_at — this fetcher's FOOD_SELECT references slug,
+  // description, display_order which don't exist. Flipping
+  // USE_REMOTE_FOOD on against current production would produce
+  // PostgREST 400. Keep this off until a future M.5.4 phase
+  // reconciles the food adapter.
+  if (!USE_REMOTE_FOOD) return null;
   try {
     const rows = (await supabaseFetch(
       'food',
@@ -460,7 +490,11 @@ function mapRewardTierRow(row: Record<string, unknown>): RewardTier | null {
 }
 
 export async function fetchRemoteRewardTiers(): Promise<RewardTier[] | null> {
-  if (!USE_REMOTE_CONTENT) return null;
+  // M.5.2.2: gated on USE_REMOTE_REWARDS. Reward-tier shape
+  // alignment hasn't been validated against production yet (the
+  // reward_tiers table is a v6.8 placeholder per the comment
+  // above), so keep this off until a future phase confirms.
+  if (!USE_REMOTE_REWARDS) return null;
   try {
     const rows = (await supabaseFetch(
       'reward_tiers',

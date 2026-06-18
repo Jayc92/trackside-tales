@@ -130,11 +130,15 @@ interface AppContextValue {
   setUser: (user: { name: string; email?: string } | null) => void;
   recordDate: (id: string) => void;
   resetDemo: () => void;
-  // ADMIN-v6.4 — content arrays. Local data is the first-render
-  // value; if `USE_REMOTE_CONTENT` is on AND the remote fetch
-  // succeeds with valid rows, the array is replaced after mount.
-  // Failures keep the local arrays. Consumers should treat these
-  // as the only source of truth.
+  // ADMIN-v6.4 + v7.4B.M.5.2.2 — content arrays. Local data is the
+  // first-render value; if the matching per-category remote flag is
+  // on (USE_REMOTE_TALES / USE_REMOTE_BEERS / USE_REMOTE_FOOD —
+  // see supabaseClient.ts) AND the remote fetch succeeds with
+  // valid rows, that section's array is replaced after mount.
+  // Categories are independent: a deploy can enable Tales while
+  // keeping beers and food on local fallback. Failures keep the
+  // local arrays. Consumers should treat these as the only source
+  // of truth.
   tales: Tale[];
   regulars: Beer[];
   nonAlc: Beer[];
@@ -147,12 +151,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const guestId = getOrCreateGuestId();
 
-  // ADMIN-v6.4 — remote content hydration (fail-safe).
-  // First render uses LOCAL_*. After mount, if USE_REMOTE_CONTENT
-  // is on, each fetcher independently swaps in remote rows when
-  // they validate. Any failure (no env vars, network error, RLS
-  // refusal, malformed JSON, zero valid rows) keeps the local
-  // array — there is no path that blanks the app.
+  // ADMIN-v6.4 + v7.4B.M.5.2.2 — remote content hydration (fail-safe).
+  // First render uses LOCAL_*. After mount, each fetcher independently
+  // checks its per-category flag (USE_REMOTE_TALES /
+  // USE_REMOTE_BEERS / USE_REMOTE_FOOD) and swaps in remote rows
+  // when both the flag is on and the rows validate. Any failure
+  // (flag off, no env vars, network error, RLS refusal, malformed
+  // JSON, zero valid rows) keeps the local array for that section —
+  // there is no path that blanks the app.
   const [tales,    setTales]    = useState<Tale[]>(LOCAL_TALES);
   const [regulars, setRegulars] = useState<Beer[]>(LOCAL_REGULARS);
   const [nonAlc,   setNonAlc]   = useState<Beer[]>(LOCAL_NON_ALC);
