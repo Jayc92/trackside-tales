@@ -39,7 +39,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_USE_REMOTE_TALES: 'true'
           VITE_USE_REMOTE_BEERS: 'true'
-          VITE_USE_REMOTE_FOOD: 'false'
+          VITE_USE_REMOTE_FOOD: 'true'
           VITE_USE_REMOTE_REWARDS: 'false'
 
       - name: Upload dist artifact
