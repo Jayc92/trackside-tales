@@ -566,12 +566,53 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
   return { kind: 'beer', slug, beer, category, sort_order };
 }
 
+/**
+ * Adapter: production food_items row → public FoodItem.
+ *
+ * Production source: public.food_items.
+ *   * slug         — required; drop on missing/blank (used for
+ *                    warnings, not exposed by FoodItem today).
+ *   * name         — required; drop on missing/blank. Maps to
+ *                    FoodItem.name.
+ *   * description  — required; drop on missing/blank. Maps to
+ *                    FoodItem.desc (column rename). Production
+ *                    currently has populated description text for
+ *                    all 4 active+published rows (matching the
+ *                    LOCAL_FOOD descriptions), so we intentionally
+ *                    do NOT fall through to empty `<p>` rendering —
+ *                    that would be a visible regression vs. the
+ *                    rich LOCAL_FOOD copy.
+ *   * category     — read but not exposed; public FoodItem has no
+ *                    category field today. MenuPage's
+ *                    FOOD_VISUAL_META lookup keys on `name` (with
+ *                    a default-glyph fallback for unknown names),
+ *                    so unknown production categories don't cause
+ *                    any visual regression.
+ *   * is_featured, sort_order, updated_at — not exposed.
+ *
+ * A single bad row does not invalidate the others — each row maps
+ * independently. The caller filters out nulls.
+ */
 function mapFoodRow(row: Record<string, unknown>): FoodItem | null {
+  const slug = asString(row.slug);
+  if (!slug || slug.trim().length === 0) {
+    console.warn('[trackside] Remote food row dropped: missing slug', row);
+    return null;
+  }
+
   const name = asString(row.name);
-  if (!name) return null;
-  // Schema uses `description`; local app type uses `desc`.
-  const desc = asString(row.description);
-  return { name, desc: desc ?? '' };
+  if (!name || name.trim().length === 0) {
+    console.warn(`[trackside] Remote food "${slug}" dropped: missing name`);
+    return null;
+  }
+
+  const description = asString(row.description);
+  if (!description || description.trim().length === 0) {
+    console.warn(`[trackside] Remote food "${slug}" dropped: missing description`);
+    return null;
+  }
+
+  return { name: name.trim(), desc: description.trim() };
 }
 
 // ------------ public fetchers ------------
@@ -612,7 +653,27 @@ const TALE_SELECT =
 const BEER_SELECT =
   'slug,name,style,abv,ibu,category,short_description,description,can_image_url,sort_order,updated_at';
 
-const FOOD_SELECT = 'slug,name,description,display_order';
+// ADMIN-v7.4B.O.1: production-aligned food column subset.
+// The earlier SELECT referenced `display_order` (canonical) which
+// does not exist on production's `food_items`. The O.1 diagnostic
+// confirmed production columns: id, venue_id, name, description,
+// category, is_featured, sort_order, is_active, created_at,
+// updated_at, slug, status. Adapter reads:
+//   * slug         — drop-on-missing identity for warnings
+//   * name         — drop-on-missing; maps to public FoodItem.name
+//   * description  — drop-on-missing; maps to public FoodItem.desc
+//   * category     — read for future use; not exposed by FoodItem
+//                    today. MenuPage's FOOD_VISUAL_META lookup
+//                    keys on `name`, not category, so the public
+//                    Food tab continues rendering one flat list.
+//   * is_featured  — read for future use; not exposed today.
+//   * sort_order   — query-only (ORDER BY); not surfaced.
+//   * updated_at   — query-only; not surfaced.
+// Production-only columns deliberately omitted from the SELECT:
+//   id, venue_id, is_active, status, created_at
+//   (is_active+status are filter-only via PUBLISHED_FILTER below).
+const FOOD_SELECT =
+  'slug,name,description,category,is_featured,sort_order,updated_at';
 
 const REWARD_TIER_SELECT = 'id,name,stamps_required,perks';
 
@@ -766,23 +827,37 @@ export async function fetchRemoteNonAlc(): Promise<Beer[] | null> {
 }
 
 export async function fetchRemoteFood(): Promise<FoodItem[] | null> {
-  // M.5.2.2: gated on USE_REMOTE_FOOD. Production's food_items
-  // table currently carries only id, name, category, is_active,
-  // updated_at — this fetcher's FOOD_SELECT references slug,
-  // description, display_order which don't exist. Flipping
-  // USE_REMOTE_FOOD on against current production would produce
-  // PostgREST 400. Keep this off until a future M.5.4 phase
-  // reconciles the food adapter.
+  // M.5.2.2: gated on USE_REMOTE_FOOD (per-category flag in
+  // supabaseClient.ts). When the env var VITE_USE_REMOTE_FOOD is
+  // not exactly the string 'true', this fetcher short-circuits to
+  // null and AppContext keeps LOCAL_FOOD.
+  //
+  // O.1: production-aligned adapter against public.food_items.
+  //   * Production confirmed columns: id, venue_id, name,
+  //     description, category, is_featured, sort_order, is_active,
+  //     created_at, updated_at, slug, status.
+  //   * Active+published filter via PUBLISHED_FILTER.
+  //   * Sorted by sort_order (production's column; canonical
+  //     `display_order` does not exist on production).
+  //   * Returns one flat FoodItem[]. MenuPage's Food tab renders
+  //     one section with FOOD_VISUAL_META looked up by `name`;
+  //     production categories are not consumed.
+  //   * One HTTP request. No second fetch.
   if (!USE_REMOTE_FOOD) return null;
   try {
     const rows = (await supabaseFetch(
-      'food',
-      `select=${FOOD_SELECT}&${PUBLISHED_FILTER}&order=display_order.asc`,
+      // O.1: target verified table name `food_items` (NOT the
+      // canonical `food` — that view/table does not exist on
+      // production).
+      'food_items',
+      `select=${FOOD_SELECT}&${PUBLISHED_FILTER}&order=sort_order.asc`,
     )) as unknown;
     if (!Array.isArray(rows)) return null;
     const mapped = rows
       .map((r) => (isObj(r) ? mapFoodRow(r) : null))
       .filter((f): f is FoodItem => f !== null);
+    // Empty array → return null so AppContext keeps the full
+    // LOCAL_FOOD menu rather than rendering an empty Food tab.
     return mapped.length > 0 ? mapped : null;
   } catch (err) {
     console.warn('[trackside] Remote food unavailable — using local fallback', err);
