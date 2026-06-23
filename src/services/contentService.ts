@@ -675,7 +675,30 @@ const BEER_SELECT =
 const FOOD_SELECT =
   'slug,name,description,category,is_featured,sort_order,updated_at';
 
-const REWARD_TIER_SELECT = 'id,name,stamps_required,perks';
+// ADMIN-v7.4B.P.1: production-aligned reward-tier column subset.
+// The earlier SELECT referenced `perks` (canonical), which does
+// NOT exist on production's `reward_tiers`. The P.1 diagnostic
+// confirmed production columns: id, venue_id, name, description,
+// stamps_required, sort_order, is_live, created_at, updated_at.
+// Adapter reads:
+//   * id              — drop-on-missing UUID string identity
+//   * name            — drop-on-missing display label
+//   * description     — replaces canonical `perks: string[]`;
+//                       single text field, populated for all 3
+//                       production rows today
+//   * stamps_required — drop-on-missing-or-invalid threshold
+//   * sort_order      — explicit ordering field (matches the
+//                       Tales/Beers/Food convention)
+//   * is_live         — filter-only via `is_live=eq.true`
+//                       (replaces canonical `is_active`)
+//   * updated_at      — query-only; not surfaced
+// Production-only columns deliberately omitted from the SELECT:
+//   venue_id, created_at
+// Canonical columns that DO NOT EXIST on production and must
+// never be referenced: perks, is_active, status, slug, key,
+// display_order.
+const REWARD_TIER_SELECT =
+  'id,name,description,stamps_required,sort_order,is_live,updated_at';
 
 // RLS already filters to is_active+status='published' for tales/beers/food
 // and to is_active for reward_tiers, but we pass the filters explicitly
@@ -865,48 +888,148 @@ export async function fetchRemoteFood(): Promise<FoodItem[] | null> {
   }
 }
 
-// ------------ reward tiers (placeholder export for ADMIN-v6.8) ------------
-// Not yet consumed by any UI component. Exported so future work can
-// import without re-adding plumbing. RLS allows anon read where
-// is_active=true.
+// ------------ reward tiers (ADMIN-v7.4B.P.1 — production-aligned) ------------
+// Adapter: production reward_tiers row → public RewardTier.
+//
+// Production source: public.reward_tiers.
+//   * id              — UUID string. Production's primary key is
+//                       a UUID, NOT a number. The earlier
+//                       placeholder type used `id: number`; P.1
+//                       widens to string.
+//   * name            — required; drop on missing/blank.
+//   * description     — required; drop on missing/blank. Replaces
+//                       the canonical `perks: string[]` field
+//                       that does not exist on production.
+//                       Production currently populates this for
+//                       all 3 rows.
+//   * stamps_required — required; drop on missing, non-finite, or
+//                       non-positive. Threshold for the tier.
+//   * sort_order      — required; drop on missing/non-finite.
+//                       Explicit ordering control (matches the
+//                       Tales/Beers/Food convention).
+//   * is_live         — filter-only via `is_live=eq.true`.
+//                       Replaces canonical `is_active`. As of
+//                       P.1 discovery, all 3 production rows are
+//                       `is_live=false`, so a live fetch returns
+//                       an empty array, which the contract maps
+//                       to null (fail-safe).
+//   * updated_at      — query-only; not surfaced.
+//
+// CURRENT CONSUMERS: zero. The PassportPage uses a hardcoded
+// REWARDS_TARGET=12 against state.scanBadges+gameBadges. This
+// adapter is intentionally dormant — it exists so the public
+// app's contract against production reward_tiers is correct
+// when a future UI milestone wires reward tiers into the
+// Passport (or any other surface). Reward tiers must remain
+// presentation-only; they must never affect badge keys,
+// localStorage keys, scan unlock logic, game-completion logic,
+// or any user-progress state. A production content edit must
+// never retroactively remove a user's earned badge.
+//
+// FAIL-SAFE CONTRACT:
+//   * USE_REMOTE_REWARDS=false  → null, no HTTP request.
+//   * fetch throws              → null + one warning.
+//   * non-array response        → null.
+//   * empty array               → null (preserves the hardcoded
+//                                 Passport stamp counter).
+//   * one bad row               → drop with precise warning;
+//                                 keep the other rows.
+//   * zero valid mapped rows    → null.
 
 export interface RewardTier {
-  id: number;
-  name: string;
+  id:             string;   // UUID (was: number in the v6.8 placeholder)
+  name:           string;
+  description:    string;   // replaces canonical perks: string[]
   stampsRequired: number;
-  perks: string[];
+  sortOrder:      number;
 }
 
 function mapRewardTierRow(row: Record<string, unknown>): RewardTier | null {
-  const id = asNumber(row.id);
+  const id = asString(row.id);
+  if (!id || id.trim().length === 0) {
+    console.warn('[trackside] Remote reward tier row dropped: missing id', row);
+    return null;
+  }
+
   const name = asString(row.name);
+  if (!name || name.trim().length === 0) {
+    console.warn(`[trackside] Remote reward tier "${id}" dropped: missing name`);
+    return null;
+  }
+
+  const description = asString(row.description);
+  if (!description || description.trim().length === 0) {
+    console.warn(`[trackside] Remote reward tier "${id}" dropped: missing description`);
+    return null;
+  }
+
   const stampsRequired = asNumber(row.stamps_required);
-  if (id === null || !name || stampsRequired === null) return null;
-  const perksRaw = row.perks;
-  const perks: string[] = Array.isArray(perksRaw)
-    ? perksRaw.filter((p): p is string => typeof p === 'string')
-    : [];
-  return { id, name, stampsRequired, perks };
+  if (
+    stampsRequired === null ||
+    !Number.isFinite(stampsRequired) ||
+    stampsRequired <= 0
+  ) {
+    console.warn(`[trackside] Remote reward tier "${id}" dropped: missing stamps_required`);
+    return null;
+  }
+
+  const sortOrder = asNumber(row.sort_order);
+  if (sortOrder === null || !Number.isFinite(sortOrder)) {
+    console.warn(`[trackside] Remote reward tier "${id}" dropped: invalid sort_order`);
+    return null;
+  }
+
+  return {
+    id:             id.trim(),
+    name:           name.trim(),
+    description:    description.trim(),
+    stampsRequired,
+    sortOrder,
+  };
 }
 
 export async function fetchRemoteRewardTiers(): Promise<RewardTier[] | null> {
-  // M.5.2.2: gated on USE_REMOTE_REWARDS. Reward-tier shape
-  // alignment hasn't been validated against production yet (the
-  // reward_tiers table is a v6.8 placeholder per the comment
-  // above), so keep this off until a future phase confirms.
+  // M.5.2.2 + P.1: gated on the per-category USE_REMOTE_REWARDS
+  // flag in supabaseClient.ts. When VITE_USE_REMOTE_REWARDS is
+  // not exactly the string 'true', this fetcher short-circuits
+  // to null and PassportPage continues using its hardcoded
+  // REWARDS_TARGET=12 stamp counter against the local
+  // scanBadges+gameBadges totals (unchanged).
+  //
+  // P.1: production-aligned adapter against public.reward_tiers.
+  //   * Production confirmed columns: id, venue_id, name,
+  //     description, stamps_required, sort_order, is_live,
+  //     created_at, updated_at.
+  //   * Live filter via is_live=eq.true (NOT canonical
+  //     is_active — that column does not exist on production).
+  //   * Sorted by sort_order.asc (NOT stamps_required.asc),
+  //     giving admins ordering control independent of threshold
+  //     values; matches the Tales/Beers/Food convention.
+  //   * Returns one flat RewardTier[]. No UI consumes this
+  //     today; the adapter exists so the schema contract is
+  //     correct when a future milestone wires reward tiers in.
+  //   * One HTTP request. No second fetch path.
   if (!USE_REMOTE_REWARDS) return null;
   try {
     const rows = (await supabaseFetch(
       'reward_tiers',
-      `select=${REWARD_TIER_SELECT}&is_active=eq.true&order=stamps_required.asc`,
+      `select=${REWARD_TIER_SELECT}&is_live=eq.true&order=sort_order.asc`,
     )) as unknown;
     if (!Array.isArray(rows)) return null;
     const mapped = rows
-      .map((r) => (isObj(r) ? mapRewardTierRow(r) : null))
-      .filter((t): t is RewardTier => t !== null);
+      .map((row) => (isObj(row) ? mapRewardTierRow(row) : null))
+      .filter((row): row is RewardTier => row !== null);
+    // Empty array → return null so PassportPage keeps the
+    // hardcoded stamp counter rather than rendering a blank
+    // tier strip. With all 3 production rows currently
+    // is_live=false, an enabled-flag fetch returns [] today,
+    // which this contract correctly maps to null.
     return mapped.length > 0 ? mapped : null;
   } catch (err) {
-    console.warn('[trackside] Remote reward tiers unavailable — keeping local-only', err);
+    console.warn(
+      '[trackside] Remote reward tiers unavailable — using local stamp-counter fallback',
+      err,
+    );
     return null;
   }
 }
