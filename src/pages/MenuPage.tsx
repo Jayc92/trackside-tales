@@ -208,9 +208,27 @@ const FOOD_VISUAL_META: Record<string, { sub: string; chefsPick?: boolean; glyph
 
 function FoodCard({ item }: { item: FoodItem }) {
   const meta = FOOD_VISUAL_META[item.name] || { sub: '', glyph: '◈' };
+  // PUBLIC-v7.4B.N.5.b: when production supplies a nonblank
+  // food_items.image_url, render an <img> inside the existing
+  // square art slot. The glyph stays in the DOM beneath/behind
+  // the image so a broken-image onError fallback (which hides
+  // only the <img>) leaves the existing visual intact.
+  const hasImage = typeof item.imageUrl === 'string' && item.imageUrl.length > 0;
   return (
     <article className="ts-food-card" aria-label={item.name}>
-      <div className="ts-food-card__art" aria-hidden="true">
+      <div
+        className={`ts-food-card__art${hasImage ? ' ts-food-card__art--has-image' : ''}`}
+        aria-hidden="true"
+      >
+        {hasImage ? (
+          <img
+            src={item.imageUrl}
+            alt=""
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : null}
         <span className="ts-food-card__art-glyph">{meta.glyph}</span>
       </div>
       <div className="ts-food-card__body">

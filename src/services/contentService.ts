@@ -612,7 +612,19 @@ function mapFoodRow(row: Record<string, unknown>): FoodItem | null {
     return null;
   }
 
-  return { name: name.trim(), desc: description.trim() };
+  // PUBLIC-v7.4B.N.5.b: surface the optional Food image when
+  // production carries a nonblank food_items.image_url. Trim
+  // whitespace-only values away; omit the property entirely when
+  // null/undefined/blank so the optional FoodItem.imageUrl
+  // contract stays a present-iff-nonblank flag.
+  const rawImage = asString(row.image_url);
+  const imageUrl = rawImage ? rawImage.trim() : '';
+
+  return {
+    name: name.trim(),
+    desc: description.trim(),
+    ...(imageUrl.length > 0 ? { imageUrl } : {}),
+  };
 }
 
 // ------------ public fetchers ------------
@@ -672,8 +684,13 @@ const BEER_SELECT =
 // Production-only columns deliberately omitted from the SELECT:
 //   id, venue_id, is_active, status, created_at
 //   (is_active+status are filter-only via PUBLISHED_FILTER below).
+// PUBLIC-v7.4B.N.5.b: image_url added so mapFoodRow can surface the
+// optional Food image when production carries one. image_url is
+// nullable on production (ADMIN-v7.4B.N.5.a added the column with
+// no default); blank/null values are dropped by the adapter so the
+// public FoodCard falls back to its glyph rendering.
 const FOOD_SELECT =
-  'slug,name,description,category,is_featured,sort_order,updated_at';
+  'slug,name,description,category,image_url,is_featured,sort_order,updated_at';
 
 // ADMIN-v7.4B.P.1: production-aligned reward-tier column subset.
 // The earlier SELECT referenced `perks` (canonical), which does

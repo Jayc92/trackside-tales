@@ -98,6 +98,17 @@ export interface Beer {
 export interface FoodItem {
   name: string;
   desc: string;
+  /**
+   * Optional public image URL for this Food item, surfaced by the
+   * remote adapter when production carries a nonblank
+   * food_items.image_url (ADMIN-v7.4B.N.5.a). Omitted entirely
+   * when the remote row has a null/blank value and on local
+   * fallback records — the Food card renders the existing glyph
+   * fallback in that case. camelCase to match the public UI
+   * convention; the wire column remains snake_case `image_url`
+   * and is transformed by mapFoodRow.
+   */
+  imageUrl?: string;
 }
 
 export interface AppUser {
