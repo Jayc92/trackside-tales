@@ -167,9 +167,35 @@ const PACK_BY_SLUG: Record<string, BeerPresentationPack> = {
 
 /**
  * Look up the presentation pack for a production slug. Returns
- * null if we don't have one — adapters should drop the row with a
- * console warning rather than render a broken card.
+ * null if we don't have one — adapters should fall back to
+ * getDefaultBeerPresentationPack() rather than drop the row.
  */
 export function getBeerPresentationPack(slug: string): BeerPresentationPack | null {
   return PACK_BY_SLUG[slug] ?? null;
+}
+
+/**
+ * Default presentation pack for admin-created Beers that have no
+ * curated local pack (PUBLIC-v7.4B.P.6). Rather than dropping an
+ * unknown remote Beer, the adapter builds a renderable Beer from the
+ * production row's own fields (name/style/abv/ibu/description) and
+ * fills the presentation-only slots with safe placeholders:
+ *
+ *   * `abbr` is '' — the Menu's BeerArt renders
+ *     `{beer.abbr || beer.name}` in the text fallback span, so an
+ *     empty abbr simply shows the beer name.
+ *   * `imageFallback` is '' — this mirrors the existing
+ *     `conductors-kolsch` precedent: BeerArt's <img> hides itself via
+ *     onError (and an empty src never resolves), leaving the text
+ *     fallback span. No broken image renders.
+ *   * `tapStatus` is left undefined (Menu does not branch on it).
+ *
+ * Compatibility-grade, not final premium design. Curated beers keep
+ * their rich packs via getBeerPresentationPack and are unaffected.
+ */
+export function getDefaultBeerPresentationPack(): BeerPresentationPack {
+  return {
+    abbr:          '',
+    imageFallback: '',
+  };
 }

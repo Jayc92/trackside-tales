@@ -97,6 +97,7 @@ import {
 } from './talePresentationPack';
 import {
   getBeerPresentationPack,
+  getDefaultBeerPresentationPack,
 } from './beerPresentationPack';
 
 // ------------ image fallback bridge ------------
@@ -354,11 +355,21 @@ function mapTaleRow(row: Record<string, unknown>): Tale | null {
  */
 type BeerPartitionCategory = 'resident' | 'non-alc' | 'handled-by-tales';
 
-function mapProdBeerCategory(category: unknown): BeerPartitionCategory | null {
-  if (category === 'tale')     return 'handled-by-tales';
-  if (category === 'resident') return 'resident';
-  if (category === 'na')       return 'non-alc';
-  return null;
+// PUBLIC-v7.4B.P.6: total function — no longer returns null.
+//   * 'tale'                 → handled-by-tales (rendered via Tale[])
+//   * 'na' / 'non_alcoholic' → non-alc (N/A tab)
+//   * 'resident'             → resident (Resident tab)
+//   * anything else / blank  → 'resident' (safe default bucket)
+// Unknown/blank categories are no longer dropped; an admin-created
+// beer with an unset or novel category lands in the Resident tab
+// rather than vanishing. We deliberately do NOT default unknowns to
+// 'handled-by-tales' (that pipeline needs a matching Tale) — Resident
+// is the only safe standalone Beer bucket.
+function mapProdBeerCategory(category: unknown): BeerPartitionCategory {
+  if (category === 'tale')                                    return 'handled-by-tales';
+  if (category === 'na' || category === 'non_alcoholic')      return 'non-alc';
+  if (category === 'resident')                                return 'resident';
+  return 'resident';
 }
 
 /**
@@ -488,24 +499,14 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
     return null;
   }
 
-  const name  = asString(row.name);
-  const style = asString(row.style);
+  const name = asString(row.name);
   if (!name || name.trim().length === 0) {
     console.warn(`[trackside] Remote beer "${slug}" dropped: missing name`);
     return null;
   }
-  if (!style || style.trim().length === 0) {
-    console.warn(`[trackside] Remote beer "${slug}" dropped: missing style`);
-    return null;
-  }
 
+  // PUBLIC-v7.4B.P.6: category is now total (unknown/blank → resident).
   const category = mapProdBeerCategory(row.category);
-  if (!category) {
-    console.warn(
-      `[trackside] Remote beer "${slug}" has unknown category "${String(row.category)}" — dropping row.`,
-    );
-    return null;
-  }
 
   // sort_order: production carries integers; default to a large
   // sentinel if missing so the row sorts last within its partition.
@@ -523,30 +524,53 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
     return { kind: 'handled-by-tales', slug, sort_order };
   }
 
-  const pack = getBeerPresentationPack(slug);
-  if (!pack) {
-    console.warn(
-      `[trackside] Remote beer slug "${slug}" has no presentation pack — dropping row.`,
-    );
-    return null;
-  }
+  // PUBLIC-v7.4B.P.6: curated beers keep their rich pack; admin-created
+  // beers with no curated pack get the default pack instead of being
+  // dropped.
+  const knownPack = getBeerPresentationPack(slug);
+  const pack = knownPack ?? getDefaultBeerPresentationPack();
 
-  const abv = formatProdAbv(row.abv);
-  if (abv === null) {
-    console.warn(`[trackside] Remote beer "${slug}" has malformed abv "${String(row.abv)}" — dropping row.`);
-    return null;
-  }
-
-  const ibu = formatProdIbu(row.ibu);
-  if (ibu === null) {
-    console.warn(`[trackside] Remote beer "${slug}" has malformed ibu "${String(row.ibu)}" — dropping row.`);
-    return null;
+  // Field resolution differs by pack:
+  //   * Curated (knownPack): preserve the pre-P.6 strict contract —
+  //     a missing style or malformed abv/ibu drops the row, so a bad
+  //     production edit can't corrupt a polished card.
+  //   * Default pack: be lenient — an admin-created beer renders with
+  //     whatever it has; missing style/abv/ibu fall back to '' (the
+  //     Beer type requires strings, and the Menu renders blanks
+  //     harmlessly) rather than dropping the row.
+  let style: string;
+  let abv: string;
+  let ibu: string;
+  if (knownPack) {
+    const styleRaw = asString(row.style);
+    if (!styleRaw || styleRaw.trim().length === 0) {
+      console.warn(`[trackside] Remote beer "${slug}" dropped: missing style`);
+      return null;
+    }
+    style = styleRaw;
+    const abvFmt = formatProdAbv(row.abv);
+    if (abvFmt === null) {
+      console.warn(`[trackside] Remote beer "${slug}" has malformed abv "${String(row.abv)}" — dropping row.`);
+      return null;
+    }
+    abv = abvFmt;
+    const ibuFmt = formatProdIbu(row.ibu);
+    if (ibuFmt === null) {
+      console.warn(`[trackside] Remote beer "${slug}" has malformed ibu "${String(row.ibu)}" — dropping row.`);
+      return null;
+    }
+    ibu = ibuFmt;
+  } else {
+    const styleRaw = asString(row.style);
+    style = styleRaw ? styleRaw.trim() : '';
+    abv = formatProdAbv(row.abv) ?? '';
+    ibu = formatProdIbu(row.ibu) ?? '';
   }
 
   // Image: prefer production can_image_url if non-empty; otherwise
-  // the presentation pack's curated fallback. N.1 diagnostic
-  // confirmed all 8 production rows currently have can_image_url
-  // null, so every render path uses pack.imageFallback today.
+  // the presentation pack's fallback. The default pack's fallback is
+  // '' — BeerArt then renders the text (name) fallback span, not a
+  // broken image (mirrors the conductors-kolsch precedent).
   const remoteImage = asString(row.can_image_url);
   const image = (remoteImage && remoteImage.trim().length > 0)
     ? remoteImage
