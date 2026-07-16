@@ -93,6 +93,7 @@ import { LOCAL_TALES } from '../data/tales';
 import {
   appSlugFromProdSlug,
   getPresentationPack,
+  getDefaultPresentationPack,
 } from './talePresentationPack';
 import {
   getBeerPresentationPack,
@@ -221,31 +222,40 @@ function mapTaleRow(row: Record<string, unknown>): Tale | null {
   const title    = asString(row.title);
   if (!prodSlug || !name || !title) return null;
 
-  const appSlug = appSlugFromProdSlug(prodSlug);
-  if (!appSlug) {
-    console.warn(
-      `[trackside] Remote tale slug "${prodSlug}" is not in the presentation slug map — dropping row.`,
-    );
-    return null;
-  }
+  // PUBLIC-v7.4B.P.5: unknown/new admin slugs are no longer dropped.
+  // Known production slugs still rename to their curated app slug
+  // (packer-pilsner → packer-pils); an unknown slug uses itself as the
+  // app id, so the story route (#/story/<slug>) can resolve it.
+  const appSlug = appSlugFromProdSlug(prodSlug) ?? prodSlug;
 
-  const pack = getPresentationPack(appSlug);
-  if (!pack) {
-    console.warn(
-      `[trackside] Remote tale slug "${prodSlug}" → app slug "${appSlug}" has no presentation pack — dropping row.`,
-    );
-    return null;
-  }
+  // Curated Tales keep their rich pack; unknown Tales get the safe
+  // default pack (renderable placeholders) instead of being dropped.
+  const knownPack = getPresentationPack(appSlug);
+  const pack = knownPack ?? getDefaultPresentationPack();
 
-  // Game-type guard: production's mini_game_type must match the
-  // local pack's game.type. Mismatch indicates a content edit that
-  // would break GameOverlay's component dispatch — drop the row.
+  // Game config resolution.
+  //   * Curated pack: production's mini_game_type MUST match the
+  //     hardcoded game.type — a mismatch would break GameOverlay's
+  //     component dispatch, so we still drop the row (protects the
+  //     three polished games).
+  //   * Default pack: there is no hardcoded game to protect, so adopt
+  //     the row's mini_game_type when it is a valid dispatch value;
+  //     otherwise keep the default 'grid'. The copy stays placeholder.
   const miniGameType = asString(row.mini_game_type);
-  if (miniGameType !== null && miniGameType !== pack.game.type) {
-    console.warn(
-      `[trackside] Remote tale "${prodSlug}" mini_game_type="${miniGameType}" disagrees with local game.type="${pack.game.type}" — dropping row.`,
-    );
-    return null;
+  let game = pack.game;
+  if (knownPack) {
+    if (miniGameType !== null && miniGameType !== knownPack.game.type) {
+      console.warn(
+        `[trackside] Remote tale "${prodSlug}" mini_game_type="${miniGameType}" disagrees with local game.type="${knownPack.game.type}" — dropping row.`,
+      );
+      return null;
+    }
+  } else if (
+    miniGameType === 'grid' ||
+    miniGameType === 'spike' ||
+    miniGameType === 'match'
+  ) {
+    game = { ...pack.game, type: miniGameType };
   }
 
   // Tap status: production CHECK constraint already restricts the
@@ -295,7 +305,7 @@ function mapTaleRow(row: Record<string, unknown>): Tale | null {
     timeline,
     scanBadge:   pack.scanBadge,
     gameBadge:   pack.gameBadge,
-    game:        pack.game,
+    game,
     tapStatus,
     // Production has no `retired_date` column today; the Tale type
     // allows null and the detail page renders it conditionally.

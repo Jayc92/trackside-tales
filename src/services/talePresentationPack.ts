@@ -140,9 +140,63 @@ const PACK_BY_APP_SLUG: Record<string, TalePresentationPack> = LOCAL_TALES.reduc
 
 /**
  * Look up the presentation pack for a public-app slug. Returns null
- * if we don't have one — callers should drop the production row
- * and log a warning rather than render a broken tale.
+ * if we don't have one — callers should fall back to
+ * getDefaultPresentationPack() rather than drop the row.
  */
 export function getPresentationPack(appSlug: string): TalePresentationPack | null {
   return PACK_BY_APP_SLUG[appSlug] ?? null;
+}
+
+/**
+ * Default presentation pack for admin-created Tales that have no
+ * curated local pack (PUBLIC-v7.4B.P.5). Instead of dropping an
+ * unknown remote Tale, the adapter builds a renderable Tale from the
+ * production row's own fields (title/name/chapter/story/timeline/
+ * map_points/tap_status) and fills the presentation-only slots with
+ * safe placeholders so nothing crashes:
+ *
+ *   * `image` is '' — TaleDetailPage guards `tale.image && …` and any
+ *     list <img> uses an onError hide, so an empty can image renders
+ *     nothing (no broken image), not a crash.
+ *   * `person`/`barSummary` are blank structs; the detail page renders
+ *     those sections conditionally on their content.
+ *   * `game.type` defaults to 'grid' (a valid GameOverlay dispatch
+ *     value). The caller may override it with the row's
+ *     `mini_game_type` when that is a valid type, so the game surface
+ *     still dispatches to a real component with placeholder copy.
+ *   * fallback story/timeline/pins are empty; the row's own content is
+ *     preferred by mapTaleRow when present.
+ *
+ * This is intentionally compatibility-grade, not final premium design.
+ * Curated Tales (wa-lager / packer-pils / wooden-match) keep their
+ * rich packs via getPresentationPack and are unaffected.
+ */
+export function getDefaultPresentationPack(): TalePresentationPack {
+  return {
+    abbr:       '',
+    style:      '',
+    abv:        '',
+    ibu:        '',
+    tagline:    '',
+    icon:       '🍺',
+    unlockSeal: '🍺',
+    person:     { name: '', dates: '', role: '', initials: '' },
+    personBio:  '',
+    mapTitle:   'Map',
+    scanBadge:  { icon: '🍺', title: 'Tale unlocked', desc: '' },
+    gameBadge:  { icon: '🎯', title: 'Game complete', desc: '' },
+    barSummary: { who: '', why: '', beer: '' },
+    stillHere:  [],
+    image:      '',
+    game: {
+      type:         'grid',
+      title:        '',
+      instructions: '',
+      successTitle: '',
+      successMsg:   '',
+    },
+    fallbackStory:    [],
+    fallbackTimeline: [],
+    fallbackPins:     [],
+  };
 }
