@@ -109,6 +109,22 @@ export interface FoodItem {
    * and is transformed by mapFoodRow.
    */
   imageUrl?: string;
+  /**
+   * Optional price in integer cents (PUBLIC-v7.4B.P.9), surfaced from
+   * production food_items.price_cents (managed in admin as of
+   * ADMIN-v7.4B.P.8). Omitted/undefined when the remote row has a null
+   * price and on local fallback records — the Food card shows no price
+   * in that case. camelCase to match the UI convention; the wire
+   * column is snake_case `price_cents`, transformed by mapFoodRow.
+   */
+  priceCents?: number | null;
+  /**
+   * Optional "featured / chef's pick" flag (PUBLIC-v7.4B.P.9) from
+   * production food_items.is_featured. When true, the Food card shows
+   * the CHEF'S PICK badge. Omitted on local fallback records — the
+   * card falls back to its static FOOD_VISUAL_META hint.
+   */
+  isFeatured?: boolean;
 }
 
 export interface AppUser {

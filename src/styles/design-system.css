@@ -2893,6 +2893,16 @@
   border-color: var(--ts-color-copper);
   background: linear-gradient(180deg, var(--ts-color-copper-bright), var(--ts-color-copper-dark));
 }
+/* PUBLIC-v7.4B.P.9: admin-managed food price. Brass, mono-ish digits,
+   sits between the sub line and the description. Only rendered when a
+   price is present. */
+.ts-food-card__price {
+  font-family: var(--ts-font-label);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--ts-color-brass);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---- 19g. Responsive overrides --------------------------------------- */
 @media (max-width: 380px) {

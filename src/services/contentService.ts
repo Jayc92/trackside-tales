@@ -622,7 +622,14 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
  *                    a default-glyph fallback for unknown names),
  *                    so unknown production categories don't cause
  *                    any visual regression.
- *   * is_featured, sort_order, updated_at — not exposed.
+ *   * price_cents  — PUBLIC-v7.4B.P.9: mapped to FoodItem.priceCents
+ *                    (integer cents) when a finite non-negative value
+ *                    is present; omitted otherwise.
+ *   * is_featured  — PUBLIC-v7.4B.P.9: mapped to FoodItem.isFeatured
+ *                    (only when strictly true) to drive the CHEF'S
+ *                    PICK badge.
+ *   * sort_order, updated_at — query-only (ORDER BY sort_order.asc);
+ *                    not surfaced on the FoodItem.
  *
  * A single bad row does not invalidate the others — each row maps
  * independently. The caller filters out nulls.
@@ -654,10 +661,23 @@ function mapFoodRow(row: Record<string, unknown>): FoodItem | null {
   const rawImage = asString(row.image_url);
   const imageUrl = rawImage ? rawImage.trim() : '';
 
+  // PUBLIC-v7.4B.P.9: surface admin-managed price_cents + is_featured.
+  //   * price_cents: integer cents. Include only when it's a finite
+  //     non-negative number; a null/absent value omits the property so
+  //     the card shows no price. Negative is defensively dropped
+  //     (the DB CHECK forbids it, but never render a negative price).
+  //   * is_featured: boolean; only carried through when strictly true
+  //     so a false/absent value leaves the card's static badge hint.
+  const priceRaw = asNumber(row.price_cents);
+  const priceCents = priceRaw !== null && priceRaw >= 0 ? priceRaw : null;
+  const isFeatured = row.is_featured === true;
+
   return {
     name: name.trim(),
     desc: description.trim(),
     ...(imageUrl.length > 0 ? { imageUrl } : {}),
+    ...(priceCents !== null ? { priceCents } : {}),
+    ...(isFeatured ? { isFeatured: true } : {}),
   };
 }
 
@@ -724,7 +744,7 @@ const BEER_SELECT =
 // no default); blank/null values are dropped by the adapter so the
 // public FoodCard falls back to its glyph rendering.
 const FOOD_SELECT =
-  'slug,name,description,category,image_url,is_featured,sort_order,updated_at';
+  'slug,name,description,category,image_url,is_featured,sort_order,price_cents,updated_at';
 
 // ADMIN-v7.4B.P.1: production-aligned reward-tier column subset.
 // The earlier SELECT referenced `perks` (canonical), which does

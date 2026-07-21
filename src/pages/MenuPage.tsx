@@ -206,8 +206,23 @@ const FOOD_VISUAL_META: Record<string, { sub: string; chefsPick?: boolean; glyph
   'Burger Flight':             { sub: 'Slider Trio',        glyph: '◈', chefsPick: true },
 };
 
+/**
+ * Format integer cents to a display price (PUBLIC-v7.4B.P.9).
+ * 1250 → "$12.50". Returns null when there is no price to show.
+ */
+function formatFoodPrice(cents: number | null | undefined): string | null {
+  if (cents === null || cents === undefined) return null;
+  if (!Number.isFinite(cents) || cents < 0) return null;
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 function FoodCard({ item }: { item: FoodItem }) {
   const meta = FOOD_VISUAL_META[item.name] || { sub: '', glyph: '◈' };
+  // PUBLIC-v7.4B.P.9: admin-managed is_featured drives the CHEF'S PICK
+  // badge for remote rows; local fallback records keep their static
+  // FOOD_VISUAL_META hint.
+  const isChefsPick = item.isFeatured ?? meta.chefsPick ?? false;
+  const price = formatFoodPrice(item.priceCents);
   // PUBLIC-v7.4B.N.5.b: when production supplies a nonblank
   // food_items.image_url, render an <img> inside the existing
   // square art slot. The glyph stays in the DOM beneath/behind
@@ -234,11 +249,12 @@ function FoodCard({ item }: { item: FoodItem }) {
       <div className="ts-food-card__body">
         <div className="ts-food-card__name-row">
           <h3 className="ts-food-card__name">{item.name}</h3>
-          <span className={`ts-food-card__badge${meta.chefsPick ? ' ts-food-card__badge--pick' : ''}`}>
-            {meta.chefsPick ? "CHEF'S PICK" : 'KITCHEN'}
+          <span className={`ts-food-card__badge${isChefsPick ? ' ts-food-card__badge--pick' : ''}`}>
+            {isChefsPick ? "CHEF'S PICK" : 'KITCHEN'}
           </span>
         </div>
         {meta.sub && <div className="ts-food-card__sub">{meta.sub}</div>}
+        {price && <div className="ts-food-card__price">{price}</div>}
         <p className="ts-food-card__desc">{item.desc}</p>
       </div>
     </article>
