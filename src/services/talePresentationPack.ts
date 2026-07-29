@@ -167,7 +167,17 @@ export function getPresentationPack(appSlug: string): TalePresentationPack | nul
  *   * fallback story/timeline/pins are empty; the row's own content is
  *     preferred by mapTaleRow when present.
  *
- * This is intentionally compatibility-grade, not final premium design.
+ * PUBLIC-v7.4B.P.12a: the default pack stays intentionally minimal —
+ * blank strings / empty structs, never fabricated person, history,
+ * beer facts, ABV/IBU, or game copy. The Tale type requires these
+ * slots to exist, so "absent" is expressed as blank values that the
+ * detail page's and menu card's non-blank section guards hide
+ * cleanly. Remote admin fields (subtitle → tagline, person_or_place
+ * → person.name, stamp_image_url → image) and the derived
+ * abbreviation are layered on top by mapTaleRow in contentService —
+ * they live there rather than here because this factory has no
+ * access to the production row.
+ *
  * Curated Tales (wa-lager / packer-pils / wooden-match) keep their
  * rich packs via getPresentationPack and are unaffected.
  */

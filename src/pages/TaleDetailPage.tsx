@@ -16,6 +16,19 @@ import { formatDate } from '../services/badgeService';
 
 // Pick a milestone-level icon glyph from the timeline event title. These
 // are inert visual cues only; they have no effect on logic or routing.
+// PUBLIC-v7.4B.P.12a — build the hero meta line from only the
+// non-blank fragments so a Tale without pack style/ABV/IBU renders
+// "Test Tale" instead of "Test Tale ·  · ABV  · IBU ". Curated Tales
+// have every fragment populated, so their output is unchanged.
+function buildHeroMeta(tale: { name: string; style: string; abv: string; ibu: string }): string {
+  const fragments: string[] = [];
+  if (tale.name.trim())  fragments.push(tale.name.trim());
+  if (tale.style.trim()) fragments.push(tale.style.trim());
+  if (tale.abv.trim())   fragments.push(`ABV ${tale.abv.trim()}`);
+  if (tale.ibu.trim())   fragments.push(`IBU ${tale.ibu.trim()}`);
+  return fragments.join(' · ');
+}
+
 function timelineGlyph(title: string): string {
   const t = title.toLowerCase();
   if (t.includes('born'))         return '☉';
@@ -98,7 +111,9 @@ export function TaleDetailPage() {
       <section className="ts-tale-hero" aria-label={`${tale.name} hero`}>
         <div className="ts-tale-hero__sidetab" aria-hidden="true">
           <span className="ts-tale-hero__sidetab-text">
-            TRACKSIDE №{tale.year} · RAILWAY ARCHIVE
+            {/* PUBLIC-v7.4B.P.12a — drop the № fragment when the remote
+                row has no year (avoids "TRACKSIDE № · RAILWAY ARCHIVE"). */}
+            {tale.year ? `TRACKSIDE №${tale.year} · RAILWAY ARCHIVE` : 'TRACKSIDE · RAILWAY ARCHIVE'}
           </span>
         </div>
 
@@ -122,7 +137,7 @@ export function TaleDetailPage() {
             />
             <hr className="ts-tale-hero__rule" />
             <div className="ts-tale-hero__meta">
-              {tale.name} · {tale.style} · ABV {tale.abv} · IBU {tale.ibu}
+              {buildHeroMeta(tale)}
             </div>
           </div>
           {tale.image && (
@@ -141,37 +156,60 @@ export function TaleDetailPage() {
       </section>
 
       {/* ============== 3. SUMMARY PANEL ============== */}
-      <section className="ts-tale-summary" aria-label="Tale summary">
-        {tale.image && (
-          <div className="ts-tale-summary__art">
-            <img src={tale.image} alt="" />
-          </div>
-        )}
-        <div className="ts-tale-summary__body">
-          <div>
-            <h2 className="ts-tale-summary__name">{tale.person.name}</h2>
-            <div className="ts-tale-summary__dates">{tale.person.dates}</div>
-          </div>
-          <p className="ts-tale-summary__bio">{tale.personBio}</p>
+      {/* PUBLIC-v7.4B.P.12a — the summary panel and each of its parts
+          render only when they carry real content. The default pack
+          ships blank person/barSummary values for non-curated Tales;
+          without these guards the page showed an empty biography panel
+          and empty WHO / WHY HERE / THE BEER labels. Curated Tales
+          populate every field, so their rendering is unchanged. */}
+      {(() => {
+        const hasPersonHeading = tale.person.name.trim().length > 0;
+        const hasPersonDates   = tale.person.dates.trim().length > 0;
+        const hasPersonBio     = tale.personBio.trim().length > 0;
+        const factRows = [
+          { label: 'WHO',      value: tale.barSummary?.who ?? '' },
+          { label: 'WHY HERE', value: tale.barSummary?.why ?? '' },
+          { label: 'THE BEER', value: tale.barSummary?.beer ?? '' },
+        ].filter((fact) => fact.value.trim().length > 0);
+        const hasSummaryContent =
+          hasPersonHeading || hasPersonBio || factRows.length > 0 || Boolean(tale.image);
+        if (!hasSummaryContent) return null;
+        return (
+          <section className="ts-tale-summary" aria-label="Tale summary">
+            {tale.image && (
+              <div className="ts-tale-summary__art">
+                <img src={tale.image} alt="" />
+              </div>
+            )}
+            <div className="ts-tale-summary__body">
+              {(hasPersonHeading || hasPersonDates) && (
+                <div>
+                  {hasPersonHeading && (
+                    <h2 className="ts-tale-summary__name">{tale.person.name}</h2>
+                  )}
+                  {hasPersonDates && (
+                    <div className="ts-tale-summary__dates">{tale.person.dates}</div>
+                  )}
+                </div>
+              )}
+              {hasPersonBio && (
+                <p className="ts-tale-summary__bio">{tale.personBio}</p>
+              )}
 
-          {tale.barSummary && (
-            <div className="ts-tale-summary__facts">
-              <div className="ts-tale-fact">
-                <span className="ts-tale-fact__lbl">WHO</span>
-                <span className="ts-tale-fact__txt">{tale.barSummary.who}</span>
-              </div>
-              <div className="ts-tale-fact">
-                <span className="ts-tale-fact__lbl">WHY HERE</span>
-                <span className="ts-tale-fact__txt">{tale.barSummary.why}</span>
-              </div>
-              <div className="ts-tale-fact">
-                <span className="ts-tale-fact__lbl">THE BEER</span>
-                <span className="ts-tale-fact__txt">{tale.barSummary.beer}</span>
-              </div>
+              {factRows.length > 0 && (
+                <div className="ts-tale-summary__facts">
+                  {factRows.map((fact) => (
+                    <div key={fact.label} className="ts-tale-fact">
+                      <span className="ts-tale-fact__lbl">{fact.label}</span>
+                      <span className="ts-tale-fact__txt">{fact.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </section>
+          </section>
+        );
+      })()}
 
       {/* ============== 4. STORY + MAP ============== */}
       <div className="ts-tale-story-row">
@@ -204,25 +242,30 @@ export function TaleDetailPage() {
           </div>
         </article>
 
-        <section className="ts-tale-map" aria-label={tale.mapTitle}>
-          <div className="ts-tale-map__top">
-            <span className="ts-tale-map__title">{tale.mapTitle.toUpperCase()}</span>
-            <button type="button" className="ts-tale-map__btn">● LIVE MAP</button>
-          </div>
-          <div className="ts-tale-map__canvas">
-            {tale.pins.slice(0, 4).map((pin) => (
-              <div
-                key={pin.label}
-                className="ts-tale-map__pin"
-                style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-              >
-                <span className="ts-tale-map__pin-dot" aria-hidden="true" />
-                <span className="ts-tale-map__pin-label">{pin.label}</span>
-              </div>
-            ))}
-          </div>
-          <div className="ts-tale-map__foot">{tale.year} GRID REFERENCE</div>
-        </section>
+        {/* PUBLIC-v7.4B.P.12a — render the map only when at least one
+            valid pin exists; a pin-less Tale previously showed an empty
+            canvas titled "MAP". Curated Tales always carry pins. */}
+        {tale.pins.length > 0 && (
+          <section className="ts-tale-map" aria-label={tale.mapTitle}>
+            <div className="ts-tale-map__top">
+              <span className="ts-tale-map__title">{tale.mapTitle.toUpperCase()}</span>
+              <button type="button" className="ts-tale-map__btn">● LIVE MAP</button>
+            </div>
+            <div className="ts-tale-map__canvas">
+              {tale.pins.slice(0, 4).map((pin) => (
+                <div
+                  key={pin.label}
+                  className="ts-tale-map__pin"
+                  style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                >
+                  <span className="ts-tale-map__pin-dot" aria-hidden="true" />
+                  <span className="ts-tale-map__pin-label">{pin.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="ts-tale-map__foot">{tale.year} GRID REFERENCE</div>
+          </section>
+        )}
       </div>
 
       {/* ============== 5. TIMELINE ============== */}

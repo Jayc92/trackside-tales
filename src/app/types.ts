@@ -82,6 +82,22 @@ export interface Tale {
   retiredDate: string | null;
   barSummary: BarSummary;
   stillHere: StillHere[];
+  /**
+   * Optional admin-managed intro media (PUBLIC-v7.4B.P.12a), surfaced
+   * from production tales.intro_asset_url / tales.intro_type by the
+   * remote adapter. Exposed on the model only — no intro playback
+   * surface exists yet, so nothing renders these today. `introType`
+   * mirrors the production CHECK constraint values.
+   */
+  introAssetUrl?: string;
+  introType?: 'css_animation' | 'video' | 'none';
+  /**
+   * Optional admin-assigned stamp/card artwork URL from production
+   * tales.stamp_image_url (PUBLIC-v7.4B.P.12a). For non-curated Tales
+   * the adapter also copies this into `image` so card/hero art slots
+   * pick it up; curated Tales keep their local pack art.
+   */
+  stampImageUrl?: string;
 }
 
 export interface Beer {

@@ -126,6 +126,61 @@ function asStringOr(v: unknown, fallback: string): string {
   return typeof v === 'string' ? v : fallback;
 }
 
+/**
+ * Non-blank trimmed string or null. Used by the P.12a tale adapter for
+ * optional presentation fields (subtitle, person_or_place, media URLs)
+ * where a blank/whitespace value must behave exactly like NULL so the
+ * detail page's hide-when-empty section guards fire.
+ */
+function asNonBlankString(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const trimmed = v.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Accept an admin-assigned media URL only when it is a well-formed
+ * https URL (PUBLIC-v7.4B.P.12a). Production values are written by the
+ * admin media RPCs and are already canonical Supabase public-storage
+ * URLs; this guard just refuses to hand a malformed or non-https
+ * value to an <img src>. Returns null on anything unacceptable.
+ */
+function asHttpsUrl(v: unknown): string | null {
+  const candidate = asNonBlankString(v);
+  if (!candidate) return null;
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === 'https:' ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Derive a short display abbreviation for a Tale with no curated pack
+ * (PUBLIC-v7.4B.P.12a): initials of the meaningful words of `name`,
+ * falling back to `title`, capped at 4 characters. Words of 1–2
+ * characters (of, the, an, W.A.-style fragments keep their letters via
+ * the alphanumeric filter) still contribute their first character, so
+ * "Wooden Match Amber" → "WMA" and "conductors-kolsch"-style names
+ * degrade gracefully. Returns '' when no usable text exists — the
+ * card's art fallback then shows the full name instead.
+ */
+function deriveTaleAbbr(name: string, title: string): string {
+  for (const source of [name, title]) {
+    const words = source
+      .split(/[^A-Za-z0-9]+/)
+      .filter((w) => w.length > 0);
+    if (words.length === 0) continue;
+    const initials = words
+      .slice(0, 4)
+      .map((w) => w[0].toUpperCase())
+      .join('');
+    if (initials.length > 0) return initials;
+  }
+  return '';
+}
+
 function asNumber(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
@@ -191,9 +246,11 @@ function wrapStoryBody(v: unknown): StoryBlock[] {
  * Production carries: slug (long form), name, title, year,
  * chapter_label, story_body, timeline (jsonb), map_points (jsonb),
  * tap_status, mini_game_type, sort_order, status, is_active,
- * updated_at. Plus a few unused-by-app fields (subtitle,
- * person_or_place, intro_type, intro_asset_url, stamp_image_url,
- * id, beer_id, venue_id, created_at).
+ * updated_at. PUBLIC-v7.4B.P.12a also reads the admin-managed
+ * presentation fields (subtitle, person_or_place, intro_type,
+ * intro_asset_url, stamp_image_url) — consumed for NON-curated
+ * Tales only; curated Tales keep their local pack values. Remaining
+ * unread columns: id, beer_id, venue_id, created_at.
  *
  * The presentation pack supplies: abbr, style, abv, ibu, tagline,
  * icon, unlockSeal, person, personBio, mapTitle, scanBadge,
@@ -284,18 +341,46 @@ function mapTaleRow(row: Record<string, unknown>): Tale | null {
   const remotePins = mapPins(row.map_points);
   const pins = remotePins.length > 0 ? remotePins : pack.fallbackPins;
 
+  // PUBLIC-v7.4B.P.12a: admin-managed presentation fields. Curated
+  // Tales keep their local pack values for every presentation slot
+  // (regression guarantee for wa-lager / packer-pils / wooden-match);
+  // ONLY non-curated Tales adopt remote values:
+  //   * subtitle        → tagline (card desc / detail copy slot)
+  //   * person_or_place → person.name (section heading; no invented bio)
+  //   * stamp_image_url → image (card/hero/summary art slot)
+  //   * abbr            → derived from name/title initials
+  // intro_asset_url / intro_type / stamp_image_url are additionally
+  // exposed verbatim on the model for all Tales (no render surface for
+  // intro media yet — model exposure only).
+  const remoteSubtitle      = asNonBlankString(row.subtitle);
+  const remotePersonOrPlace = asNonBlankString(row.person_or_place);
+  const remoteStampImageUrl = asHttpsUrl(row.stamp_image_url);
+  const remoteIntroAssetUrl = asHttpsUrl(row.intro_asset_url);
+  const introTypeRaw        = asString(row.intro_type);
+  const remoteIntroType: Tale['introType'] =
+    introTypeRaw === 'css_animation' || introTypeRaw === 'video' || introTypeRaw === 'none'
+      ? introTypeRaw
+      : undefined;
+
+  const abbr    = knownPack ? pack.abbr : deriveTaleAbbr(name, title);
+  const image   = knownPack ? pack.image : (remoteStampImageUrl ?? '');
+  const tagline = knownPack ? pack.tagline : (remoteSubtitle ?? '');
+  const person: Tale['person'] = knownPack
+    ? pack.person
+    : { name: remotePersonOrPlace ?? '', dates: '', role: '', initials: '' };
+
   return {
     id:          appSlug,
     name,
-    abbr:        pack.abbr,
-    image:       pack.image,
+    abbr,
+    image,
     style:       pack.style,
     abv:         pack.abv,
     ibu:         pack.ibu,
-    tagline:     pack.tagline,
+    tagline,
     icon:        pack.icon,
     unlockSeal:  pack.unlockSeal,
-    person:      pack.person,
+    person,
     personBio:   pack.personBio,
     chapter:     asStringOr(row.chapter_label, ''),
     year:        asStringOr(row.year, ''),
@@ -313,6 +398,9 @@ function mapTaleRow(row: Record<string, unknown>): Tale | null {
     retiredDate: null,
     barSummary:  pack.barSummary,
     stillHere:   pack.stillHere,
+    ...(remoteIntroAssetUrl !== null ? { introAssetUrl: remoteIntroAssetUrl } : {}),
+    ...(remoteIntroType !== undefined ? { introType: remoteIntroType } : {}),
+    ...(remoteStampImageUrl !== null ? { stampImageUrl: remoteStampImageUrl } : {}),
   };
 }
 
@@ -700,9 +788,17 @@ function mapFoodRow(row: Record<string, unknown>): FoodItem | null {
 //   * map_points       — jsonb; production's M.2 editor matches shape
 //   * tap_status       — enum; matches Tale['tapStatus'] verbatim
 //   * mini_game_type   — guard against game-type drift
+// PUBLIC-v7.4B.P.12a additions (all pre-existing production columns;
+// additive select only):
+//   * subtitle         — generic tagline for non-curated Tales
+//   * person_or_place  — person/place section heading (non-curated)
+//   * intro_type       — model exposure only (no intro surface yet)
+//   * intro_asset_url  — model exposure only (no intro surface yet)
+//   * stamp_image_url  — generic card/hero art for non-curated Tales
 const TALE_SELECT =
   'slug,name,title,year,chapter_label,story_body,' +
-  'timeline,map_points,tap_status,mini_game_type,sort_order,updated_at';
+  'timeline,map_points,tap_status,mini_game_type,sort_order,updated_at,' +
+  'subtitle,person_or_place,intro_type,intro_asset_url,stamp_image_url';
 
 // ADMIN-v7.4B.N.1: production-aligned beer column subset only. The
 // earlier canonical SELECT (abbr, tasting, display_order) referenced

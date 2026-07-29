@@ -122,20 +122,35 @@ function TaleBeerCard({ tale, unlocked, onOpen, onScan }: TaleCardProps) {
           onOpen();
         }
       }}
-      aria-label={`${tale.name} — ${tale.style}`}
+      aria-label={tale.style ? `${tale.name} — ${tale.style}` : tale.name}
     >
       <BeerArt image={tale.image} label={tale.abbr || tale.name} />
       <div className="ts-beer-card__body">
         <div className="ts-beer-card__name-row">
           <h3 className="ts-beer-card__name">{tale.name}</h3>
-          <span className="ts-beer-card__tag">TALES · {tale.year}</span>
+          <span className="ts-beer-card__tag">
+            {/* PUBLIC-v7.4B.P.12a — omit the year fragment when the
+                remote row has no year, instead of "TALES · ". */}
+            {tale.year ? `TALES · ${tale.year}` : 'TALES'}
+          </span>
         </div>
-        <div className="ts-beer-card__style">{tale.style}</div>
-        <p className="ts-beer-card__desc">{tale.tagline}</p>
-        <div className="ts-beer-card__meta">
-          <span className="ts-beer-card__meta-dot" aria-hidden="true" />
-          ABV {tale.abv} · IBU {tale.ibu}
-        </div>
+        {/* PUBLIC-v7.4B.P.12a — style / tagline / ABV·IBU lines render
+            only when non-blank so non-curated Tales (whose pack values
+            are empty) don't show blank lines or "ABV  · IBU ".
+            Curated Tales carry all of these and render as before. */}
+        {tale.style && <div className="ts-beer-card__style">{tale.style}</div>}
+        {tale.tagline && <p className="ts-beer-card__desc">{tale.tagline}</p>}
+        {(tale.abv || tale.ibu) && (
+          <div className="ts-beer-card__meta">
+            <span className="ts-beer-card__meta-dot" aria-hidden="true" />
+            {[
+              tale.abv ? `ABV ${tale.abv}` : null,
+              tale.ibu ? `IBU ${tale.ibu}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
+        )}
         <div className="ts-beer-card__actions">
           {unlocked ? (
             <>
