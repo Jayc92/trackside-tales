@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
-import { parseQRCode } from '../services/qrValidation';
+import { parseQRCode, LOCAL_DEMO_QR_ALLOWED } from '../services/qrValidation';
 import { validateQrRemote } from '../services/qrValidationRemote';
-import { getLatestQrReceipt, setLatestQrReceipt } from '../services/qrReceiptStore';
+import { USE_REMOTE_QR_VALIDATION } from '../services/supabaseClient';
 import { logEvent, flushEvents } from '../services/eventLogger';
 import { BADGE_KEY_SCAN, Tale } from '../app/types';
 
@@ -19,18 +19,23 @@ import { BADGE_KEY_SCAN, Tale } from '../app/types';
 //     scan, so badge keys and unlock paths are identical.
 //   • startScanner / stopScanner mount/unmount lifecycle preserved.
 //
-// ADMIN-v6.7: enrichment-only remote QR validation hook.
-//   • parseQRCode is still the source of truth for the unlock decision —
-//     locally-valid scans always unlock, regardless of remote state.
-//   • After the local unlock dispatches, we fire (no await) a call to
-//     validateQrRemote. On success, the signed receipt lands in the
-//     in-memory qrReceiptStore for ADMIN-v6.8's log-events to consume.
-//   • Remote failure / null is silent. No UI change, no unlock rollback,
-//     no localStorage/badge-key mutation.
-//   • The Featured-Tales button rows do NOT trigger remote validation —
-//     they have no scanned `code` value (their canonical code would have
-//     to be reconstructed, which would muddy demo behavior). They keep
-//     the existing offline unlock contract verbatim.
+// PUBLIC-v7.4B.P.13b: server-authoritative QR validation.
+//   • With USE_REMOTE_QR_VALIDATION on (the production posture), the
+//     scanned code is sent to the validate-qr Edge Function and a Tale
+//     unlocks ONLY when the server returns { valid: true } with the
+//     canonical slug. A rejected code shows a generic message; an
+//     unreachable validator fails closed with a "try again" message —
+//     it NEVER falls back to permissive local parsing.
+//   • The bounded curated demo path (parseQRCode against the three
+//     baked-in ids) runs only when LOCAL_DEMO_QR_ALLOWED (dev build or
+//     fully offline demo build; see qrValidation.ts). Ambiguous
+//     production configuration fails closed.
+//   • The Featured-Tales rows are tap-to-unlock only in the demo mode;
+//     in remote mode they navigate to the Tale (locked view) instead —
+//     tapping a list row is not proof of a scan.
+//   • The v6.6/v6.7 HMAC receipt capture is gone: the hardened
+//     validate-qr returns only { valid, taleSlug } and the log-events
+//     receipt pipeline was never deployed.
 //
 // ADMIN-v6.8C: fire-and-forget event logging for the true scan/unlock +
 // scan-badge path only. Game events stay deferred to v6.8D; passport /
@@ -130,12 +135,18 @@ interface FeaturedTaleRowProps {
   onSelect: (taleId: string) => void;
 }
 function FeaturedTaleRow({ tale, index, unlocked, onSelect }: FeaturedTaleRowProps) {
+  // P.13b: rows unlock only in demo mode; in remote mode they preview.
+  const actionWord = LOCAL_DEMO_QR_ALLOWED ? 'Unlock' : 'Preview';
   return (
     <button
       type="button"
       className={`ts-scan-row${unlocked ? ' ts-scan-row--unlocked' : ''}`}
       onClick={() => onSelect(tale.id)}
-      aria-label={`Unlock ${tale.name} — ${tale.person.name}`}
+      aria-label={
+        tale.person.name
+          ? `${actionWord} ${tale.name} — ${tale.person.name}`
+          : `${actionWord} ${tale.name}`
+      }
     >
       <span className="ts-scan-row__num" aria-hidden="true">{index + 1}</span>
       <span className="ts-scan-row__title">
@@ -207,32 +218,14 @@ export function ScanPage() {
     // are completely inert in default builds.
     if (!opts.logScanEvent) return;
 
-    // Receipt is attached only when:
-    //   1. there is a stored receipt at all,
-    //   2. its taleSlug matches the tale being unlocked (no stale
-    //      cross-tale leak after rapid back-to-back scans), and
-    //   3. its receiptExp is in the future (the server rejects
-    //      expired receipts anyway, but we drop them client-side
-    //      to save the round-trip).
-    let receipt: string | undefined;
-    let receiptExp: number | undefined;
-    const stored = getLatestQrReceipt();
-    const nowSec = Math.floor(Date.now() / 1000);
-    if (
-      stored &&
-      stored.taleSlug === taleId &&
-      typeof stored.receiptExp === 'number' &&
-      stored.receiptExp > nowSec
-    ) {
-      receipt    = stored.receipt;
-      receiptExp = stored.receiptExp;
-    }
-
+    // P.13b: no receipt attachment — the hardened validate-qr contract
+    // carries no receipt, and the log-events pipeline that consumed
+    // one was never deployed. logEvent remains a no-op unless
+    // USE_REMOTE_EVENTS is enabled.
     logEvent({
       type:     'tale_unlocked',
       taleSlug: taleId,
       source:   'scan',
-      ...(receipt !== undefined ? { receipt, receiptExp } : {}),
     });
 
     // Award badge_awarded only when the scan badge actually granted
@@ -256,50 +249,77 @@ export function ScanPage() {
     void flushEvents(guestId);
   }, [tales, state.unlocked, unlockTale, awardScanBadge, navToTale, guestId]);
 
-  // ADMIN-v6.7 — fire-and-forget remote enrichment.
-  //
-  // Called only after the local parseQRCode + unlock path has already
-  // run (or about to run on the same tick). Returns immediately; the
-  // promise resolves out of band. On success the receipt lands in
-  // qrReceiptStore for ADMIN-v6.8 to consume; on failure or when the
-  // flag is off, validateQrRemote returns null and we silently skip.
-  //
-  // No throw can escape this function — `validateQrRemote` is already
-  // wrapped, but the .then().catch() here is belt-and-suspenders so a
-  // future helper change can never bubble into the unlock flow.
-  const captureRemoteReceipt = useCallback((raw: string) => {
-    void validateQrRemote(raw, guestId, 'scan')
-      .then((result) => {
-        if (!result || result.ok !== true) return;
-        setLatestQrReceipt({
-          taleSlug:   result.taleSlug,
-          qrCodeId:   result.qrCodeId,
-          receipt:    result.receipt,
-          receiptExp: result.receiptExp,
-          source:     'scan',
-          capturedAt: Date.now(),
-        });
-      })
-      .catch((err) => {
-        console.warn('[trackside] validate-qr enrichment skipped', err);
-      });
-  }, [guestId]);
+  // P.13b — remote-mode Featured-Tales tap: navigate WITHOUT unlocking.
+  // The Tale detail page renders its locked branch for tales the user
+  // hasn't actually scanned.
+  const previewTale = useCallback((taleId: string) => {
+    const tale = tales.find((t) => t.id === taleId);
+    if (tale) navToTale(tale);
+  }, [tales, navToTale]);
 
-  const processCode = useCallback((raw: string) => {
-    const result = parseQRCode(raw);
-    if (!result) {
-      // Local parse is the source of truth for the unlock decision.
-      // Remote validation does NOT rescue unrecognized codes in v6.7.
-      setScanTitle('QR NOT RECOGNIZED');
-      setScanSub("That code isn't a Trackside Tale. Try a Trackside can or choose a Featured Tale below.");
+  // P.13b — scan processing. Remote-authoritative in production;
+  // bounded curated demo path in dev/offline builds; fail-closed when
+  // configuration is ambiguous. The camera decoder fires repeatedly
+  // (~10 fps) on the same code, so a per-code in-flight guard prevents
+  // hammering the Edge Function with duplicate requests.
+  const inFlightCodeRef = useRef<string | null>(null);
+
+  const processCode = useCallback(async (raw: string) => {
+    if (USE_REMOTE_QR_VALIDATION) {
+      const trimmed = raw.trim();
+      if (inFlightCodeRef.current === trimmed) return;
+      inFlightCodeRef.current = trimmed;
+      try {
+        setScanTitle('CHECKING CODE…');
+        setScanSub('Validating this Trackside code.');
+        const result = await validateQrRemote(trimmed);
+        if (result.status === 'valid') {
+          const tale = tales.find((t) => t.id === result.taleSlug);
+          if (!tale) {
+            // Server-valid, but the Tale isn't in the loaded content
+            // (e.g. remote Tales fetch failed this session). Fail
+            // closed rather than persist an unlock for an id the app
+            // can't render.
+            setScanTitle('TALE NOT AVAILABLE');
+            setScanSub('This code is valid, but its Tale could not be loaded right now. Please try again.');
+            return;
+          }
+          handleDemoUnlock(result.taleSlug, { logScanEvent: true });
+          return;
+        }
+        if (result.status === 'invalid') {
+          setScanTitle('QR NOT RECOGNIZED');
+          setScanSub("That code isn't an active Trackside Tale code. Try a Trackside can.");
+          return;
+        }
+        // 'unavailable' — validator unreachable/misconfigured. Fail
+        // closed: no unlock, and explicitly NO fallback to local
+        // parsing (a network failure must never weaken validation).
+        setScanTitle('VALIDATION UNAVAILABLE');
+        setScanSub("Couldn't reach the validation service. Check your connection and try again.");
+        return;
+      } finally {
+        inFlightCodeRef.current = null;
+      }
+    }
+
+    if (LOCAL_DEMO_QR_ALLOWED) {
+      // Bounded local/demo path: the three curated ids only.
+      const result = parseQRCode(raw);
+      if (!result) {
+        setScanTitle('QR NOT RECOGNIZED');
+        setScanSub("That code isn't a Trackside Tale. Try a Trackside can or choose a Featured Tale below.");
+        return;
+      }
+      handleDemoUnlock(result.taleId, { logScanEvent: true });
       return;
     }
-    handleDemoUnlock(result.taleId, { logScanEvent: true });
-    // Enrichment fires after the local unlock has dispatched. The
-    // unlock UI is already committed at this point; whatever happens
-    // on the network can't roll it back.
-    captureRemoteReceipt(raw);
-  }, [handleDemoUnlock, captureRemoteReceipt]);
+
+    // Ambiguous configuration (Supabase configured, remote validation
+    // flag unset in a production build): fail closed, do not guess.
+    setScanTitle('SCANNING UNAVAILABLE');
+    setScanSub('QR validation is not configured for this build. Please try again later.');
+  }, [tales, handleDemoUnlock]);
 
   const startScanner = useCallback(async () => {
     if (typeof Html5Qrcode === 'undefined') {
@@ -369,12 +389,24 @@ export function ScanPage() {
       </div>
 
       {/* ============== 3. FEATURED TALES ============== */}
-      {/* Same unlock contract as a real can scan — id passes through
-         unlockTale + awardScanBadge. Visual presentation only changed. */}
-      <div className="ts-scan-featured" aria-label="Featured Tales — tap to unlock">
+      {/* P.13b: tap-to-UNLOCK is a demo affordance and exists only in
+         the bounded demo mode (LOCAL_DEMO_QR_ALLOWED). In production
+         (remote-authoritative) mode, tapping a row navigates to the
+         Tale instead — its locked page renders unless a real scan has
+         unlocked it. A list tap is not proof of a scan. */}
+      <div
+        className="ts-scan-featured"
+        aria-label={LOCAL_DEMO_QR_ALLOWED
+          ? 'Featured Tales — tap to unlock'
+          : 'Featured Tales — tap to preview'}
+      >
         <div className="ts-scan-featured__header">
           <span className="ts-scan-featured__rule" aria-hidden="true" />
-          <span className="ts-scan-featured__label">FEATURED TALES · TAP TO UNLOCK</span>
+          <span className="ts-scan-featured__label">
+            {LOCAL_DEMO_QR_ALLOWED
+              ? 'FEATURED TALES · TAP TO UNLOCK'
+              : 'FEATURED TALES · TAP TO PREVIEW'}
+          </span>
           <span className="ts-scan-featured__rule" aria-hidden="true" />
         </div>
         <div className="ts-scan-featured__rows">
@@ -384,7 +416,7 @@ export function ScanPage() {
               tale={tale}
               index={idx}
               unlocked={state.unlocked.has(tale.id)}
-              onSelect={handleDemoUnlock}
+              onSelect={LOCAL_DEMO_QR_ALLOWED ? handleDemoUnlock : previewTale}
             />
           ))}
         </div>

@@ -38,17 +38,20 @@ function applyRoute(
   nav: (p: PageId) => void,
   navToTale: (t: Tale) => void,
   tales: Tale[],
-  unlockTale: (id: string) => void,
-  awardScanBadge: (id: string) => void,
 ) {
   // Story deep link: #/story/wa-lager  or  #story/wa-lager
+  //
+  // PUBLIC-v7.4B.P.13b: the deep link NAVIGATES ONLY — it no longer
+  // calls unlockTale/awardScanBadge. A shared URL is not proof of a
+  // scan; before this change any guessable slug granted a permanent
+  // unlock + scan badge, which made server-side QR validation moot.
+  // Tales already unlocked on this device render normally; locked
+  // Tales render the existing sealed page with its scan CTA.
   const storyMatch = hash.match(/^#\/?story\/([a-z0-9\-]+)/i);
   if (storyMatch) {
     const id = storyMatch[1].toLowerCase();
     const tale = tales.find((t) => t.id === id);
     if (tale) {
-      unlockTale(id);
-      awardScanBadge(id);
       navToTale(tale);
       return;
     }
@@ -79,11 +82,11 @@ function ActivePage({ page }: { page: PageId }) {
 
 // ── App shell ─────────────────────────────────────────────────────────────────
 export function App() {
-  const { state, nav, navToTale, tales, unlockTale, awardScanBadge } = useApp();
+  const { state, nav, navToTale, tales } = useApp();
 
   useEffect(() => {
     const handle = () =>
-      applyRoute(location.hash || '', nav, navToTale, tales, unlockTale, awardScanBadge);
+      applyRoute(location.hash || '', nav, navToTale, tales);
 
     handle(); // run once on mount
     window.addEventListener('hashchange', handle);

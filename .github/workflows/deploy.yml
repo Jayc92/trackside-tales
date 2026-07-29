@@ -41,6 +41,13 @@ jobs:
           VITE_USE_REMOTE_BEERS: 'true'
           VITE_USE_REMOTE_FOOD: 'true'
           VITE_USE_REMOTE_REWARDS: 'false'
+          # PUBLIC-v7.4B.P.13b: production QR validation is
+          # server-authoritative via the validate-qr Edge Function.
+          # With this flag on, the local demo allowlist can never run
+          # in production and validator failures fail closed (no
+          # unlock). Scanning will not unlock anything until the
+          # operator deploys validate-qr (see README "QR validation").
+          VITE_USE_REMOTE_QR_VALIDATION: 'true'
 
       - name: Upload dist artifact
         uses: actions/upload-pages-artifact@v3

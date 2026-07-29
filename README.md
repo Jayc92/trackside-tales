@@ -35,6 +35,43 @@ The admin app is a private Next.js/Vercel application and does not deploy to Git
 
 ---
 
+## QR validation (SUPABASE/PUBLIC-v7.4B.P.13b)
+
+Production QR validation is **server-authoritative**:
+
+- Scans POST the opaque scanned code to the `validate-qr` Edge Function
+  (`supabase/functions/validate-qr/`). A Tale unlocks only when the
+  server returns `{ valid: true, taleSlug }`. All failures return one
+  generic body; the client fails closed — a validator outage never
+  falls back to permissive local parsing.
+- A **direct `#/story/<slug>` link is navigation only** — it renders
+  the locked page unless the Tale was actually unlocked. It is not
+  proof of a scan and grants nothing.
+- **Raw `qr_codes` rows are not browser-readable**: migration
+  `20260728000000_public_v7_4b_p13b_qr_lockdown.sql` drops the legacy
+  `demo_qr_codes_select` policy and revokes anon/authenticated table
+  privileges. Only the service role (Edge Function, admin app) reads
+  the table.
+- Both production association models are supported: modern
+  `tale_slug` rows and legacy `tale_id` rows (mismatched dual
+  associations fail closed). The Tale must be `published` + active.
+- Validity windows are enforced (`valid_from`/`valid_until`;
+  NULL = unbounded). `max_uses` is **fail-closed**: no redemption
+  ledger exists, so a non-null `max_uses` makes a code invalid until
+  usage accounting ships (all current rows are NULL).
+- The bounded local/demo path (three curated ids) runs only in Vite
+  dev builds or fully offline builds with no Supabase config. A
+  production build with ambiguous config fails closed.
+- Unlocks persist client-side as canonical Tale slugs (`tb_unlocked`);
+  raw QR codes are never stored in localStorage or logged.
+- **QR secrets hygiene:** never paste real code values into tickets,
+  chat, screenshots, logs, or audit payloads.
+- **Deployment/application is operator-gated** — nothing in this repo
+  deploys the function or applies the migration automatically. QR
+  minting/rotation UI and usage accounting remain deferred.
+
+---
+
 ## Migration Progress
 
 ### ✅ Phase 1 — Project Structure

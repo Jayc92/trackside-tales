@@ -1,31 +1,28 @@
-// ================== QR VALIDATION REMOTE (ADMIN-v6.6) ==================
+// ================== QR VALIDATION REMOTE (PUBLIC-v7.4B.P.13b) ==================
 // Thin client for the `validate-qr` Supabase Edge Function.
 //
-// Behavior contract:
-//   * Returns null whenever the remote path can't be relied on:
-//       - Supabase env vars missing (USE_REMOTE_QR_VALIDATION false)
-//       - VITE_USE_REMOTE_QR_VALIDATION not set to 'true'
-//       - Network error / fetch threw
-//       - Non-200 HTTP status
-//       - Body not JSON / shape unrecognized
-//     In every null case, the caller is expected to fall back to local
-//     `parseQRCode` and proceed exactly as today. Returning null is the
-//     "remote unavailable, behave as if this file were never imported"
-//     escape hatch.
-//   * Returns a typed `QrValidationResult` only when the function
-//     responded with `200 + ok:true` AND every required field validated.
-//   * Returns a typed `QrValidationFailure` when the function explicitly
-//     responded with `200 + ok:false` AND the reason string is one we
-//     recognize. This is distinct from null: the server reached us, the
-//     code was decisively rejected, and the caller may want to surface
-//     a different message ("Code not recognized" vs. "Couldn't reach
-//     the server, trying offline mode").
+// P.13b makes this path AUTHORITATIVE: when USE_REMOTE_QR_VALIDATION is
+// on (the production posture), a scan unlocks a Tale only if this call
+// returns { status: 'valid' } with the server-resolved canonical slug.
+// The three outcomes matter to the caller:
 //
-// This file is exported but intentionally NOT imported by any page or
-// context in v6.6. ScanPage and parseQRCode remain untouched. v6.7 will
-// wire this in as enrichment-not-gatekeeping (remote success augments
-// the local parse; remote failure never blocks an unlock the local
-// parser would have allowed).
+//   * 'valid'       — the server decisively accepted the code. The
+//                     returned taleSlug is the Tale row's canonical
+//                     slug (never the raw scanned payload).
+//   * 'invalid'     — the server was reached and decisively rejected
+//                     the code (200 + { valid:false }). The server body
+//                     is deliberately generic; no reason taxonomy exists
+//                     client-side either.
+//   * 'unavailable' — flag off, env missing, network error, non-200,
+//                     or unparseable body. The caller FAILS CLOSED: no
+//                     unlock, no fallback to permissive local parsing.
+//                     (The bounded curated demo path is a separate,
+//                     explicitly-gated mode — see qrValidation.ts.)
+//
+// The v6.6 receipt fields (qrCodeId / receipt / receiptExp) are gone:
+// the hardened function returns only { valid, taleSlug }, and the
+// log-events receipt pipeline it fed was never deployed. No raw code
+// or validation artifact is ever persisted client-side.
 
 import {
   SUPABASE_URL,
@@ -35,102 +32,37 @@ import {
 
 // ---- public types -------------------------------------------------------
 
-export type QrValidationSource = 'scan' | 'direct' | 'admin' | 'share';
+export type QrRemoteValidation =
+  | { status: 'valid'; taleSlug: string }
+  | { status: 'invalid' }
+  | { status: 'unavailable' };
 
-export type QrValidationFailureReason =
-  | 'bad_request'
-  | 'unknown_code'
-  | 'inactive'
-  | 'tale_unavailable'
-  | 'method_not_allowed';
-
-export interface QrValidationSuccess {
-  ok:         true;
-  taleSlug:   string;
-  isDemo:     boolean;
-  qrCodeId:   string;
-  receipt:    string;
-  receiptExp: number;
-}
-
-export interface QrValidationFailure {
-  ok:     false;
-  reason: QrValidationFailureReason;
-}
-
-export type QrValidationResult = QrValidationSuccess | QrValidationFailure;
-
-// ---- guards -------------------------------------------------------------
-
-const KNOWN_REASONS = new Set<QrValidationFailureReason>([
-  'bad_request',
-  'unknown_code',
-  'inactive',
-  'tale_unavailable',
-  'method_not_allowed',
-]);
+// Client-side sanity bounds mirroring the server (4–512 chars after
+// trim). Out-of-bounds input is decisively invalid — no request needed.
+const MIN_CODE_LENGTH = 4;
+const MAX_CODE_LENGTH = 512;
 
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-function asString(v: unknown): string | null {
-  return typeof v === 'string' ? v : null;
-}
-
-function asNumber(v: unknown): number | null {
-  return typeof v === 'number' && Number.isFinite(v) ? v : null;
-}
-
-function parseSuccess(body: Record<string, unknown>): QrValidationSuccess | null {
-  const taleSlug   = asString(body.taleSlug);
-  const qrCodeId   = asString(body.qrCodeId);
-  const receipt    = asString(body.receipt);
-  const receiptExp = asNumber(body.receiptExp);
-  if (!taleSlug || !qrCodeId || !receipt || receiptExp === null) return null;
-  return {
-    ok:        true,
-    taleSlug,
-    isDemo:    body.isDemo === true,
-    qrCodeId,
-    receipt,
-    receiptExp,
-  };
-}
-
-function parseFailure(body: Record<string, unknown>): QrValidationFailure | null {
-  const reasonStr = asString(body.reason);
-  if (!reasonStr) return null;
-  if (!KNOWN_REASONS.has(reasonStr as QrValidationFailureReason)) return null;
-  return { ok: false, reason: reasonStr as QrValidationFailureReason };
-}
-
 // ---- request ------------------------------------------------------------
 
 /**
- * Call the validate-qr Edge Function for the supplied code.
+ * Validate a scanned code against the validate-qr Edge Function.
  *
- * Returns null when the remote path is off, unreachable, or replies
- * with anything we can't parse. Returns a typed result only when the
- * server gave us a clean 200 + ok:true (or 200 + ok:false with a
- * recognized reason).
+ * Sends ONLY { code } — the server reads nothing else. Never throws.
+ * Never logs the code value.
  */
-export async function validateQrRemote(
-  code: string,
-  guestId?: string | null,
-  source?: QrValidationSource,
-): Promise<QrValidationResult | null> {
-  // Flag / config gate. Without this, the helper is a no-op even if a
-  // future caller forgets to check the flag itself.
-  if (!USE_REMOTE_QR_VALIDATION) return null;
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
-  if (typeof code !== 'string' || !code.trim()) return null;
+export async function validateQrRemote(code: string): Promise<QrRemoteValidation> {
+  if (!USE_REMOTE_QR_VALIDATION) return { status: 'unavailable' };
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { status: 'unavailable' };
 
-  const body: Record<string, unknown> = { code: code.trim() };
-  if (guestId && typeof guestId === 'string' && guestId.trim()) {
-    body.guestId = guestId.trim();
+  if (typeof code !== 'string') return { status: 'invalid' };
+  const trimmed = code.trim();
+  if (trimmed.length < MIN_CODE_LENGTH || trimmed.length > MAX_CODE_LENGTH) {
+    return { status: 'invalid' };
   }
-  if (source) body.source = source;
 
   let res: Response;
   try {
@@ -142,31 +74,33 @@ export async function validateQrRemote(
         Authorization:  `Bearer ${SUPABASE_ANON_KEY}`,
         Accept:         'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ code: trimmed }),
     });
-  } catch (err) {
-    console.warn('[trackside] validate-qr unavailable — falling back to local parse', err);
-    return null;
+  } catch {
+    // Network failure. No error object is logged here on purpose —
+    // fetch errors can embed the request URL, and the caller already
+    // surfaces an "unavailable" message.
+    return { status: 'unavailable' };
   }
 
-  if (!res.ok) {
-    // 4xx/5xx — caller falls back to local parse. We deliberately do
-    // not pass these through as failures; "couldn't reach the server"
-    // and "server said no" are different signals to the UI.
-    return null;
-  }
+  // Non-200 = the server did not produce a decisive validation verdict
+  // (missing function, misconfiguration, 5xx). Fail closed as
+  // unavailable — never as a local-parse fallback.
+  if (res.status !== 200) return { status: 'unavailable' };
 
   let parsed: unknown;
   try {
-    const text = await res.text();
-    parsed = text ? JSON.parse(text) : null;
-  } catch (err) {
-    console.warn('[trackside] validate-qr response not JSON', err);
-    return null;
+    parsed = await res.json();
+  } catch {
+    return { status: 'unavailable' };
   }
-  if (!isObj(parsed)) return null;
+  if (!isObj(parsed)) return { status: 'unavailable' };
 
-  if (parsed.ok === true) return parseSuccess(parsed);
-  if (parsed.ok === false) return parseFailure(parsed);
-  return null;
+  if (parsed.valid === true && typeof parsed.taleSlug === 'string' && parsed.taleSlug) {
+    return { status: 'valid', taleSlug: parsed.taleSlug };
+  }
+  if (parsed.valid === false) {
+    return { status: 'invalid' };
+  }
+  return { status: 'unavailable' };
 }

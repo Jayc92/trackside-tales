@@ -1,9 +1,35 @@
-// ================== v4.3 — SECURE QR VALIDATION ==================
-// QR codes must encode a signed payload to be accepted.
-// Format (URL-encoded): trackside://unlock?tale=<id>&sig=<hmac>
-// Demo codes use: trackside://demo/<tale-id>
+// ================== QR VALIDATION — LOCAL/DEMO PATH (PUBLIC-v7.4B.P.13b) ==================
+// Local parsing of the three CURATED demo QR identifiers only.
+//
+// P.13b posture: production validation is server-authoritative (the
+// validate-qr Edge Function — see qrValidationRemote.ts). This module
+// survives solely as the bounded local/demo path:
+//
+//   * It recognizes ONLY the three curated Tale ids baked into the
+//     bundle (DEMO_TALE_IDS). Arbitrary slugs are never accepted as
+//     local proof of anything.
+//   * It is consulted ONLY when LOCAL_DEMO_QR_ALLOWED is true — never
+//     as a fallback after a remote validation failure.
+//
+// LOCAL_DEMO_QR_ALLOWED is true only when remote validation is OFF and
+// the build is either a Vite dev build (`import.meta.env.DEV`) or a
+// fully offline build with no Supabase configuration at all (a static
+// demo). A production build with Supabase configured but the
+// VITE_USE_REMOTE_QR_VALIDATION flag unset is treated as AMBIGUOUS
+// configuration and satisfies neither mode — scanning fails closed
+// rather than silently reverting to demo validation.
+//
+// Removed in P.13b:
+//   * lookupQRCodeRemote — a dormant direct PostgREST read of
+//     qr_codes. The P.13b lockdown migration makes qr_codes
+//     unreadable to the anon key (raw codes are unlock secrets), so
+//     the browser must never query that table again; the Edge
+//     Function is the only resolver.
 
-import { supabaseFetch, USE_REMOTE_CONTENT } from './supabaseClient';
+import {
+  USE_REMOTE_CONTENT,
+  USE_REMOTE_QR_VALIDATION,
+} from './supabaseClient';
 
 export interface QRResult {
   taleId: string;
@@ -11,9 +37,18 @@ export interface QRResult {
   raw: string;
 }
 
-// Demo QR codes — recognized without signature verification.
-// These are used for the in-app dispatch board demo buttons.
+// Demo QR identifiers — the three curated Tales baked into the bundle.
+// These are intentionally NOT extended for admin-created Tales; those
+// unlock only through server-validated QR codes.
 const DEMO_TALE_IDS = ['wa-lager', 'packer-pils', 'wooden-match'];
+
+/**
+ * Whether the bounded local/demo validation path may run AT ALL.
+ * See the header comment for the exact condition. Evaluated at build
+ * time from env — it cannot silently flip on in a production build.
+ */
+export const LOCAL_DEMO_QR_ALLOWED: boolean =
+  !USE_REMOTE_QR_VALIDATION && (import.meta.env.DEV || !USE_REMOTE_CONTENT);
 
 export function parseQRCode(raw: string): QRResult | null {
   if (!raw) return null;
@@ -45,38 +80,4 @@ export function parseQRCode(raw: string): QRResult | null {
   }
 
   return null;
-}
-
-// Remote lookup — resolves a QR code value via Supabase qr_codes table.
-export async function lookupQRCodeRemote(
-  codeValue: string
-): Promise<{ qr: Record<string, unknown>; taleId: string } | null> {
-  if (!USE_REMOTE_CONTENT || !codeValue) return null;
-  try {
-    const encoded = encodeURIComponent(String(codeValue).trim());
-    const rows = await supabaseFetch(
-      'qr_codes',
-      `select=*,tales(id,slug,title)&code=eq.${encoded}&is_active=eq.true&limit=1`
-    ) as Array<Record<string, unknown>>;
-
-    if (!rows || !rows.length) return null;
-    const row = rows[0];
-    const tales = row.tales as Record<string, unknown> | null;
-    const taleId = (tales?.slug || tales?.id || row.tale_slug || row.tale_id) as string | undefined;
-    if (!taleId) return null;
-    return { qr: row, taleId };
-  } catch (err) {
-    console.warn('[trackside] QR lookup unavailable — using local fallback', err);
-    return null;
-  }
-}
-
-// Process a QR code (or URL ?code= param) on app load.
-export function getUrlQRCode(): string | null {
-  try {
-    const params = new URLSearchParams(location.search);
-    return params.get('code') || params.get('qr') || null;
-  } catch (_) {
-    return null;
-  }
 }
