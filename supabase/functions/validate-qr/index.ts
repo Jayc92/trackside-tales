@@ -1,141 +1,133 @@
-// ================== validate-qr (ADMIN-v6.6) ==================
-// Server-side QR validation. Looks up an exact `code` value in
-// `qr_codes`, follows `redirect_to` if set, and returns the
-// resolved tale slug along with a short-lived HMAC-signed receipt
-// that downstream event-log functions (planned for ADMIN-v6.8)
-// will use to authorize a single unlock_event insert.
+// ================== validate-qr (SUPABASE/PUBLIC-v7.4B.P.13b) ==================
+// Server-authoritative QR validation for Trackside Tales.
 //
-// Behavior contract (this file):
-//   * POST JSON body: { code: string, guestId?: string, source?: string }
-//   * 200 with { ok: true, taleSlug, isDemo, qrCodeId, receipt, receiptExp }
-//     when the code resolves to a published+active tale.
-//   * 200 with { ok: false, reason: <string> } for known failure modes
-//     (unknown_code, inactive, tale_unavailable, bad_request).
-//     Returning 200 keeps the public client's network handler simple —
-//     the client treats a non-2xx as "service unreachable, fall back to
-//     local parse" rather than "bad input."
-//   * 5xx only for genuine server errors (DB unreachable, env vars
-//     missing, signing failure). The public client reads any non-200
-//     as null and degrades to local QR parsing.
-//   * NO writes. unlock_events / game_events / badge_events /
-//     user_badges inserts are intentionally NOT performed here. Those
-//     belong to the log-events function in ADMIN-v6.8.
+// Supersedes the ADMIN-v6.6 draft, which was written against the
+// canonical (greenfield) qr_codes schema and would 500 against
+// production: it selected `purpose` and `redirect_to` (absent in
+// production), ignored `status` / `valid_from` / `valid_until` /
+// `max_uses`, could not resolve legacy `tale_id`-associated rows, and
+// returned distinct failure reasons plus internal identifiers
+// (qrCodeId, HMAC receipt). The receipt/log-events handshake it
+// anticipated was never deployed; P.13b removes it from this contract
+// entirely (event logging remains a deferred, separate concern).
 //
-// Env vars (Supabase Cloud function settings):
-//   * SUPABASE_URL              — auto-injected
-//   * SUPABASE_SERVICE_ROLE_KEY — auto-injected; required to read
-//     qr_codes (RLS service-role-only) and tales (public read fine,
-//     but we use the service role for both to keep one client).
-//   * RECEIPT_SECRET            — required; HMAC-SHA256 signing key
-//     for the receipt. Anything ≥32 bytes of randomness.
+// Contract (P.13b):
+//   * POST JSON { "code": string } — nothing else is read from the body.
+//   * 200 { "valid": true, "taleSlug": "<canonical-slug>" } when and only
+//     when the code row is active and usable AND its Tale is
+//     published + active. The slug comes from the Tale row, never from
+//     client input.
+//   * 200 { "valid": false, "error": "invalid_qr" } for EVERY validation
+//     failure — unknown, inactive, revoked, expired, future-dated,
+//     max_uses-limited, malformed association, or unavailable Tale.
+//     One generic body by design: distinct reasons would let an
+//     unauthenticated caller probe which codes exist, which are merely
+//     inactive, and whether a Tale exists. 200 (not 4xx) so the client
+//     can distinguish "the server decisively rejected this code" from
+//     "the server is unreachable" (non-200) — both fail closed, but the
+//     UI copy differs.
+//   * 400 for unparseable/invalid request bodies, 405 for non-POST,
+//     503 for server-side misconfiguration or database errors — all
+//     with the same generic body. The client treats any non-200 as
+//     "validation unavailable" and never falls back to permissive
+//     local unlocking.
+//   * NO writes. NO receipt. NO qr id, raw code, tale_id, campaign/batch
+//     keys, status detail, or database error text in any response.
 //
-// Local edge runtime is intentionally disabled in supabase/config.toml
-// (corporate TLS inspection blocks Deno deps). Smoke testing therefore
-// happens against the deployed function on Supabase Cloud.
+// Env (auto-injected by the Supabase Edge runtime — never shipped to
+// the browser):
+//   * SUPABASE_URL
+//   * SUPABASE_SERVICE_ROLE_KEY — required because qr_codes is RLS
+//     service-role-only (P.13b lockdown migration removes the legacy
+//     anon-readable demo_qr_codes_select policy).
+//
+// max_uses posture: production has no trustworthy per-code redemption
+// ledger (unlock_events is a read-side compat VIEW over legacy tables;
+// nothing writes a redemption row in this flow). Enforcing a numeric
+// cap without a ledger would be theater, and silently ignoring it
+// would over-honor a row an operator explicitly tried to limit. We
+// therefore FAIL CLOSED: a non-null max_uses makes the code invalid
+// until a real usage ledger exists. All six current production rows
+// have max_uses = NULL, so none regress.
 
 // deno-lint-ignore-file no-explicit-any
 
-const ENCODER = new TextEncoder();
-const RECEIPT_TTL_SECONDS = 5 * 60; // 5 minutes — log-events accepts within this window
+// ---- CORS ----------------------------------------------------------------
+// Explicit origin allowlist (the earlier '*' wildcard is retired):
+// the deployed GitHub Pages origin plus local Vite dev/preview ports.
+// The response echoes the request Origin only when allowlisted; other
+// origins get no CORS headers (browser blocks the read). Non-browser
+// callers (no Origin header) are unaffected — CORS is not the security
+// boundary here, the generic response body is.
+const ALLOWED_ORIGINS = new Set<string>([
+  'https://jayc92.github.io',   // GitHub Pages production origin
+  'http://localhost:5173',      // vite dev
+  'http://localhost:4173',      // vite preview (default)
+  'http://localhost:4174',      // vite preview (project convention)
+]);
 
-// ---- env helpers --------------------------------------------------------
-function readEnv(name: string): string | null {
-  // @ts-ignore Deno is available in the Supabase Edge runtime.
-  const v = (typeof Deno !== 'undefined' && Deno.env?.get?.(name)) || '';
-  return v ? String(v) : null;
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') ?? '';
+  if (!ALLOWED_ORIGINS.has(origin)) return {};
+  return {
+    'Access-Control-Allow-Origin':  origin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary':                         'Origin',
+  };
 }
 
-// ---- response helpers ---------------------------------------------------
-function json(status: number, body: Record<string, unknown>): Response {
+// ---- responses -------------------------------------------------------------
+function jsonResponse(
+  req: Request,
+  status: number,
+  body: Record<string, unknown>,
+): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      'Content-Type':                'application/json; charset=utf-8',
-      'Cache-Control':               'no-store',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers':
-        'authorization, x-client-info, apikey, content-type',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Content-Type':  'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      ...corsHeaders(req),
     },
   });
 }
 
-function ok(payload: Record<string, unknown>): Response {
-  return json(200, { ok: true, ...payload });
+/** The single generic failure body — see the header comment for why. */
+function invalid(req: Request, status = 200): Response {
+  return jsonResponse(req, status, { valid: false, error: 'invalid_qr' });
 }
 
-function fail(reason: string): Response {
-  // 200 + ok:false is intentional — see header comment.
-  return json(200, { ok: false, reason });
+// ---- env -------------------------------------------------------------------
+function readEnv(name: string): string | null {
+  // @ts-ignore Deno is available in the Supabase Edge runtime.
+  const value = (typeof Deno !== 'undefined' && Deno.env?.get?.(name)) || '';
+  return value ? String(value) : null;
 }
 
-// ---- base64url ----------------------------------------------------------
-function b64urlEncode(bytes: Uint8Array): string {
-  let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+// ---- input -----------------------------------------------------------------
+// Opaque code length bounds. Real codes are operator-minted values;
+// 4 chars is below any plausible code, 512 far above — the bounds
+// exist to reject junk cheaply, not to encode a format. A bare Tale
+// slug that happens to fall in-range is still useless: only an exact
+// qr_codes.code match validates, so a slug is never proof of unlock.
+const MIN_CODE_LENGTH = 4;
+const MAX_CODE_LENGTH = 512;
 
-// ---- HMAC receipt -------------------------------------------------------
-interface ReceiptPayload {
-  g: string | null;   // guestId (anonymous allowed)
-  t: string;          // taleSlug
-  q: string;          // qrCodeId (uuid)
-  s: string;          // source ('scan' | 'direct' | 'admin' | 'share')
-  exp: number;        // unix seconds
-}
-
-async function signReceipt(payload: ReceiptPayload, secret: string): Promise<string> {
-  const payloadJson = JSON.stringify(payload);
-  const payloadB64 = b64urlEncode(ENCODER.encode(payloadJson));
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    ENCODER.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, ENCODER.encode(payloadB64));
-  const sigB64 = b64urlEncode(new Uint8Array(sig));
-
-  return `${payloadB64}.${sigB64}`;
-}
-
-// ---- input parsing ------------------------------------------------------
-interface ValidateBody {
-  code: string;
-  guestId: string | null;
-  source: 'scan' | 'direct' | 'admin' | 'share';
-}
-
-function asString(v: unknown): string | null {
-  return typeof v === 'string' ? v : null;
-}
-
-function parseBody(raw: unknown): ValidateBody | null {
+function parseCode(raw: unknown): string | null {
   if (typeof raw !== 'object' || raw === null) return null;
-  const r = raw as Record<string, unknown>;
-
-  const code = asString(r.code);
-  if (!code || !code.trim()) return null;
-
-  const guestIdRaw = asString(r.guestId);
-  const guestId = guestIdRaw && guestIdRaw.trim() ? guestIdRaw.trim() : null;
-
-  const sourceRaw = asString(r.source);
-  const source: ValidateBody['source'] =
-    sourceRaw === 'scan' || sourceRaw === 'direct' ||
-    sourceRaw === 'admin' || sourceRaw === 'share'
-      ? sourceRaw
-      : 'scan';
-
-  return { code: code.trim(), guestId, source };
+  const codeValue = (raw as Record<string, unknown>).code;
+  if (typeof codeValue !== 'string') return null;
+  const trimmed = codeValue.trim();
+  if (trimmed.length < MIN_CODE_LENGTH || trimmed.length > MAX_CODE_LENGTH) {
+    return null;
+  }
+  return trimmed;
 }
 
-// ---- DB helpers (PostgREST via service role) ----------------------------
+// ---- PostgREST (service role) ----------------------------------------------
 interface DbConfig {
-  url: string;
+  url:        string;
   serviceKey: string;
 }
 
@@ -144,8 +136,7 @@ async function dbSelect(
   table: string,
   query: string,
 ): Promise<any[] | null> {
-  const url = `${cfg.url}/rest/v1/${table}?${query}`;
-  const res = await fetch(url, {
+  const res = await fetch(`${cfg.url}/rest/v1/${table}?${query}`, {
     headers: {
       apikey:        cfg.serviceKey,
       Authorization: `Bearer ${cfg.serviceKey}`,
@@ -153,133 +144,143 @@ async function dbSelect(
     },
   });
   if (!res.ok) return null;
-  const text = await res.text();
-  if (!text) return [];
   try {
-    const parsed = JSON.parse(text);
+    const parsed = await res.json();
     return Array.isArray(parsed) ? parsed : null;
   } catch {
     return null;
   }
 }
 
-// ---- main handler -------------------------------------------------------
+// ---- tale resolution ---------------------------------------------------------
+interface TaleRow {
+  id:        string;
+  slug:      string;
+  status:    string;
+  is_active: boolean;
+}
+
+async function fetchTale(
+  cfg: DbConfig,
+  column: 'slug' | 'id',
+  value: string,
+): Promise<TaleRow | null | 'db_error'> {
+  const rows = await dbSelect(
+    cfg,
+    'tales',
+    `select=id,slug,status,is_active&${column}=eq.${encodeURIComponent(value)}&limit=1`,
+  );
+  if (rows === null) return 'db_error';
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  if (typeof row.slug !== 'string' || typeof row.id !== 'string') return null;
+  return row as TaleRow;
+}
+
+// ---- main handler ------------------------------------------------------------
 async function handle(req: Request): Promise<Response> {
-  // CORS preflight.
   if (req.method === 'OPTIONS') {
-    return json(204, {});
+    return new Response(null, { status: 204, headers: corsHeaders(req) });
   }
-
   if (req.method !== 'POST') {
-    return json(405, { ok: false, reason: 'method_not_allowed' });
+    return invalid(req, 405);
   }
 
-  // Env preflight. Missing config is a deploy-time mistake; surface
-  // it as 500 so the client falls back to local parse.
   const supabaseUrl = readEnv('SUPABASE_URL');
   const serviceKey  = readEnv('SUPABASE_SERVICE_ROLE_KEY');
-  const secret      = readEnv('RECEIPT_SECRET');
-  if (!supabaseUrl || !serviceKey || !secret) {
-    console.error('[validate-qr] missing env vars', {
-      hasUrl:        Boolean(supabaseUrl),
-      hasServiceKey: Boolean(serviceKey),
-      hasSecret:     Boolean(secret),
-    });
-    return json(500, { ok: false, reason: 'misconfigured' });
+  if (!supabaseUrl || !serviceKey) {
+    // Deploy-time mistake. Log the category only — never request data.
+    console.error('[validate-qr] missing required env');
+    return invalid(req, 503);
   }
   const cfg: DbConfig = { url: supabaseUrl, serviceKey };
 
-  // Body.
   let bodyRaw: unknown;
   try {
     bodyRaw = await req.json();
   } catch {
-    return fail('bad_request');
+    return invalid(req, 400);
   }
-  const body = parseBody(bodyRaw);
-  if (!body) return fail('bad_request');
+  const code = parseCode(bodyRaw);
+  if (code === null) {
+    return invalid(req, 400);
+  }
 
-  // 1. Look up qr_codes by exact code.
-  const codeParam = encodeURIComponent(body.code);
+  // 1. Exact-match lookup. The code value itself is never logged and
+  //    never echoed back.
   const qrRows = await dbSelect(
     cfg,
     'qr_codes',
-    `select=id,code,tale_slug,redirect_to,is_active,purpose&code=eq.${codeParam}&limit=1`,
+    'select=id,tale_slug,tale_id,status,is_active,valid_from,valid_until,max_uses' +
+      `&code=eq.${encodeURIComponent(code)}&limit=1`,
   );
   if (qrRows === null) {
-    // DB error — surface as 500 so client falls back. Don't pretend
-    // an unknown_code outcome.
-    return json(500, { ok: false, reason: 'lookup_failed' });
+    console.error('[validate-qr] qr_codes lookup failed');
+    return invalid(req, 503);
   }
   if (qrRows.length === 0) {
-    return fail('unknown_code');
+    return invalid(req); // unknown code — indistinguishable from any other failure
   }
   const qr = qrRows[0];
-  if (qr.is_active === false) {
-    return fail('inactive');
+
+  // 2. Usability gates. Every one fails to the same generic response.
+  if (qr.status !== 'active') return invalid(req);       // inactive / revoked
+  if (qr.is_active !== true)  return invalid(req);       // NULL fails closed
+  const nowMs = Date.now();
+  if (typeof qr.valid_from === 'string' && Date.parse(qr.valid_from) > nowMs) {
+    return invalid(req);                                  // not yet valid
+  }
+  if (typeof qr.valid_until === 'string' && Date.parse(qr.valid_until) < nowMs) {
+    return invalid(req);                                  // expired
+  }
+  if (qr.max_uses !== null && qr.max_uses !== undefined) {
+    // Fail closed — no redemption ledger exists to enforce a cap.
+    // See the header comment. All current production rows are NULL.
+    return invalid(req);
   }
 
-  // 2. Resolve target slug. redirect_to wins when set.
-  const targetSlug: string | null =
-    asString(qr.redirect_to) || asString(qr.tale_slug);
-  if (!targetSlug) {
-    // Schema requires tale_slug NOT NULL, so this is defensive only.
-    return fail('unknown_code');
+  // 3. Tale resolution — supports both production association models.
+  //    tale_slug (modern rows) wins; tale_id (legacy rows) is the
+  //    fallback; when BOTH are set they must agree, otherwise the row
+  //    is misconfigured and fails closed.
+  const taleSlug = typeof qr.tale_slug === 'string' && qr.tale_slug.trim() !== ''
+    ? qr.tale_slug.trim()
+    : null;
+  const taleId = typeof qr.tale_id === 'string' && qr.tale_id !== ''
+    ? qr.tale_id
+    : null;
+
+  let tale: TaleRow | null | 'db_error';
+  if (taleSlug !== null) {
+    tale = await fetchTale(cfg, 'slug', taleSlug);
+    if (tale !== null && tale !== 'db_error' && taleId !== null && tale.id !== taleId) {
+      // Association mismatch: the slug and the id point at different
+      // Tales. Fail closed rather than guess which one the operator meant.
+      return invalid(req);
+    }
+  } else if (taleId !== null) {
+    tale = await fetchTale(cfg, 'id', taleId);
+  } else {
+    return invalid(req); // no association at all
   }
 
-  // 3. Confirm the tale exists and is published+active.
-  const slugParam = encodeURIComponent(targetSlug);
-  const taleRows = await dbSelect(
-    cfg,
-    'tales',
-    `select=slug,is_active,status&slug=eq.${slugParam}&limit=1`,
-  );
-  if (taleRows === null) {
-    return json(500, { ok: false, reason: 'lookup_failed' });
+  if (tale === 'db_error') {
+    console.error('[validate-qr] tales lookup failed');
+    return invalid(req, 503);
   }
-  if (taleRows.length === 0) {
-    return fail('tale_unavailable');
-  }
-  const tale = taleRows[0];
-  if (tale.is_active !== true || tale.status !== 'published') {
-    return fail('tale_unavailable');
+  if (tale === null) return invalid(req);
+
+  // 4. The Tale itself must be publicly visible. This mirrors the
+  //    public content filter (status='published' AND is_active) so a
+  //    QR can never unlock a draft or archived Tale — and the failure
+  //    is indistinguishable from an unknown code.
+  if (tale.status !== 'published' || tale.is_active !== true) {
+    return invalid(req);
   }
 
-  // 4. Sign the receipt.
-  const exp = Math.floor(Date.now() / 1000) + RECEIPT_TTL_SECONDS;
-  const qrCodeId = String(qr.id);
-  let receipt: string;
-  try {
-    receipt = await signReceipt(
-      {
-        g:   body.guestId,
-        t:   targetSlug,
-        q:   qrCodeId,
-        s:   body.source,
-        exp,
-      },
-      secret,
-    );
-  } catch (err) {
-    console.error('[validate-qr] signing failed', err);
-    return json(500, { ok: false, reason: 'sign_failed' });
-  }
-
-  // 5. Compute isDemo. The existing public client treats codes of
-  // the form `trackside://demo/<id>` as "demo" — we honor that here.
-  // qr_codes.purpose = 'test' is also treated as demo so seed rows
-  // don't change shape if someone mints a non-demo URL with that
-  // purpose later.
-  const isDemo =
-    /^trackside:\/\/demo\//i.test(body.code) || qr.purpose === 'test';
-
-  return ok({
-    taleSlug:   targetSlug,
-    isDemo,
-    qrCodeId,
-    receipt,
-    receiptExp: exp,
-  });
+  // 5. Success: the canonical slug from the Tale row — the minimum
+  //    non-secret result the public app needs.
+  return jsonResponse(req, 200, { valid: true, taleSlug: tale.slug });
 }
 
 // @ts-ignore Deno is available in the Supabase Edge runtime.
@@ -287,7 +288,8 @@ Deno.serve(async (req: Request) => {
   try {
     return await handle(req);
   } catch (err) {
+    // Never leak error detail to the caller; category-only server log.
     console.error('[validate-qr] unhandled error', err);
-    return json(500, { ok: false, reason: 'server_error' });
+    return invalid(req, 503);
   }
 });

@@ -1,30 +1,33 @@
-# validate-qr (ADMIN-v6.6)
+# validate-qr (SUPABASE/PUBLIC-v7.4B.P.13b)
 
-Server-side QR validation for Trackside Tales. Resolves a scanned `code`
-value to a published Tale slug and returns a short-lived HMAC-signed
-receipt that downstream event-log functions (planned for ADMIN-v6.8)
-will accept as proof a scan happened.
+Server-authoritative QR validation for Trackside Tales. Resolves a
+scanned opaque `code` value to the canonical slug of a published,
+active Tale. Read-only: no unlock/game/badge event writes.
 
-This function is **read-only**. It does not insert into `unlock_events`,
-`game_events`, `badge_events`, or `user_badges`. Event logging belongs to
-a separate `log-events` function in a later phase.
+This revision supersedes the ADMIN-v6.6 draft, which targeted the
+canonical greenfield schema and would have failed against production
+(it selected `purpose`/`redirect_to`, which production does not have,
+and ignored `status`/`valid_from`/`valid_until`/`max_uses`/`tale_id`).
+The v6.6 HMAC receipt handshake is removed from the contract — the
+log-events pipeline it fed was never deployed and remains deferred.
+
+**Deployment is operator-gated.** This source is committed but NOT
+deployed by any automation. See the rollout sequence in the repo
+README ("QR validation" section).
 
 ---
 
 ## Required environment variables
 
-Set these on the deployed function (Supabase Cloud → Edge Functions →
-validate-qr → Settings):
+Both are auto-injected by the Supabase Edge runtime — nothing to set
+manually, and nothing here ever reaches the browser:
 
-| Name                        | Source                                     | Notes                                                        |
-|-----------------------------|--------------------------------------------|--------------------------------------------------------------|
-| `SUPABASE_URL`              | Auto-injected by Supabase                  | Project REST URL.                                            |
-| `SUPABASE_SERVICE_ROLE_KEY` | Auto-injected by Supabase                  | Required to read `qr_codes` (RLS service-role only).         |
-| `RECEIPT_SECRET`            | Set manually; ≥32 bytes random             | HMAC-SHA256 signing key. Rotate any time — receipts are 5m TTL so the next deploy after rotation invalidates only in-flight receipts. |
+| Name                        | Notes                                                    |
+|-----------------------------|----------------------------------------------------------|
+| `SUPABASE_URL`              | Project REST URL.                                        |
+| `SUPABASE_SERVICE_ROLE_KEY` | Required: `qr_codes` is RLS service-role-only after the P.13b lockdown migration. |
 
-If any of these is missing, the function returns `500` with
-`{ ok: false, reason: "misconfigured" }`. The public client treats any
-non-`200` as "service unreachable" and falls back to local QR parsing.
+`RECEIPT_SECRET` is no longer used.
 
 ---
 
@@ -35,176 +38,95 @@ POST /functions/v1/validate-qr
 Content-Type: application/json
 ```
 
-```jsonc
-{
-  "code":    "trackside://demo/wa-lager",   // required, exact code value
-  "guestId": "g_ab1c2def3_xyz0",            // optional; null/anonymous allowed
-  "source":  "scan"                          // optional; "scan" | "direct" | "admin" | "share"; defaults to "scan"
-}
-```
-
-Notes:
-- `code` is matched **exactly** against `qr_codes.code`. The function does
-  not normalize URLs, strip query strings, or lowercase the value — admin
-  printing must use the same string the column stores.
-- `guestId` is the client-side `tb_guest_id` (`g_<rand>_<ts>`). It is
-  **not** validated against `guest_profiles`; the receipt simply binds
-  the eventual unlock to whichever guest_id was claimed at scan time.
-- `source` defaults to `"scan"` so a missing field maps to the most
-  common case (camera scan in the public app).
-
----
-
-## Response
-
-All known failure modes return **HTTP 200** with `ok: false`. Real server
-errors (DB unreachable, env vars missing, signing failure) return
-**HTTP 500**. The public client treats anything but `200 + ok:true` as
-"degrade to local parse."
-
-### Success
-
 ```json
-{
-  "ok":         true,
-  "taleSlug":   "wa-lager",
-  "isDemo":     true,
-  "qrCodeId":   "0f6c4b58-…",
-  "receipt":    "<base64url-payload>.<base64url-signature>",
-  "receiptExp": 1717113600
-}
+{ "code": "<exact scanned code value>" }
 ```
 
-### Failure (200)
+`code` must be a string; it is trimmed and must be 4–512 characters.
+No other body fields are read. A bare Tale slug is not proof of
+anything — only an exact `qr_codes.code` match can validate.
 
-```json
-{ "ok": false, "reason": "<reason>" }
+## Responses
+
+| Case | Status | Body |
+|---|---|---|
+| Code valid + Tale published/active | 200 | `{ "valid": true, "taleSlug": "<canonical-slug>" }` |
+| Any validation failure (unknown, inactive, revoked, expired, future-dated, `max_uses` set, bad association, Tale draft/archived/missing) | 200 | `{ "valid": false, "error": "invalid_qr" }` |
+| Malformed body / out-of-bounds code | 400 | same generic body |
+| Non-POST | 405 | same generic body |
+| Misconfiguration / database error | 503 | same generic body |
+
+One generic failure body by design: distinct reasons would let an
+unauthenticated caller enumerate which codes exist, which are merely
+inactive, and whether a Tale exists. The 200-vs-non-200 split lets the
+client distinguish "decisively rejected" from "service unreachable" —
+both fail closed in the app.
+
+The response never contains the QR row id, raw code, `tale_id`,
+campaign/batch keys, status detail, or database error text.
+
+## Validation rules
+
+A code validates only when ALL hold:
+
+1. Exact `qr_codes.code` match.
+2. `status = 'active'`.
+3. `is_active IS TRUE` (NULL fails closed).
+4. `valid_from IS NULL OR valid_from <= now()`.
+5. `valid_until IS NULL OR valid_until >= now()`.
+6. `max_uses IS NULL` — **fail-closed**: no trustworthy redemption
+   ledger exists (production `unlock_events` is a read-side compat
+   view; nothing records redemptions in this flow), so a numeric cap
+   cannot be honestly enforced. A non-null `max_uses` therefore makes
+   the code invalid until a real ledger ships. All six current
+   production rows have `max_uses = NULL`.
+7. Tale association resolves: `tale_slug` (modern rows) preferred,
+   `tale_id` (legacy rows) fallback; if both are set they must
+   identify the same Tale, else fail closed.
+8. The resolved Tale has `status = 'published'` and `is_active = true`.
+
+The returned `taleSlug` always comes from the Tale row, never from
+client input or the raw QR association.
+
+## CORS
+
+Explicit origin allowlist (no `*`): the GitHub Pages production origin
+(`https://jayc92.github.io`) plus `http://localhost:5173/4173/4174`
+for Vite dev/preview. Update `ALLOWED_ORIGINS` in `index.ts` if a
+custom domain is added.
+
+## Logging
+
+Raw QR code values are never logged and never echoed. Server logs
+carry category-only messages (`missing required env`,
+`qr_codes lookup failed`, `tales lookup failed`, `unhandled error`).
+
+## Deploy & smoke test (operator, next gate)
+
+```bash
+supabase functions deploy validate-qr --project-ref uuuugwfkequtgytwuuat
 ```
 
-| `reason`             | Meaning                                                                |
-|----------------------|------------------------------------------------------------------------|
-| `bad_request`        | Body was not JSON, or `code` was missing/empty.                        |
-| `unknown_code`       | No row in `qr_codes` matches the supplied `code`.                      |
-| `inactive`           | The matching row exists but `is_active = false` (rotated/retired).     |
-| `tale_unavailable`   | The resolved tale slug does not exist, is `is_active = false`, or has `status != 'published'`. |
-| `method_not_allowed` | Non-POST request (other than `OPTIONS` preflight, which returns 204).  |
-
-### Error (5xx)
-
-| HTTP | Body                                            | Cause                                       |
-|------|-------------------------------------------------|---------------------------------------------|
-| 500  | `{ "ok": false, "reason": "misconfigured" }`    | One or more required env vars not set.      |
-| 500  | `{ "ok": false, "reason": "lookup_failed" }`    | DB read against `qr_codes` or `tales` failed. |
-| 500  | `{ "ok": false, "reason": "sign_failed" }`      | `crypto.subtle` HMAC sign threw (very unusual; usually a malformed `RECEIPT_SECRET`). |
-| 500  | `{ "ok": false, "reason": "server_error" }`     | Unhandled exception in the request handler. |
-
----
-
-## Receipt format
-
-The receipt is a compact two-part token, similar to a JWS but with a
-JSON payload that is intentionally short and opaque:
-
-```
-<payloadB64Url>.<signatureB64Url>
-```
-
-- `payloadB64Url` is `base64url(JSON.stringify(payload))` where the
-  payload is:
-
-  ```jsonc
-  {
-    "g":   "g_ab1c2def3_xyz0" | null,  // guestId at scan time
-    "t":   "wa-lager",                  // taleSlug
-    "q":   "0f6c4b58-…",                // qr_codes.id (uuid)
-    "s":   "scan",                      // source
-    "exp": 1717113600                   // unix seconds, ≈ now() + 300
-  }
-  ```
-
-- `signatureB64Url` is
-  `base64url(HMAC-SHA256(RECEIPT_SECRET, payloadB64Url))`.
-
-The TTL is **5 minutes** (`receiptExp = now + 300`). The future
-`log-events` function will reject receipts past `exp` and receipts whose
-signature does not verify against the current `RECEIPT_SECRET`.
-
-The public app does **not** decode the receipt — it stores it verbatim
-and forwards it to `log-events` when (eventually) wiring event writes
-through the Edge Functions in ADMIN-v6.8.
-
----
-
-## curl smoke tests
-
-Replace `$SUPABASE_URL` and `$ANON_KEY` with the deployed project
-values. The anon key is required because the function is invoked at
-`/functions/v1/...` which routes through the same gateway as REST.
-
-```sh
-# 1. Demo code → success
-curl -sS -X POST "$SUPABASE_URL/functions/v1/validate-qr" \
+```bash
+# Expect 200 {"valid":false,"error":"invalid_qr"} — unknown code
+curl -s -X POST "https://uuuugwfkequtgytwuuat.supabase.co/functions/v1/validate-qr" \
   -H "Content-Type: application/json" \
-  -H "apikey: $ANON_KEY" \
-  -H "Authorization: Bearer $ANON_KEY" \
-  -d '{"code":"trackside://demo/wa-lager","guestId":"g_demo_001","source":"scan"}'
-
-# 2. Unknown code → { ok:false, reason:"unknown_code" }
-curl -sS -X POST "$SUPABASE_URL/functions/v1/validate-qr" \
-  -H "Content-Type: application/json" \
-  -H "apikey: $ANON_KEY" \
-  -H "Authorization: Bearer $ANON_KEY" \
-  -d '{"code":"trackside://demo/does-not-exist"}'
-
-# 3. Empty body → { ok:false, reason:"bad_request" }
-curl -sS -X POST "$SUPABASE_URL/functions/v1/validate-qr" \
-  -H "Content-Type: application/json" \
-  -H "apikey: $ANON_KEY" \
-  -H "Authorization: Bearer $ANON_KEY" \
-  -d '{}'
-
-# 4. Anonymous guest (guestId omitted) → success, payload "g": null
-curl -sS -X POST "$SUPABASE_URL/functions/v1/validate-qr" \
-  -H "Content-Type: application/json" \
-  -H "apikey: $ANON_KEY" \
-  -H "Authorization: Bearer $ANON_KEY" \
-  -d '{"code":"trackside://demo/packer-pils"}'
-
-# 5. CORS preflight → 204
-curl -sS -X OPTIONS "$SUPABASE_URL/functions/v1/validate-qr" \
-  -H "Origin: https://example.com" \
-  -H "Access-Control-Request-Method: POST" -i
+  -H "apikey: <ANON_KEY>" -H "Authorization: Bearer <ANON_KEY>" \
+  -d '{"code":"not-a-real-code-1234"}'
 ```
 
----
+```bash
+# Expect 400 with the same generic body — malformed input
+curl -s -X POST "https://uuuugwfkequtgytwuuat.supabase.co/functions/v1/validate-qr" \
+  -H "Content-Type: application/json" \
+  -H "apikey: <ANON_KEY>" -H "Authorization: Bearer <ANON_KEY>" \
+  -d '{"code":42}'
+```
 
-## Local edge runtime
+Then scan (or POST) a real printed code — do NOT paste real code
+values into tickets, chat, screenshots, or logs.
 
-`supabase/config.toml` keeps `[edge_runtime] enabled = false` because
-corporate TLS inspection on the developer machine prevents the local
-Deno runtime from fetching its dependencies over HTTPS, which blocks
-`supabase start` from going healthy. Smoke testing happens against the
-deployed function on Supabase Cloud rather than the local container.
-
-If `supabase functions serve validate-qr` ever does start working
-locally, the same curl examples apply — substitute
-`$SUPABASE_URL` for `http://127.0.0.1:54321` and use the local anon
-key from `supabase status`.
-
----
-
-## What this function does NOT do (yet)
-
-- **No event writes.** `unlock_events`, `game_events`, `badge_events`,
-  and `user_badges` are not touched. A successful response is purely
-  validation + a signed receipt.
-- **No client wiring.** The public app's `ScanPage` and `parseQRCode`
-  are unchanged in ADMIN-v6.6. The companion helper
-  `src/services/qrValidationRemote.ts` is exported but not imported
-  by any page or context.
-- **No QR scheme change.** The same `trackside://demo/<id>` /
-  `?tale=<id>` / plain-id formats parsed on-device today are what get
-  forwarded as the `code` field.
-
-These are deliberate scope cuts — see ADMIN-v6.5 (planning) and the
-v6.7+ phases for when each piece flips on.
+Local `supabase functions serve` is not part of the workflow here —
+the local edge runtime is disabled in `supabase/config.toml`
+(corporate TLS interception blocks Deno deps). Smoke testing happens
+against the deployed function.
