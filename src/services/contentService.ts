@@ -258,8 +258,10 @@ function wrapStoryBody(v: unknown): StoryBlock[] {
  *
  * Drop conditions:
  *   * Missing or non-string slug.
- *   * Missing or non-string name OR title (the canonical Tale type
- *     requires both; we won't fabricate them from the local pack).
+ *   * Missing/blank title (required by the canonical Tale type and
+ *     the admin form). `name` is OPTIONAL (P.12c, matching the admin
+ *     form's "Name (optional)") — a blank name falls back to title
+ *     for the public display name instead of dropping the row.
  *   * Production slug not in PROD_TO_APP_SLUG (unknown new tale).
  *   * Public-app slug has no presentation pack
  *     (LOCAL_TALES doesn't contain it — should be unreachable
@@ -275,10 +277,15 @@ function wrapStoryBody(v: unknown): StoryBlock[] {
  * crashing the page.
  */
 function mapTaleRow(row: Record<string, unknown>): Tale | null {
+  // P.12c minimum contract, aligned with the admin form: slug and
+  // title are required; `name` is OPTIONAL (the admin labels it
+  // "Name (optional)"). A published+active Tale must not silently
+  // vanish from public surfaces just because name was left blank —
+  // the display name falls back to the required title.
   const prodSlug = asString(row.slug);
-  const name     = asString(row.name);
-  const title    = asString(row.title);
-  if (!prodSlug || !name || !title) return null;
+  const title    = asNonBlankString(row.title);
+  if (!prodSlug || !title) return null;
+  const displayName = asNonBlankString(row.name) ?? title;
 
   // PUBLIC-v7.4B.P.5: unknown/new admin slugs are no longer dropped.
   // Known production slugs still rename to their curated app slug
@@ -362,7 +369,9 @@ function mapTaleRow(row: Record<string, unknown>): Tale | null {
       ? introTypeRaw
       : undefined;
 
-  const abbr    = knownPack ? pack.abbr : deriveTaleAbbr(name, title);
+  // Abbreviation: prefer a meaningful (non-blank) name, else title —
+  // displayName already encodes exactly that fallback order.
+  const abbr    = knownPack ? pack.abbr : deriveTaleAbbr(displayName, title);
   const image   = knownPack ? pack.image : (remoteStampImageUrl ?? '');
   const tagline = knownPack ? pack.tagline : (remoteSubtitle ?? '');
   const person: Tale['person'] = knownPack
@@ -371,7 +380,7 @@ function mapTaleRow(row: Record<string, unknown>): Tale | null {
 
   return {
     id:          appSlug,
-    name,
+    name:        displayName,
     abbr,
     image,
     style:       pack.style,
