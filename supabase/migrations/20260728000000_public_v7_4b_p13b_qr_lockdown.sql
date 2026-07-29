@@ -16,8 +16,14 @@
 --   * revokes direct table privileges from `anon` and `authenticated`
 --     (belt-and-suspenders under PostgREST's default schema grants),
 --   * post-checks the final state and RAISES if anything still exposes
---     the table — the Supabase migration runner wraps this file in a
---     single transaction, so a failed postcheck rolls back everything.
+--     the table.
+--
+-- SUPABASE-v7.4B.P.13b.1: the whole file is EXPLICITLY wrapped in
+-- begin/commit so atomicity does not depend on how it is applied.
+-- Whether run via `supabase db push` or pasted into the Supabase SQL
+-- Editor, a failed postcheck (or any earlier error) aborts the
+-- transaction and rolls back every change — the migration can never
+-- partially apply.
 --
 -- It does NOT touch rows, code values, foreign keys, or any other
 -- table, and it does not mint/revoke/rotate anything. `service_role`
@@ -31,6 +37,8 @@
 -- or together with deploying the validate-qr Edge Function; order vs.
 -- the public app deploy does not matter because the shipped app no
 -- longer reads the table.
+
+begin;
 
 -- ---- precheck: the table must exist --------------------------------------
 do $$
@@ -58,6 +66,8 @@ revoke select, insert, update, delete on table public.qr_codes from anon;
 revoke select, insert, update, delete on table public.qr_codes from authenticated;
 
 -- ---- fail-closed postchecks -------------------------------------------------
+-- Any RAISE below aborts the open transaction, rolling back the policy
+-- drop and the revokes above.
 do $$
 declare
   rls_enabled       boolean;
@@ -85,3 +95,5 @@ begin
   end if;
 end
 $$;
+
+commit;
