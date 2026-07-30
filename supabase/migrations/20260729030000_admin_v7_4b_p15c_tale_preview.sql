@@ -125,9 +125,15 @@ grant  execute on function public.fn_admin_log_tale_preview(uuid, text, uuid, te
 -- ---- postchecks ------------------------------------------------------------
 do $p15c_post$
 declare
-  v_fn  record;
-  v_def text;
-  v_sig text := 'public.fn_admin_log_tale_preview(uuid, text, uuid, text, timestamptz)';
+  v_fn         record;
+  v_def        text;
+  v_sig        text := 'public.fn_admin_log_tale_preview(uuid, text, uuid, text, timestamptz)';
+  v_args_start int;
+  v_args_end   int;
+  v_args       text;
+  v_parts      text[];
+  v_idx        int;
+  v_key        text;
 begin
   select p.prosecdef,
          array_to_string(coalesce(p.proconfig, array[]::text[]), ',') as config,
@@ -146,10 +152,45 @@ begin
   if v_fn.config not like '%search_path=public, extensions%' then
     raise exception 'P.15c postcheck: search_path not locked (got %)', v_fn.config;
   end if;
-  -- The audit payload must not carry a token key of any kind.
-  if position('''token''' in v_fn.prosrc) > 0 or position('''preview_token''' in v_fn.prosrc) > 0 then
-    raise exception 'P.15c postcheck: audit construction references a token key';
+
+  -- The audit payload must not carry a token KEY of any kind.
+  --
+  -- P.15c.1 correction: the original check scanned the ENTIRE source
+  -- for the quoted literal 'token', which false-positived on the
+  -- harmless payload VALUE in `'mode', 'token'` and rolled back the
+  -- whole migration on first application. jsonb_build_object takes
+  -- alternating key/value arguments, so we now parse the audit
+  -- construction's argument list and reject forbidden literals only
+  -- in KEY (odd) positions. Anything that defeats the simple parse —
+  -- missing construction, nested parentheses, an odd argument count —
+  -- fails CLOSED rather than silently passing.
+  v_args_start := position('jsonb_build_object(' in v_fn.prosrc);
+  if v_args_start = 0 then
+    raise exception 'P.15c postcheck: no jsonb_build_object audit construction found';
   end if;
+  v_args := substr(v_fn.prosrc, v_args_start + length('jsonb_build_object('));
+  v_args_end := position(')' in v_args);
+  if v_args_end = 0 then
+    raise exception 'P.15c postcheck: unterminated audit construction';
+  end if;
+  v_args := substr(v_args, 1, v_args_end - 1);
+  if position('(' in v_args) > 0 then
+    -- A nested call would break the comma-split key/value alignment;
+    -- fail closed so the check can never be silently defeated.
+    raise exception 'P.15c postcheck: nested expression in audit arguments — cannot verify key positions';
+  end if;
+  v_parts := string_to_array(v_args, ',');
+  if array_length(v_parts, 1) is null or array_length(v_parts, 1) % 2 <> 0 then
+    raise exception 'P.15c postcheck: unexpected audit argument shape (need alternating key/value pairs)';
+  end if;
+  for v_idx in 1..array_length(v_parts, 1) loop
+    if v_idx % 2 = 1 then -- KEY position (1st, 3rd, 5th, …)
+      v_key := btrim(v_parts[v_idx]);
+      if v_key in ('''token''', '''preview_token''') then
+        raise exception 'P.15c postcheck: forbidden audit payload KEY % — the preview token must never be audited', v_key;
+      end if;
+    end if;
+  end loop;
 
   if not has_function_privilege('service_role', v_sig, 'execute') then
     raise exception 'P.15c postcheck: service_role cannot execute %', v_sig;
