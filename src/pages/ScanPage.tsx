@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { parseQRCode, LOCAL_DEMO_QR_ALLOWED } from '../services/qrValidation';
 import { validateQrRemote } from '../services/qrValidationRemote';
+import { resolveScannedTaleAppId } from '../services/scanSlugTranslation';
 import { USE_REMOTE_QR_VALIDATION } from '../services/supabaseClient';
 import { logEvent, flushEvents } from '../services/eventLogger';
 import { BADGE_KEY_SCAN, Tale } from '../app/types';
@@ -274,7 +275,13 @@ export function ScanPage() {
         setScanSub('Validating this Trackside code.');
         const result = await validateQrRemote(trimmed);
         if (result.status === 'valid') {
-          const tale = tales.find((t) => t.id === result.taleSlug);
+          // P.15a: the validator returns the canonical PRODUCTION
+          // slug; curated Tales use renamed app ids (packer-pilsner →
+          // packer-pils, wooden-match-amber → wooden-match). Translate
+          // once and use the app id for lookup, unlock persistence,
+          // and navigation; generic slugs pass through unchanged.
+          const appTaleId = resolveScannedTaleAppId(result.taleSlug);
+          const tale = tales.find((t) => t.id === appTaleId);
           if (!tale) {
             // Server-valid, but the Tale isn't in the loaded content
             // (e.g. remote Tales fetch failed this session). Fail
@@ -284,7 +291,7 @@ export function ScanPage() {
             setScanSub('This code is valid, but its Tale could not be loaded right now. Please try again.');
             return;
           }
-          handleDemoUnlock(result.taleSlug, { logScanEvent: true });
+          handleDemoUnlock(appTaleId, { logScanEvent: true });
           return;
         }
         if (result.status === 'invalid') {

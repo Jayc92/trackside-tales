@@ -55,6 +55,12 @@ Production QR validation is **server-authoritative**:
 - Both production association models are supported: modern
   `tale_slug` rows and legacy `tale_id` rows (mismatched dual
   associations fail closed). The Tale must be `published` + active.
+- The validator returns the **canonical production slug**; the public
+  client translates curated production slugs to their app-side ids
+  (`packer-pilsner→packer-pils`, `wooden-match-amber→wooden-match`)
+  via `appSlugFromProdSlug` before lookup/unlock
+  (`src/services/scanSlugTranslation.ts`, PUBLIC-v7.4B.P.15a). Generic
+  admin-created slugs pass through unchanged.
 - Validity windows are enforced (`valid_from`/`valid_until`;
   NULL = unbounded). `max_uses` is **fail-closed**: no redemption
   ledger exists, so a non-null `max_uses` makes a code invalid until
