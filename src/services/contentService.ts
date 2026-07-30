@@ -1053,7 +1053,11 @@ export async function fetchRemoteFood(): Promise<FoodItem[] | null> {
       // canonical `food` — that view/table does not exist on
       // production).
       'food_items',
-      `select=${FOOD_SELECT}&${PUBLISHED_FILTER}&order=sort_order.asc`,
+      // PUBLIC-v7.4B.P.16: name.asc as the stable secondary key so
+      // rows sharing a sort_order value render in a deterministic
+      // order (previously duplicate sort_order fell back to
+      // unspecified row order, which could differ between fetches).
+      `select=${FOOD_SELECT}&${PUBLISHED_FILTER}&order=sort_order.asc,name.asc`,
     )) as unknown;
     if (!Array.isArray(rows)) return null;
     const mapped = rows
