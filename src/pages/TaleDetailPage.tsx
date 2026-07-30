@@ -40,21 +40,37 @@ function timelineGlyph(title: string): string {
   return '◈';
 }
 
-export function TaleDetailPage() {
+// PUBLIC-v7.4B.P.15c — optional preview injection. When `previewTale`
+// is provided (by TalePreviewPage, after server-authoritative token
+// validation), the page renders THAT tale in its normal unlocked
+// layout without touching AppContext state: no unlockTale, no badge
+// award, no collected date, no localStorage write, no analytics.
+// `previewMode` additionally disables the game CTA and hides the
+// in-app navigation buttons (Back to Tales / VIEW PASSPORT), which
+// would dead-end inside the standalone preview shell.
+interface TaleDetailPageProps {
+  previewTale?: import('../app/types').Tale;
+  previewMode?: boolean;
+}
+
+export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailPageProps = {}) {
   // ADMIN-v6.8D — `guestId` pulled through to GameOverlay so its event
   // logger can flush against the current session id. AppContext already
   // exposes guestId; no other context shape change.
   const { state, awardGameBadge, nav, guestId } = useApp();
-  const tale = state.currentTale;
+  const tale = previewTale ?? state.currentTale;
   const [showGame, setShowGame] = useState(false);
 
   if (!tale) return null;
 
-  const isUnlocked   = state.unlocked.has(tale.id);
-  const hasScanBadge = state.scanBadges.has(tale.id);
-  const hasGameBadge = state.gameBadges.has(tale.id);
+  // Preview renders the unlocked layout without persisting anything;
+  // badge/collected state reads stay live-state-based (empty for a
+  // draft tale, so the page shows the pristine 0/2 presentation).
+  const isUnlocked   = previewMode || state.unlocked.has(tale.id);
+  const hasScanBadge = !previewMode && state.scanBadges.has(tale.id);
+  const hasGameBadge = !previewMode && state.gameBadges.has(tale.id);
   const gameConfig   = getGameConfig(tale.id);
-  const collected    = state.collectedDates[tale.id];
+  const collected    = previewMode ? undefined : state.collectedDates[tale.id];
 
   const handleBadgeAwarded = (_badgeKey: string) => awardGameBadge(tale.id);
 
@@ -95,10 +111,15 @@ export function TaleDetailPage() {
   }
 
   // ── Unlocked state (v6.2 visual rewrite) ───────────────────────────────────
+  // P.15c: the game CTA is always unavailable in preview mode — even
+  // for curated tales — so a preview can never open GameOverlay or
+  // award progress.
   const gameEnabled =
-    tale.id === 'wa-lager'
-    || tale.id === 'packer-pils'
-    || tale.id === 'wooden-match';
+    !previewMode && (
+      tale.id === 'wa-lager'
+      || tale.id === 'packer-pils'
+      || tale.id === 'wooden-match'
+    );
   const showAsEarned     = hasGameBadge;
   const showAsActive     = gameEnabled && !hasGameBadge;
   const showAsComingSoon = !gameEnabled && !hasGameBadge;
@@ -118,9 +139,15 @@ export function TaleDetailPage() {
         </div>
 
         <div className="ts-tale-hero__top">
-          <button className="ts-tale-hero__back" onClick={() => nav('tales')}>
-            ← Back to Tales
-          </button>
+          {/* P.15c: in-app nav is hidden in preview mode — the
+              standalone preview shell has its own exit link. */}
+          {!previewMode ? (
+            <button className="ts-tale-hero__back" onClick={() => nav('tales')}>
+              ← Back to Tales
+            </button>
+          ) : (
+            <span />
+          )}
           <span className={`ts-tale-hero__pill${hasScanBadge ? '' : ' ts-tale-hero__pill--locked'}`}>
             {hasScanBadge ? '🔒 UNLOCKED' : '🔒 SEALED'}
           </span>
@@ -379,13 +406,16 @@ export function TaleDetailPage() {
               {showAsActive     && '🎮 PLAY MINI-GAME'}
               {showAsComingSoon && 'MINI-GAME COMING SOON'}
             </button>
-            <button
-              type="button"
-              className="ts-next-step__secondary"
-              onClick={() => nav('passport')}
-            >
-              📖 VIEW PASSPORT
-            </button>
+            {/* P.15c: passport nav hidden in preview mode. */}
+            {!previewMode && (
+              <button
+                type="button"
+                className="ts-next-step__secondary"
+                onClick={() => nav('passport')}
+              >
+                📖 VIEW PASSPORT
+              </button>
+            )}
           </div>
         </div>
       </section>

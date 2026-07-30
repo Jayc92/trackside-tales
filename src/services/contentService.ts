@@ -276,7 +276,11 @@ function wrapStoryBody(v: unknown): StoryBlock[] {
  * Each drop logs a console.warn so operators can debug without
  * crashing the page.
  */
-function mapTaleRow(row: Record<string, unknown>): Tale | null {
+// Exported as of PUBLIC-v7.4B.P.15c: the draft-preview page maps the
+// single server-authorized preview row through THIS exact adapter so
+// preview rendering is bit-identical to production rendering (curated
+// pack layering, generic fallbacks, slug renames — everything).
+export function mapTaleRow(row: Record<string, unknown>): Tale | null {
   // P.12c minimum contract, aligned with the admin form: slug and
   // title are required; `name` is OPTIONAL (the admin labels it
   // "Name (optional)"). A published+active Tale must not silently

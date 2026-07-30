@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from './AppContext';
+import { TalePreviewPage } from '../pages/TalePreviewPage';
+import { parsePreviewHash, type TalePreviewRequest } from '../services/talePreview';
 import { AppHeader } from '../components/AppHeader';
 import { BottomNav } from '../components/BottomNav';
 import { UnlockStampModal } from '../components/UnlockStampModal';
@@ -83,16 +85,32 @@ function ActivePage({ page }: { page: PageId }) {
 // ── App shell ─────────────────────────────────────────────────────────────────
 export function App() {
   const { state, nav, navToTale, tales } = useApp();
+  // PUBLIC-v7.4B.P.15c — admin draft preview. A story hash carrying a
+  // ?preview=<token> renders the standalone TalePreviewPage INSTEAD of
+  // the normal shell; server-side token validation is authoritative.
+  // Navigating to any other hash clears preview mode.
+  const [preview, setPreview] = useState<TalePreviewRequest | null>(null);
 
   useEffect(() => {
-    const handle = () =>
+    const handle = () => {
+      const previewRequest = parsePreviewHash(location.hash || '');
+      if (previewRequest) {
+        setPreview(previewRequest);
+        return; // never applyRoute a preview hash — no nav/unlock side effects
+      }
+      setPreview(null);
       applyRoute(location.hash || '', nav, navToTale, tales);
+    };
 
     handle(); // run once on mount
     window.addEventListener('hashchange', handle);
     return () => window.removeEventListener('hashchange', handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run only on mount — nav/navToTale are stable refs from useCallback
+
+  if (preview) {
+    return <TalePreviewPage request={preview} />;
+  }
 
   return (
     <div id="app-root">
