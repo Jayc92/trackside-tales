@@ -470,6 +470,11 @@ function mapProdBeerCategory(category: unknown): BeerPartitionCategory {
   if (category === 'tale')                                    return 'handled-by-tales';
   if (category === 'na' || category === 'non_alcoholic')      return 'non-alc';
   if (category === 'resident')                                return 'resident';
+  // P.17: 'cider' is a canonical admin-selectable value (alcoholic →
+  // Resident tab). Listed explicitly so the admin enum and this
+  // adapter document the same contract, rather than relying on the
+  // unknown-value catch-all below.
+  if (category === 'cider')                                   return 'resident';
   return 'resident';
 }
 
@@ -565,9 +570,14 @@ type MappedBeerRow =
  * Adapter: production beers row → MappedBeerRow.
  *
  * Drop conditions (each warns once with the row's slug for
- * operator visibility):
- *   * Missing/blank slug, name, or style
- *   * Unknown category value (anything other than tale/resident/na)
+ * operator visibility) — P.17: slug and name are the ONLY drops:
+ *   * Missing/blank slug
+ *   * Missing/blank name
+ * Everything else renders leniently: unknown categories bucket into
+ * Resident (mapProdBeerCategory is total), and missing/malformed
+ * style/abv/ibu fall back to '' with a warn instead of dropping the
+ * row — a published beer can no longer silently vanish over an
+ * optional-field edit.
  *
  * For rows classified as `'handled-by-tales'` (production
  * `category='tale'`), the function short-circuits early and returns
@@ -585,10 +595,9 @@ type MappedBeerRow =
  * up the pack for tale-category rows.
  *
  * For `'resident'` and `'non-alc'` rows, the full mapping pipeline
- * runs and returns a `kind: 'beer'` variant:
- *   * Production slug must be in beerPresentationPack
- *   * abv / ibu must be coercible to finite numbers
- *   * Full Beer object is constructed
+ * runs and returns a `kind: 'beer'` variant. Curated slugs merge
+ * their presentation pack (abbr / can-art fallback / tapStatus);
+ * unknown slugs use the default pack and render generically.
  *
  * A single bad row does not invalidate the others — each row maps
  * independently. The caller filters out nulls.
@@ -631,41 +640,24 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
   const knownPack = getBeerPresentationPack(slug);
   const pack = knownPack ?? getDefaultBeerPresentationPack();
 
-  // Field resolution differs by pack:
-  //   * Curated (knownPack): preserve the pre-P.6 strict contract —
-  //     a missing style or malformed abv/ibu drops the row, so a bad
-  //     production edit can't corrupt a polished card.
-  //   * Default pack: be lenient — an admin-created beer renders with
-  //     whatever it has; missing style/abv/ibu fall back to '' (the
-  //     Beer type requires strings, and the Menu renders blanks
-  //     harmlessly) rather than dropping the row.
-  let style: string;
-  let abv: string;
-  let ibu: string;
-  if (knownPack) {
-    const styleRaw = asString(row.style);
-    if (!styleRaw || styleRaw.trim().length === 0) {
-      console.warn(`[trackside] Remote beer "${slug}" dropped: missing style`);
-      return null;
-    }
-    style = styleRaw;
-    const abvFmt = formatProdAbv(row.abv);
-    if (abvFmt === null) {
-      console.warn(`[trackside] Remote beer "${slug}" has malformed abv "${String(row.abv)}" — dropping row.`);
-      return null;
-    }
-    abv = abvFmt;
-    const ibuFmt = formatProdIbu(row.ibu);
-    if (ibuFmt === null) {
-      console.warn(`[trackside] Remote beer "${slug}" has malformed ibu "${String(row.ibu)}" — dropping row.`);
-      return null;
-    }
-    ibu = ibuFmt;
-  } else {
-    const styleRaw = asString(row.style);
-    style = styleRaw ? styleRaw.trim() : '';
-    abv = formatProdAbv(row.abv) ?? '';
-    ibu = formatProdIbu(row.ibu) ?? '';
+  // Field resolution (P.17: one lenient contract for every slug).
+  // Pre-P.17, curated-pack slugs kept a strict drop-on-malformed rule
+  // for style/abv/ibu — which meant an admin edit that blanked IBU on
+  // a curated resident beer made the whole card SILENTLY VANISH from
+  // the public menu. That is exactly the admin/public contract
+  // mismatch this gate closes: missing/malformed style, abv, or ibu
+  // now falls back to '' for ALL slugs (the card omits the blank
+  // fragment; see ResidentBeerCard), with a console.warn preserved so
+  // developers still see the data problem. Name and slug remain the
+  // only drop conditions — those the admin genuinely requires.
+  const styleRaw = asString(row.style);
+  const style = styleRaw ? styleRaw.trim() : '';
+  const abv = formatProdAbv(row.abv) ?? '';
+  const ibu = formatProdIbu(row.ibu) ?? '';
+  if (knownPack && (style === '' || abv === '' || ibu === '')) {
+    console.warn(
+      `[trackside] Remote beer "${slug}" has missing/malformed style, abv, or ibu — rendering with blanks (row no longer dropped as of P.17).`,
+    );
   }
 
   // Image: prefer production can_image_url if non-empty; otherwise

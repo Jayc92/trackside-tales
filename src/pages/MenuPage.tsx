@@ -189,8 +189,23 @@ function TaleBeerCard({ tale, unlocked, onOpen, onScan }: TaleCardProps) {
 
 // ---- Resident / N-A beer card ----------------------------------------------
 function ResidentBeerCard({ beer, isNA = false }: { beer: Beer; isNA?: boolean }) {
+  // PUBLIC-v7.4B.P.17 — blank-fragment guards (same treatment the
+  // Tale cards received in P.12a). The adapter now renders beers with
+  // missing style/abv/ibu as '' instead of dropping them, so this
+  // card must omit empty fragments rather than show a bare style
+  // line or "ABV  · IBU ". Curated beers carry every field and render
+  // exactly as before.
+  const metaText = [
+    beer.abv ? `ABV ${beer.abv}` : null,
+    beer.ibu ? `IBU ${beer.ibu}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
-    <article className="ts-beer-card" aria-label={`${beer.name} — ${beer.style}`}>
+    <article
+      className="ts-beer-card"
+      aria-label={beer.style ? `${beer.name} — ${beer.style}` : beer.name}
+    >
       <BeerArt image={beer.image} label={beer.abbr || beer.name} />
       <div className="ts-beer-card__body">
         <div className="ts-beer-card__name-row">
@@ -199,12 +214,14 @@ function ResidentBeerCard({ beer, isNA = false }: { beer: Beer; isNA?: boolean }
             <span className="ts-beer-card__tag ts-beer-card__tag--na">N/A</span>
           )}
         </div>
-        <div className="ts-beer-card__style">{beer.style}</div>
+        {beer.style && <div className="ts-beer-card__style">{beer.style}</div>}
         {beer.tasting && <p className="ts-beer-card__desc">{beer.tasting}</p>}
-        <div className="ts-beer-card__meta">
-          <span className="ts-beer-card__meta-dot" aria-hidden="true" />
-          ABV {beer.abv} · IBU {beer.ibu}
-        </div>
+        {metaText && (
+          <div className="ts-beer-card__meta">
+            <span className="ts-beer-card__meta-dot" aria-hidden="true" />
+            {metaText}
+          </div>
+        )}
       </div>
     </article>
   );
