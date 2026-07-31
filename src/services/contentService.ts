@@ -1041,9 +1041,13 @@ export async function fetchRemoteNonAlc(): Promise<Beer[] | null> {
  * PUBLIC-v7.4B.P.18 — live tap list → truthful ON TAP badges.
  *
  * Reads the beer_slugs of CURRENTLY LIVE pours from public.tap_list
- * (live = ended_at IS NULL). The table's RLS policy has exposed
- * exactly these rows to anon reads since v6.x ("tap_list: public
- * read live") — this is the first public consumer.
+ * (live = ended_at IS NULL). Requires the "tap_list: public read
+ * live" RLS policy — canonical in rls.sql, but PRODUCTION shipped
+ * tap_list service-role-only (zero policies), so the policy is
+ * applied there by the P.18a migration
+ * (20260731000000_public_v7_4b_p18a_tap_list_live_read_policy.sql).
+ * Until it is applied, this read returns an empty 200 and no badges
+ * appear (fail-safe).
  *
  * Source-of-truth model:
  *   * beers.status/is_active decide whether a beer appears on the
@@ -1065,18 +1069,46 @@ export async function fetchRemoteNonAlc(): Promise<Beer[] | null> {
  * follow the beer surface's flag rather than adding a new one.
  */
 export async function fetchLiveTapSlugs(): Promise<Set<string> | null> {
-  if (!USE_REMOTE_BEERS) return null;
+  if (!USE_REMOTE_BEERS) {
+    // P.18a dev observability: the fail-safe "no badges" posture is
+    // correct for customers but masked a production access gap (RLS
+    // with zero policies returns an empty 200, indistinguishable from
+    // "nothing on tap"). In dev builds, log WHY there are no badges.
+    if (import.meta.env.DEV) {
+      console.info('[trackside] Live tap badges disabled: USE_REMOTE_BEERS is off');
+    }
+    return null;
+  }
   try {
     const rows = (await supabaseFetch(
       'tap_list',
       'select=beer_slug&ended_at=is.null',
     )) as unknown;
-    if (!Array.isArray(rows)) return null;
+    if (!Array.isArray(rows)) {
+      if (import.meta.env.DEV) {
+        console.warn('[trackside] Live tap list returned a non-array response — no badges');
+      }
+      return null;
+    }
     const liveSlugs = new Set<string>();
     for (const row of rows) {
-      if (!isObj(row)) continue;
+      if (!isObj(row)) {
+        if (import.meta.env.DEV) {
+          console.warn('[trackside] Live tap row skipped: not an object');
+        }
+        continue;
+      }
       const slug = asString(row.beer_slug);
       if (slug && slug.trim().length > 0) liveSlugs.add(slug.trim());
+    }
+    if (import.meta.env.DEV && liveSlugs.size === 0) {
+      // Empty SUCCESS is ambiguous: genuinely nothing on tap, OR the
+      // P.18a live-read RLS policy is missing in this environment
+      // (production shipped tap_list as service-role-only until the
+      // 20260731 P.18a migration).
+      console.info(
+        '[trackside] Live tap list is empty — either nothing is on tap or the tap_list live-read policy (P.18a migration) is not applied in this environment.',
+      );
     }
     return liveSlugs;
   } catch (err) {
