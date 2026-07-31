@@ -3,6 +3,7 @@ import { useApp } from '../app/AppContext';
 import { GameOverlay } from '../games/GameOverlay';
 import { getGameConfig } from '../games/gameConfigs';
 import { formatDate } from '../services/badgeService';
+import { prodSlugFromAppSlug } from '../services/talePresentationPack';
 
 // ================== TALE DETAIL PAGE (v6.2 — Structured Design Pass) ==================
 // Visual rewrite for the unlocked branch only. The locked branch and all
@@ -40,6 +41,34 @@ function timelineGlyph(title: string): string {
   return '◈';
 }
 
+// PUBLIC-v7.4B.P.19 — Tale availability label.
+//
+// The LIVE tap list is the sole source of the operational "ON TAP"
+// claim (same P.18 source the beer cards use); tales.tap_status is
+// EDITORIAL lifecycle messaging only. Precedence:
+//   1. a live pour exists for the Tale's beer      → 'ON TAP'
+//   2. no live pour + editorial 'retired'          → 'RETIRED TALE'
+//   3. no live pour + editorial 'coming-soon'      → 'COMING SOON'
+//      (previously collapsed into 'RETIRED TALE' — fixed here)
+//   4. no live pour + editorial 'on-tap'/default   → NO label.
+//      "Not pouring" is deliberately not claimed: an empty live set
+//      also occurs on fetch failure, and a missing label is the only
+//      claim that is always truthful.
+// The Tale's beer is the beer sharing its PRODUCTION slug
+// (prodSlugFromAppSlug reverses the one canonical alias map; generic
+// tales pass through, so an unknown tale claims live state only if a
+// pour genuinely exists for its slug). Tap numbers and notes are
+// never fetched, let alone rendered.
+function deriveTaleAvailabilityLabel(
+  tale: { id: string; tapStatus: 'on-tap' | 'retired' | 'coming-soon' },
+  liveTapSlugs: Set<string>,
+): string | null {
+  if (liveTapSlugs.has(prodSlugFromAppSlug(tale.id))) return 'ON TAP';
+  if (tale.tapStatus === 'retired') return 'RETIRED TALE';
+  if (tale.tapStatus === 'coming-soon') return 'COMING SOON';
+  return null;
+}
+
 // PUBLIC-v7.4B.P.15c — optional preview injection. When `previewTale`
 // is provided (by TalePreviewPage, after server-authoritative token
 // validation), the page renders THAT tale in its normal unlocked
@@ -57,7 +86,7 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   // ADMIN-v6.8D — `guestId` pulled through to GameOverlay so its event
   // logger can flush against the current session id. AppContext already
   // exposes guestId; no other context shape change.
-  const { state, awardGameBadge, nav, guestId } = useApp();
+  const { state, awardGameBadge, nav, guestId, liveTapSlugs } = useApp();
   const tale = previewTale ?? state.currentTale;
   const [showGame, setShowGame] = useState(false);
 
@@ -124,6 +153,8 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   const showAsActive     = gameEnabled && !hasGameBadge;
   const showAsComingSoon = !gameEnabled && !hasGameBadge;
   const totalMarks       = (hasScanBadge ? 1 : 0) + (hasGameBadge ? 1 : 0);
+  // P.19: live-tap-derived availability (see deriveTaleAvailabilityLabel).
+  const availabilityLabel = deriveTaleAvailabilityLabel(tale, liveTapSlugs);
 
   return (
     <div className="page active ts-tale-screen" id="page-story">
@@ -243,8 +274,17 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
         <article className="ts-tale-story">
           <div className="ts-tale-story__meta">
             <span className="ts-tale-story__meta-dot" aria-hidden="true" />
-            {tale.tapStatus === 'on-tap' ? 'ON TAP' : 'RETIRED TALE'}
-            {collected && <span> · COLLECTED {formatDate(collected).toUpperCase()}</span>}
+            {/* P.19: live tap list owns 'ON TAP'; tap_status is
+                editorial (retired / coming soon); no claim otherwise.
+                Preview mode uses the same app-level live set — a
+                draft tale whose beer is genuinely pouring truthfully
+                previews as ON TAP. */}
+            {availabilityLabel ?? ''}
+            {collected && (
+              <span>
+                {availabilityLabel ? ' · ' : ''}COLLECTED {formatDate(collected).toUpperCase()}
+              </span>
+            )}
             {tale.retiredDate && <span> · RETIRED {formatDate(tale.retiredDate).toUpperCase()}</span>}
           </div>
           <div className="ts-tale-story__body">

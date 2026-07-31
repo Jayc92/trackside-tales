@@ -57,6 +57,25 @@ export function appSlugFromProdSlug(prodSlug: string): string | null {
   return PROD_TO_APP_SLUG[prodSlug] ?? null;
 }
 
+// PUBLIC-v7.4B.P.19 — reverse lookup, derived from the SAME canonical
+// map (never a second alias table). A Tale's beer is the beer sharing
+// its PRODUCTION slug: curated app ids translate back
+// (packer-pils → packer-pilsner, wooden-match → wooden-match-amber);
+// generic tales pass through unchanged (their app id IS the
+// production slug). Used to match live tap_list rows (keyed by
+// production beer_slug) against a rendered Tale.
+const APP_TO_PROD_SLUG: Record<string, string> = Object.fromEntries(
+  Object.entries(PROD_TO_APP_SLUG).map(([prod, app]) => [app, prod]),
+);
+
+/**
+ * Translate an app-side Tale id back to its production slug.
+ * Unknown/generic ids return themselves.
+ */
+export function prodSlugFromAppSlug(appSlug: string): string {
+  return APP_TO_PROD_SLUG[appSlug] ?? appSlug;
+}
+
 // ------------ presentation pack ------------------------------------
 // The set of fields production doesn't carry, derived from the
 // existing LOCAL_TALES content. Keys are public-app slugs (post
