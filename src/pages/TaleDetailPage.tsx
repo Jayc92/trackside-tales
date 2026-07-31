@@ -103,15 +103,33 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
 
   const handleBadgeAwarded = (_badgeKey: string) => awardGameBadge(tale.id);
 
+  // P.19a: availability is computed BEFORE the locked-branch early
+  // return so both the sealed and unlocked layouts can surface the
+  // live ON TAP pill. The live claim is split from the editorial
+  // lifecycle labels: ON TAP is promoted to the hero status area;
+  // RETIRED TALE / COMING SOON stay in the restrained lower metadata
+  // strip (they are lifecycle facts, not live status, and must not
+  // share the bright live treatment).
+  const availabilityLabel = deriveTaleAvailabilityLabel(tale, liveTapSlugs);
+  const isLiveOnTap   = availabilityLabel === 'ON TAP';
+  const editorialLabel = isLiveOnTap ? null : availabilityLabel;
+
   // ── Locked state (unchanged from v5.x — no structural rewrite) ─────────────
   if (!isUnlocked) {
     return (
       <div className="page active" id="page-story">
         <div className="story-nav">
           <button className="back-btn" onClick={() => nav('tales')}>Back to Tales</button>
-          <div className="story-progress">
-            <span className="story-progress-dot" />
-            <span>LOCKED</span>
+          <div className="ts-tale-hero__pills">
+            {/* P.19a: a sealed Tale whose beer is genuinely pouring
+                shows ON TAP without implying it is unlocked. */}
+            {isLiveOnTap && (
+              <span className="ts-tale-hero__pill ts-tale-hero__pill--live">ON TAP</span>
+            )}
+            <div className="story-progress">
+              <span className="story-progress-dot" />
+              <span>LOCKED</span>
+            </div>
           </div>
         </div>
         <div id="story-content">
@@ -153,8 +171,16 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   const showAsActive     = gameEnabled && !hasGameBadge;
   const showAsComingSoon = !gameEnabled && !hasGameBadge;
   const totalMarks       = (hasScanBadge ? 1 : 0) + (hasGameBadge ? 1 : 0);
-  // P.19: live-tap-derived availability (see deriveTaleAvailabilityLabel).
-  const availabilityLabel = deriveTaleAvailabilityLabel(tale, liveTapSlugs);
+
+  // P.19a: the lower strip carries lifecycle/persistence metadata
+  // only (editorial label, collected date, retired date) — ON TAP
+  // lives in the hero now. Fragments join with ' · ' and the whole
+  // strip is omitted when nothing applies (no orphan dot or row).
+  const storyMetaFragments: string[] = [];
+  if (editorialLabel) storyMetaFragments.push(editorialLabel);
+  if (collected) storyMetaFragments.push(`COLLECTED ${formatDate(collected).toUpperCase()}`);
+  if (tale.retiredDate) storyMetaFragments.push(`RETIRED ${formatDate(tale.retiredDate).toUpperCase()}`);
+  const storyMetaText = storyMetaFragments.join(' · ');
 
   return (
     <div className="page active ts-tale-screen" id="page-story">
@@ -179,9 +205,17 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
           ) : (
             <span />
           )}
-          <span className={`ts-tale-hero__pill${hasScanBadge ? '' : ' ts-tale-hero__pill--locked'}`}>
-            {hasScanBadge ? '🔒 UNLOCKED' : '🔒 SEALED'}
-          </span>
+          <div className="ts-tale-hero__pills">
+            {/* P.19a: live ON TAP promoted to the hero — visible
+                within a glance, beside the unlock pill, wrapping
+                beneath it on narrow screens. */}
+            {isLiveOnTap && (
+              <span className="ts-tale-hero__pill ts-tale-hero__pill--live">ON TAP</span>
+            )}
+            <span className={`ts-tale-hero__pill${hasScanBadge ? '' : ' ts-tale-hero__pill--locked'}`}>
+              {hasScanBadge ? '🔒 UNLOCKED' : '🔒 SEALED'}
+            </span>
+          </div>
         </div>
 
         <div className="ts-tale-hero__year" aria-hidden="true">{tale.year}</div>
@@ -272,21 +306,14 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
       {/* ============== 4. STORY + MAP ============== */}
       <div className="ts-tale-story-row">
         <article className="ts-tale-story">
-          <div className="ts-tale-story__meta">
-            <span className="ts-tale-story__meta-dot" aria-hidden="true" />
-            {/* P.19: live tap list owns 'ON TAP'; tap_status is
-                editorial (retired / coming soon); no claim otherwise.
-                Preview mode uses the same app-level live set — a
-                draft tale whose beer is genuinely pouring truthfully
-                previews as ON TAP. */}
-            {availabilityLabel ?? ''}
-            {collected && (
-              <span>
-                {availabilityLabel ? ' · ' : ''}COLLECTED {formatDate(collected).toUpperCase()}
-              </span>
-            )}
-            {tale.retiredDate && <span> · RETIRED {formatDate(tale.retiredDate).toUpperCase()}</span>}
-          </div>
+          {/* P.19a: lifecycle/persistence metadata only — ON TAP is a
+              hero pill now. Omitted entirely when empty. */}
+          {storyMetaText && (
+            <div className="ts-tale-story__meta">
+              <span className="ts-tale-story__meta-dot" aria-hidden="true" />
+              {storyMetaText}
+            </div>
+          )}
           <div className="ts-tale-story__body">
             {tale.story.map((block, i) => {
               if (block.type === 'quote') {

@@ -1692,6 +1692,25 @@
   border-color: var(--ts-color-brass-line);
   color: var(--ts-color-text-muted);
 }
+/* PUBLIC-v7.4B.P.19a — live ON TAP pill. Brighter than the restrained
+   UNLOCKED/SEALED pill (gold text/border, faint amber tint + glow)
+   but still inside the black/bronze/amber system — a live-status
+   accent, not a warning or advertisement. */
+.ts-tale-hero__pill--live {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(224, 161, 90, 0.12);
+  box-shadow: var(--gold-glow);
+}
+/* Pills group: UNLOCKED/SEALED + ON TAP sit together and wrap cleanly
+   beneath each other on narrow screens without overflowing the hero. */
+.ts-tale-hero__pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
 .ts-tale-hero__year {
   position: absolute;
   right: 16px;
