@@ -1,7 +1,12 @@
 // ================== v4.2 — GUEST IDENTITY & PERSISTENCE ==================
+// PUBLIC-v7.4B.P.20: the dead remote-sync helpers
+// (upsertGuestProfileRemote / hydrateGuestProgressFromRemote) were
+// removed — zero callers since the v6.x experiments, and they wrote
+// nothing locally, so no compatibility reader is needed. Guest
+// progress is localStorage-only (tb_* keys below); server-side
+// analytics remain the separate, deferred log-events pipeline.
 
 import { LS_USER, LS_UNLOCKED, LS_SCAN_BADGES, LS_GAME_BADGES, LS_COLLECTED_DATES } from '../app/types';
-import { supabaseFetch, USE_REMOTE_CONTENT } from './supabaseClient';
 
 // ---- Stable guest identity (no login required) ----
 
@@ -55,56 +60,5 @@ export function loadState(): PersistableState {
       gameBadges: new Set(),
       collectedDates: {},
     };
-  }
-}
-
-// ---- Remote sync helpers ----
-
-export async function upsertGuestProfileRemote(
-  guestId: string,
-  user: { name: string } | null
-): Promise<void> {
-  if (!USE_REMOTE_CONTENT || !guestId) return;
-  try {
-    await supabaseFetch('guest_profiles', '', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        Prefer:          'resolution=merge-duplicates',
-        'Return-Type':   'minimal',
-      },
-      body: JSON.stringify({
-        guest_id:    guestId,
-        display_name: user?.name || null,
-        last_seen_at: new Date().toISOString(),
-      }),
-    });
-  } catch (e) {
-    console.warn('[trackside] Guest profile upsert skipped:', e);
-  }
-}
-
-export async function hydrateGuestProgressFromRemote(
-  guestId: string,
-  onProgress: (unlocked: string[], scanBadges: string[], gameBadges: string[]) => void
-): Promise<void> {
-  if (!USE_REMOTE_CONTENT || !guestId) return;
-  try {
-    const rows = await supabaseFetch(
-      'user_badges',
-      `guest_id=eq.${encodeURIComponent(guestId)}`
-    ) as Array<{ badge_type: string; tale_id: string }>;
-    if (!Array.isArray(rows)) return;
-    const unlocked: string[] = [];
-    const scan: string[] = [];
-    const game: string[] = [];
-    for (const row of rows) {
-      if (row.tale_id) unlocked.push(row.tale_id);
-      if (row.badge_type === 'scan') scan.push(row.tale_id);
-      if (row.badge_type === 'game') game.push(row.tale_id);
-    }
-    onProgress(unlocked, scan, game);
-  } catch (e) {
-    console.warn('[trackside] Remote progress hydration skipped:', e);
   }
 }

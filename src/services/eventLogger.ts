@@ -22,11 +22,15 @@
 //   * No PII / device fingerprint capture. We do not read user_agent,
 //     IP, geolocation, URL params, referrer, or any header beyond what
 //     fetch sets by default. The server enforces this independently.
-//   * Receipt is opaque. The helper accepts an optional `receipt`
-//     string on tale_unlocked events but does not parse it; the
-//     server verifies HMAC and returns rejectedReasons if invalid.
-//     We do a cheap local `receiptExp` sanity check ONLY to avoid
-//     sending obviously-stale receipts the server would reject anyway.
+//
+// PUBLIC-v7.4B.P.20: the v6.7 receipt fields (receipt/receiptExp on
+// tale_unlocked) and the caller-less clearEventQueue helper were
+// removed — the HMAC-receipt model was retired in P.13b and the
+// committed-but-undeployed log-events function must be reworked
+// against the receiptless contract before any deployment (see the
+// deferred-hardening register in the admin runbook). This module
+// stays: it is the deferred analytics writer, inert until
+// VITE_USE_REMOTE_EVENTS ships.
 
 import {
   SUPABASE_URL,
@@ -45,11 +49,6 @@ export interface TaleUnlockedEvent {
   type:       'tale_unlocked';
   taleSlug:   string;
   source:     EventSource;
-  /** Optional compact `<b64>.<b64>` receipt from validate-qr. */
-  receipt?:   string;
-  /** Optional unix-seconds expiry from the same receipt. Only used to
-   *  drop obviously-stale receipts client-side; the server re-checks. */
-  receiptExp?: number;
 }
 
 /** badge_awarded — fired once per fresh badge grant. */
@@ -96,28 +95,14 @@ function isEnabled(): boolean {
   return Boolean(USE_REMOTE_EVENTS && SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
-/** Cheap sanity check to drop obviously-stale receipts before send. */
-function receiptStillFresh(ev: PendingEvent): boolean {
-  if (ev.type !== 'tale_unlocked') return true;
-  if (typeof ev.receiptExp !== 'number') return true;
-  const nowSec = Math.floor(Date.now() / 1000);
-  return ev.receiptExp > nowSec;
-}
-
-/** Strip the local-only receiptExp before send; the server only wants
- *  the opaque receipt string and ignores extra fields anyway, but
- *  emitting a clean wire shape keeps audit logs readable. */
+/** Emit a clean wire shape per event type (P.20: receiptless). */
 function toWirePayload(ev: PendingEvent): Record<string, unknown> {
   if (ev.type === 'tale_unlocked') {
-    const wire: Record<string, unknown> = {
+    return {
       type:     'tale_unlocked',
       taleSlug: ev.taleSlug,
       source:   ev.source,
     };
-    if (typeof ev.receipt === 'string' && ev.receipt && receiptStillFresh(ev)) {
-      wire.receipt = ev.receipt;
-    }
-    return wire;
   }
   if (ev.type === 'badge_awarded') {
     return {
@@ -251,20 +236,4 @@ export async function flushEvents(guestId?: string | null): Promise<void> {
   })();
 
   return inFlight;
-}
-
-/**
- * Discard any queued events without sending. Exposed for tests and
- * for future "user opted out of analytics" reset paths. v6.8B has no
- * production callers.
- */
-export function clearEventQueue(): void {
-  queue.length = 0;
-  if (flushTimer !== null) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-  }
-  // inFlight is intentionally left alone — its `finally` will clear
-  // it. Cancelling the underlying fetch would risk leaving the server
-  // in a partial-write state that the queue clear can't observe.
 }
