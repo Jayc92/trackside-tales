@@ -498,6 +498,13 @@ function mapProdBeerCategory(category: unknown): BeerPartitionCategory {
  * compared; if the input is unparseable, null is returned).
  */
 function formatProdAbv(raw: unknown): string | null {
+  // P.17a: NULL/absent/blank means "no ABV entered" and must return
+  // null (the card omits the fragment) — NOT fall through to
+  // Number(), where JavaScript's Number(null) === 0 silently turned
+  // an absent ABV into '<0.5%'. An EXPLICIT numeric 0 still reaches
+  // the Number() path below and keeps the '<0.5%' NA convention.
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === 'string' && raw.trim() === '') return null;
   if (typeof raw === 'string' && /%$/.test(raw)) {
     // Production might one day store pre-formatted percent strings
     // (e.g. '4.8%' or '<0.5%'); pass those through unchanged.
@@ -516,6 +523,12 @@ function formatProdAbv(raw: unknown): string | null {
  * returns null (caller drops the row).
  */
 function formatProdIbu(raw: unknown): string | null {
+  // P.17a: NULL/absent/blank → null (fragment omitted) — Number(null)
+  // is 0, which previously rendered an absent IBU as 'IBU 0'. An
+  // EXPLICIT numeric 0 still formats to '0' (a deliberate zero-IBU
+  // entry remains visible and distinguishable from "not entered").
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === 'string' && raw.trim() === '') return null;
   if (typeof raw === 'string' && raw.trim().length > 0 && Number.isFinite(Number(raw))) {
     return raw.trim();
   }
