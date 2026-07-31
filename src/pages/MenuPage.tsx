@@ -188,7 +188,20 @@ function TaleBeerCard({ tale, unlocked, onOpen, onScan }: TaleCardProps) {
 }
 
 // ---- Resident / N-A beer card ----------------------------------------------
-function ResidentBeerCard({ beer, isNA = false }: { beer: Beer; isNA?: boolean }) {
+function ResidentBeerCard({
+  beer,
+  isNA = false,
+  onTap = false,
+}: {
+  beer: Beer;
+  isNA?: boolean;
+  /**
+   * PUBLIC-v7.4B.P.18 — true only when a LIVE tap_list pour exists
+   * for this beer's slug right now. Purely additive: absence of the
+   * badge is the truthful default, never a stale claim.
+   */
+  onTap?: boolean;
+}) {
   // PUBLIC-v7.4B.P.17 — blank-fragment guards (same treatment the
   // Tale cards received in P.12a). The adapter now renders beers with
   // missing style/abv/ibu as '' instead of dropping them, so this
@@ -210,6 +223,9 @@ function ResidentBeerCard({ beer, isNA = false }: { beer: Beer; isNA?: boolean }
       <div className="ts-beer-card__body">
         <div className="ts-beer-card__name-row">
           <h3 className="ts-beer-card__name">{beer.name}</h3>
+          {onTap && (
+            <span className="ts-beer-card__tag">ON TAP</span>
+          )}
           {isNA && (
             <span className="ts-beer-card__tag ts-beer-card__tag--na">N/A</span>
           )}
@@ -295,7 +311,7 @@ function FoodCard({ item }: { item: FoodItem }) {
 
 // ================== MENU PAGE ROOT ==================
 export function MenuPage() {
-  const { state, navToTale, nav, tales, regulars, nonAlc, food } = useApp();
+  const { state, navToTale, nav, tales, regulars, nonAlc, food, liveTapSlugs } = useApp();
   const [activeTab, setActiveTab] = useState<TabId>('tales');
 
   return (
@@ -330,7 +346,11 @@ export function MenuPage() {
           <MenuSectionHeader text="RESIDENT BEERS" glyph="◈" />
           <div className="ts-menu-cards">
             {regulars.map((beer) => (
-              <ResidentBeerCard key={beer.name} beer={beer} />
+              <ResidentBeerCard
+                key={beer.name}
+                beer={beer}
+                onTap={beer.slug !== undefined && liveTapSlugs.has(beer.slug)}
+              />
             ))}
           </div>
         </>
@@ -341,7 +361,12 @@ export function MenuPage() {
           <MenuSectionHeader text="NON-ALCOHOLIC" glyph="◈" />
           <div className="ts-menu-cards">
             {nonAlc.map((beer) => (
-              <ResidentBeerCard key={beer.name} beer={beer} isNA />
+              <ResidentBeerCard
+                key={beer.name}
+                beer={beer}
+                isNA
+                onTap={beer.slug !== undefined && liveTapSlugs.has(beer.slug)}
+              />
             ))}
           </div>
         </>

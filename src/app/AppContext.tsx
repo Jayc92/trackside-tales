@@ -8,6 +8,7 @@ import {
   fetchRemoteRegulars,
   fetchRemoteNonAlc,
   fetchRemoteFood,
+  fetchLiveTapSlugs,
 } from '../services/contentService';
 
 // ================== STATE ==================
@@ -143,6 +144,13 @@ interface AppContextValue {
   regulars: Beer[];
   nonAlc: Beer[];
   food: FoodItem[];
+  /**
+   * PUBLIC-v7.4B.P.18 — beer_slugs with a LIVE tap_list pour right
+   * now. Drives the truthful ON TAP badge on beer cards. Empty set
+   * when the fetch is off/unavailable, so no badge is ever a stale
+   * claim.
+   */
+  liveTapSlugs: Set<string>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -163,10 +171,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [regulars, setRegulars] = useState<Beer[]>(LOCAL_REGULARS);
   const [nonAlc,   setNonAlc]   = useState<Beer[]>(LOCAL_NON_ALC);
   const [food,     setFood]     = useState<FoodItem[]>(LOCAL_FOOD);
+  // P.18: empty set until the live tap fetch resolves — no badge is
+  // ever shown from stale/static data.
+  const [liveTapSlugs, setLiveTapSlugs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
-    // Fire all four in parallel; each one is independent — a
+    // Fire all five in parallel; each one is independent — a
     // failure in one section never affects the others.
     void fetchRemoteTales().then((rows) => {
       if (!cancelled && rows) setTales(rows);
@@ -179,6 +190,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     void fetchRemoteFood().then((rows) => {
       if (!cancelled && rows) setFood(rows);
+    });
+    void fetchLiveTapSlugs().then((slugs) => {
+      if (!cancelled && slugs) setLiveTapSlugs(slugs);
     });
     return () => {
       cancelled = true;
@@ -245,6 +259,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       regulars,
       nonAlc,
       food,
+      liveTapSlugs,
     }}>
       {children}
     </AppContext.Provider>

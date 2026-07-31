@@ -109,6 +109,13 @@ export interface Beer {
   ibu: string;
   tasting?: string;
   tapStatus?: string;
+  /**
+   * Production beer slug (PUBLIC-v7.4B.P.18), populated by the remote
+   * adapter so live tap-list rows (keyed by beer_slug) can decorate
+   * the card with a truthful ON TAP badge. Absent on the static
+   * LOCAL_* fallback records — those never claim live availability.
+   */
+  slug?: string;
 }
 
 export interface FoodItem {

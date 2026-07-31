@@ -699,6 +699,9 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
     style,
     abv,
     ibu,
+    // P.18: carry the production slug so live tap_list rows (keyed by
+    // beer_slug) can decorate the card with a truthful ON TAP badge.
+    slug,
   };
   if (tasting) beer.tasting = tasting;
   if (pack.tapStatus) beer.tapStatus = pack.tapStatus;
@@ -1032,6 +1035,54 @@ export async function fetchRemoteNonAlc(): Promise<Beer[] | null> {
   const partitioned = await fetchRemoteBeersPartitioned();
   if (!partitioned) return null;
   return partitioned.nonAlc.length > 0 ? partitioned.nonAlc : null;
+}
+
+/**
+ * PUBLIC-v7.4B.P.18 — live tap list → truthful ON TAP badges.
+ *
+ * Reads the beer_slugs of CURRENTLY LIVE pours from public.tap_list
+ * (live = ended_at IS NULL). The table's RLS policy has exposed
+ * exactly these rows to anon reads since v6.x ("tap_list: public
+ * read live") — this is the first public consumer.
+ *
+ * Source-of-truth model:
+ *   * beers.status/is_active decide whether a beer appears on the
+ *     menu at all;
+ *   * a LIVE tap_list row decides whether its card carries the
+ *     ON TAP badge.
+ * The badge is purely ADDITIVE decoration keyed by slug, so every
+ * failure mode degrades to "no badges" — never to a stale
+ * availability claim:
+ *   * flag off / env missing / network error / RLS refusal → null
+ *     (caller keeps an empty set);
+ *   * malformed rows are skipped individually;
+ *   * the same beer live on multiple physical taps (legal — the DB
+ *     only enforces one live pour per tap_number) dedupes naturally
+ *     via the Set;
+ *   * a live pour for a draft/unpublished beer simply has no public
+ *     card to badge — nothing leaks.
+ * Gated on USE_REMOTE_BEERS: tap badges decorate beer cards, so they
+ * follow the beer surface's flag rather than adding a new one.
+ */
+export async function fetchLiveTapSlugs(): Promise<Set<string> | null> {
+  if (!USE_REMOTE_BEERS) return null;
+  try {
+    const rows = (await supabaseFetch(
+      'tap_list',
+      'select=beer_slug&ended_at=is.null',
+    )) as unknown;
+    if (!Array.isArray(rows)) return null;
+    const liveSlugs = new Set<string>();
+    for (const row of rows) {
+      if (!isObj(row)) continue;
+      const slug = asString(row.beer_slug);
+      if (slug && slug.trim().length > 0) liveSlugs.add(slug.trim());
+    }
+    return liveSlugs;
+  } catch (err) {
+    console.warn('[trackside] Live tap list unavailable — no on-tap badges', err);
+    return null;
+  }
 }
 
 export async function fetchRemoteFood(): Promise<FoodItem[] | null> {
