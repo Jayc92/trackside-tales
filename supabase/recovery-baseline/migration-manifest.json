@@ -1,0 +1,235 @@
+{
+ "generated": "2026-08-04",
+ "gate": "ADMIN/SUPABASE-v7.4B.P.24a",
+ "baseline_file": "production-public-schema-20260804.sql",
+ "baseline_sha256": "20ce282d431560f57b26ca89af059e68f0cd8e6ce362f13bbcaa9276eb362c1c",
+ "cutoff": "20260804999999 \u2014 every migration file dated on or before 2026-08-04 is reflected in the baseline; only migrations dated after the cutoff apply on top",
+ "production_registry_rows": 15,
+ "registry_caveat": "production's supabase_migrations.schema_migrations stops at n_4_beer_media (2026-06-29); every later change was applied via the SQL Editor and is unregistered \u2014 the registry must never be used as a recovery cutoff",
+ "migrations": [
+  {
+   "file": "20260601000000_init.sql",
+   "repo": "public",
+   "sha256": "e4312bbc0c61d4bc8d3181dd71fb55c16befc0741ff765d25364d378911ea403",
+   "production_registry_version": "20260601000000",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260601000100_rls.sql",
+   "repo": "public",
+   "sha256": "ac4b269dd15d89e620dbf0c088dd5bd303d8cb879b0d02a0333cc8e9f7d884e8",
+   "production_registry_version": "20260601000100",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260601000200_seed_content.sql",
+   "repo": "public",
+   "sha256": "6f6ff9227f00db1fc00fbe8abd768e279b0f88518ccd74f365cb3882a4726529",
+   "production_registry_version": "20260601000200",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260601500000_prod_catchup_tap_list.sql",
+   "repo": "public",
+   "sha256": "5ecbeb692dfbf5ce846a21512c79df81d52ad0bf603bbfbd4281779489af355e",
+   "production_registry_version": "20260601500000",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260602000000_admin_actions_and_tap_fns.sql",
+   "repo": "public",
+   "sha256": "41be3e21435db75771d05599161f23e2449d3ee46ae1d8560d4aa04b37e3c9fc",
+   "production_registry_version": "20260602000000",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260603000000_f4_dashboard_compat_views.sql",
+   "repo": "public",
+   "sha256": "eb096f9a9fb5a1a62e0e3dd60dec33bb6af5fff1c782716ab0c5c66e7c837f26",
+   "production_registry_version": "20260603000000",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260603100000_f4b_canonical_columns_additive.sql",
+   "repo": "public",
+   "sha256": "b6a325f64629114df4208b01132276a18e6943c8bb20c8d4419e09f5ebb27b5e",
+   "production_registry_version": "20260603100000",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260603200000_f4b_canonical_columns_backfill.sql",
+   "repo": "public",
+   "sha256": "475b8f3b792b3da6a274c4eb5da710a2a6b1a8f03f617e9955ebb59a4b180692",
+   "production_registry_version": "20260603200000",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260603300000_admin_v7_4b_c_crud_rpcs.sql",
+   "repo": "public",
+   "sha256": "504c84fcb73994546b16464547bf708a5ecb8a733720ff7586abda34028cf1eb",
+   "production_registry_version": "20260603300000",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260608000000_admin_v7_4b_g_user_mgmt_rpcs.sql",
+   "repo": "public",
+   "sha256": "349ce72144310963facca5e44ddac8843a5b7308d2aab9df39eeaa5b2b7eb6a2",
+   "production_registry_version": "20260608000000",
+   "registry_note": null,
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260610000000_admin_v7_4b_m_1_tales_crud_rpcs.sql",
+   "repo": "public",
+   "sha256": "d6e1ae520798c72f232478cffadbbb381c83dce24ca2404ed8762ab1c6c9b855",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260610010000_admin_v7_4b_m_1_1_narrow_tale_rpc.sql",
+   "repo": "public",
+   "sha256": "1d133686596cfbfcbb615e719d2a49185a5f270df3be6d6077c70048d05d4210",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260610020000_admin_v7_4b_m_2_tale_content_rpc.sql",
+   "repo": "public",
+   "sha256": "8895c5de0569fbb12f1d77b69265a9306852c8fb668e9fae5d1b92c9c0cc881c",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260624000000_admin_v7_4b_n_1_media_assets.sql",
+   "repo": "admin",
+   "sha256": "b63c8c0fd364c443bb4a9a0c7e4488c68fcb1b29829a5dbd443697b51c531285",
+   "production_registry_version": "20260625031226",
+   "registry_note": "registered under a DIFFERENT version stamp in production",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260625000000_admin_v7_4b_n_2_tale_media_assign.sql",
+   "repo": "admin",
+   "sha256": "64be6c2d5b9cdfb223fe709065b4c9e3b4f02bcf35291c6d1569a006c4040aa2",
+   "production_registry_version": "20260626160106",
+   "registry_note": "registered under a DIFFERENT version stamp in production",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260626000000_admin_v7_4b_n_3_a_orphan_media.sql",
+   "repo": "admin",
+   "sha256": "a4447b2a5c2a116a7b79307b1e8cd1c7035f4841216e32665ae60ae3e5bd3f7c",
+   "production_registry_version": "20260629144346",
+   "registry_note": "registered under a DIFFERENT version stamp in production",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260627000000_admin_v7_4b_n_3_b_media_delete.sql",
+   "repo": "admin",
+   "sha256": "35d9e8e1df21ff3eea8f8a77ac8e991c17c605d578e8ec4fd7401d2cc341175b",
+   "production_registry_version": "20260629172528",
+   "registry_note": "registered under a DIFFERENT version stamp in production",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260628000000_admin_v7_4b_n_4_beer_media.sql",
+   "repo": "admin",
+   "sha256": "06ed269fd176ab61add4eb6f1438eb1e5e8056f4969e0aa9ba2d2a8746b25e65",
+   "production_registry_version": "20260629201256",
+   "registry_note": "registered under a DIFFERENT version stamp in production",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260629000000_admin_v7_4b_n_5_food_media.sql",
+   "repo": "admin",
+   "sha256": "4e5cc8b4d397e05206a459fef9acc8e8991ebbb9bb9589480c990002a1608a0a",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260707000000_admin_v7_4b_o_5b_mfa_reset_audit.sql",
+   "repo": "admin",
+   "sha256": "3e3d4d8c884f7b78ecd3765bf58675e791add5978de6c38664faf53b7337e889",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260716000000_admin_v7_4b_p_8_food_fields.sql",
+   "repo": "admin",
+   "sha256": "23df702494650c996b7de9f793553ccc0debfcacc449f84dc95f40e0ff74ccb0",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260717000000_admin_v7_4b_p_11a_beer_sort_order.sql",
+   "repo": "admin",
+   "sha256": "e4a3018adca4cd197df363fa351fe0a7ea830634fe1fbc902dbf2904a34f4e4f",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260728000000_public_v7_4b_p13b_qr_lockdown.sql",
+   "repo": "public",
+   "sha256": "61218caf82c59e40bc0b9b9cbe61d44f1cd97adfad75879898160571a39ba5a1",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260729000000_admin_v7_4b_p14a_qr_lifecycle_rpcs.sql",
+   "repo": "public",
+   "sha256": "5d413b1ec73276914e83c6a6187144604e9f4e9e0999191822fc36d986242c93",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260729010000_admin_v7_4b_p14b_qr_rotate_audit_semantics.sql",
+   "repo": "public",
+   "sha256": "24cd1e84c9a8d212973affa25e057562a7eae41362546372f7529cc68d791b65",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260729020000_admin_v7_4b_p15b_qr_secure_redownload.sql",
+   "repo": "public",
+   "sha256": "5354ce16d741ce0ff69e55c0ceed8ae970941ad242a6206fd2b3b0383124102d",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260729030000_admin_v7_4b_p15c_tale_preview.sql",
+   "repo": "public",
+   "sha256": "e1f057e6ccca1262b230e22051259d1d20c3aaca63460cdd518fac8f68bde702",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  },
+  {
+   "file": "20260731000000_public_v7_4b_p18a_tap_list_live_read_policy.sql",
+   "repo": "public",
+   "sha256": "e755b4e4d655a365e8bd7452d976416ad32a49ed922f58102fa898c3027985c2",
+   "production_registry_version": null,
+   "registry_note": "NOT in production's schema_migrations \u2014 applied via SQL Editor (operator-gated workflow)",
+   "status": "historical/apply-once \u2014 superseded by the recovery baseline; NEVER replay onto the baseline or onto production"
+  }
+ ]
+}
