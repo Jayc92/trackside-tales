@@ -50,9 +50,23 @@ test migration then applied with deterministic ordering.
 
 1. Create the blank target (new Supabase project, or
    `supabase init` + `supabase db start` in an empty directory).
-2. Apply the baseline with `psql` (or `./restore-to-blank-target.sh`,
-   which refuses production):
-   `psql "<blank-target-db-url>" -v ON_ERROR_STOP=1 -f production-public-schema-20260804.sql`
+2. Apply the baseline with the guarded helper — run it with **no
+   arguments**; it prompts for the connection string with hidden
+   input (P.24a.1: the URL must never appear on a command line,
+   because argv leaks into shell history and process listings):
+
+   ```
+   ./restore-to-blank-target.sh
+   ```
+
+   The helper refuses production identifiers, shows only the parsed
+   target host, requires a typed confirmation phrase, and hands the
+   secret to psql via the environment so it never enters any argv.
+   If you must use bare `psql` instead, supply the connection through
+   libpq component environment variables (never as a psql argument —
+   and note libpq does *not* expand a URL placed in `PGDATABASE`):
+   `PGHOST=… PGPORT=… PGUSER=… PGPASSWORD=… PGDATABASE=… psql -v ON_ERROR_STOP=1 -f production-public-schema-20260804.sql`
+   set them in an interactive shell that does not persist the values.
 3. Apply any migrations dated after `2026-08-04` from
    `supabase/migrations/`, in filename order.
 4. Restore data from the most recent logical backup (separate
@@ -110,4 +124,6 @@ credentialed pg_dump; the DB password was not used). Transformations:
 * `production-public-schema-20260804.sql` — the baseline.
 * `migration-manifest.json` — all 28 historical migration files
   (both repos), SHA-256, production-registry status, cutoff.
-* `restore-to-blank-target.sh` — guarded apply helper.
+* `restore-to-blank-target.sh` — guarded apply helper (no-argument,
+  hidden-prompt interface; refuses production identifiers; keeps the
+  connection string out of argv, history, and process listings).
