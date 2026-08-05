@@ -178,7 +178,7 @@ export const LOCAL_TALES: Tale[] = [
       { year: '1912', event: 'Theodore Roosevelt whistle-stop', detail: 'Roosevelt stops at the station during his Bull Moose campaign.', major: true },
       { year: '1944', event: 'Wartime peak', detail: 'The station handles its highest passenger volume on record — troops, war workers, freight — during the Bethlehem Steel surge.' },
       { year: '1967', event: 'Last train departs', detail: 'The final scheduled passenger train pulls away on August 18. The CNJ enters bankruptcy weeks later.', major: true },
-      { year: 'Today', event: 'The Wooden Match', detail: 'The building lives on as a bar in Bethlehem and the soft-launch home of Trackside Brewing Co.', major: true },
+      { year: 'Today', event: 'The Wooden Match', detail: 'The building lives on as a bar in Bethlehem and the soft-launch home of Trackside Brewing.', major: true },
     ],
     scanBadge: { icon: 'station-seal', title: 'First Strike', desc: "A small token for the Tale named after the place where it pours. A hundred and fifty years of footsteps in this building — yours just got added to the count." },
     gameBadge: { icon: 'match-flame', title: 'Match Striker', desc: 'Earned for striking enough matches before they burned out. A patient hand for a patient building.' },

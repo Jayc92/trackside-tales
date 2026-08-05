@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { PageId } from '../app/types';
+import { pressable } from '../components/interactive';
 
 // ================== HOME PAGE (== golden #page-menu) ==================
 // Restores the original v4.6.1 Home surface: a tappable home-hero image card
@@ -83,6 +84,12 @@ const MENU_CARDS: MenuCard[] = [
 
 export function HomePage() {
   const { nav } = useApp();
+  // PUBLIC-v7.4B.P.28a — the hero artwork carries its headline INSIDE the
+  // raster. If the asset fails to load, the old behavior left a blank
+  // riveted panel with no text and no CTA (gate §16 audit finding). The
+  // fallback below renders the same message as real HTML so the hero
+  // stays readable and actionable even with decorative assets missing.
+  const [heroFailed, setHeroFailed] = useState(false);
 
   return (
     <div className="page active" id="page-menu">
@@ -90,23 +97,39 @@ export function HomePage() {
       {/* Hero card — single tappable image, mirrors golden home-hero */}
       <div
         className="home-hero"
-        onClick={() => nav('tales')}
+        {...pressable(() => nav('tales'))}
         style={{ cursor: 'pointer' }}
-        role="button"
-        aria-label="Explore Tales"
+        aria-label="Trackside Tales — explore the stories"
       >
         <div className="home-hero-bolts-bottom">
           <span />
           <span />
         </div>
         <div className="home-hero-train">
-          <img
-            src="assets/home/home-hero-trackside-tales.png"
-            alt="Trackside Tales at The Wooden Match — steam locomotive at golden hour"
-            loading="eager"
-            decoding="async"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
+          {!heroFailed ? (
+            <img
+              src="assets/home/home-hero-trackside-tales.png"
+              alt="Trackside Tales — steam locomotive at golden hour"
+              loading="eager"
+              decoding="async"
+              onError={() => setHeroFailed(true)}
+            />
+          ) : (
+            <div className="home-hero-fallback">
+              <span className="home-hero-fallback__eyebrow">TRACKSIDE TALES</span>
+              <span
+                className="home-hero-fallback__title"
+                role="heading"
+                aria-level={1}
+              >
+                STORIES FROM THE TRACK
+              </span>
+              <span className="home-hero-fallback__sub">
+                Stories, beers, and the people who keep the spirit on track.
+              </span>
+              <span className="home-hero-fallback__cta">EXPLORE THE TALES →</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -116,7 +139,9 @@ export function HomePage() {
          navigation stack so it's the first piece of copy below the fold.
          No new routes, no logic — just orientation. */}
       <div className="home-howitworks" aria-label="How Trackside Tales works">
-        <div className="home-howitworks-label">HOW TRACKSIDE TALES WORKS</div>
+        <div className="home-howitworks-label" role="heading" aria-level={2}>
+          HOW TRACKSIDE TALES WORKS
+        </div>
         <ol className="home-howitworks-steps">
           <li>
             <span className="home-howitworks-num">1</span>
@@ -145,8 +170,7 @@ export function HomePage() {
           <div
             key={card.title}
             className="home-menu-card"
-            onClick={() => nav(card.navTo)}
-            role="button"
+            {...pressable(() => nav(card.navTo))}
             aria-label={card.title}
           >
             <div className="home-menu-badge">

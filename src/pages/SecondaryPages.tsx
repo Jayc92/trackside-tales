@@ -13,7 +13,8 @@ export function OurStoryPage() {
     <div className="page active" id="page-ourstory" >
       <div className="page-hero">
         <h2>OUR STORY</h2>
-        <p>The heritage behind Trackside Brewing Co.</p>
+        {/* P.28b — approved brand hierarchy: no product-facing "Co." */}
+        <p>The heritage behind Trackside Brewing.</p>
       </div>
       {/* TODO Phase 5: extract full OurStory content from index-v4_6_1-golden.html line 6040 */}
     </div>

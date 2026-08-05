@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../app/AppContext';
 import { PageId } from '../app/types';
+import { pressable } from '../components/interactive';
 
 // ================== TALES HUB PAGE (== golden #page-taleshub) ==================
 // Mirrors the golden v4.6.1 #page-taleshub structure exactly:
@@ -37,9 +38,12 @@ const HUB_CARDS: HubCard[] = [
   },
   {
     image: 'assets/tales/tales-trackside-brewing.png',
-    imageAlt: 'Trackside Brewing Co.',
+    // PUBLIC-v7.4B.P.28a — approved brand hierarchy: product-facing "Co."
+    // is discontinued. The company reads "Trackside Brewing" everywhere
+    // outside approved logo artwork.
+    imageAlt: 'Trackside Brewing',
     label: 'THE CONCEPT',
-    title: 'TRACKSIDE BREWING CO.',
+    title: 'TRACKSIDE BREWING',
     subtitle: 'A brewery concept rooted in local history, rail heritage, and stories worth collecting.',
     body: 'Every Trackside beer is tied to a real person or moment in Lehigh Valley history. The beer is the ticket — the history is the destination.',
     cta: 'READ THE STORY →',
@@ -65,7 +69,7 @@ export function TalesPage() {
 
       <div className="taleshub-hero">
         <div className="taleshub-eyebrow">TRACKSIDE TALES</div>
-        <div className="taleshub-title">
+        <div className="taleshub-title" role="heading" aria-level={1}>
           STORIES FROM<br />THE TRACK
         </div>
         <span className="taleshub-title-diamond">◆</span>
@@ -79,8 +83,7 @@ export function TalesPage() {
           <div
             key={card.title}
             className="taleshub-card"
-            onClick={() => nav(card.navTo)}
-            role="button"
+            {...pressable(() => nav(card.navTo))}
             aria-label={card.title}
           >
             <div className="taleshub-card-image">
@@ -93,7 +96,9 @@ export function TalesPage() {
             </div>
             <div className="taleshub-card-content">
               <span className="taleshub-image-label">{card.label}</span>
-              <div className="taleshub-card-title">{card.title}</div>
+              <div className="taleshub-card-title" role="heading" aria-level={2}>
+                {card.title}
+              </div>
               <div className="taleshub-card-subtitle">{card.subtitle}</div>
               <div className="taleshub-card-body">{card.body}</div>
               <button className="taleshub-card-cta">{card.cta}</button>
