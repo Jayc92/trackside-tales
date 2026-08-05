@@ -1,5 +1,24 @@
+/* ================== TRACKSIDE BREWING — PUBLIC DESIGN TOKENS ==================
+   PUBLIC-v7.4B.P.28a — the formal public design-token layer.
+
+   Layer 1 (PALETTE) is the v4.5.2 "Option B — Warm Charcoal" palette,
+   preserved byte-for-byte: every legacy selector in app.css / polish.css /
+   design-system.css keeps resolving to the exact same pixel values.
+
+   Layer 2 (SEMANTIC ROLES) names each surface, text, border, and type role
+   the concepts use, aliased onto Layer 1. New and refactored styles should
+   consume the role tokens, not the raw palette, so a future palette tune is
+   a one-file change.
+
+   Ornament hierarchy (gate §3 — not every panel is equally ornate):
+     1. hero artifact        — parchment/ticket treatment, ornament allowed
+     2. operational panel    — raised iron + brass frame + rivets
+     3. secondary panel      — flat iron, hairline brass border
+     4. quiet metadata       — no frame; muted text on canvas
+*/
+
 :root {
-  /* Option B — Warm Charcoal (v4.5.2) */
+  /* ── Layer 1 — PALETTE (v4.5.2, unchanged) ─────────────────────────── */
   --coal: #191715;
   --iron: #24211E;
   --iron-2: #2C2824;
@@ -24,4 +43,87 @@
      exact same pixel values from the exact same calculation. */
   --app-shell-width: min(100vw, 500px);
   --app-shell-left: max(0px, calc((100vw - 500px) / 2));
+
+  /* ── Layer 2 — SEMANTIC ROLES (P.28a) ──────────────────────────────── */
+
+  /* Core surfaces */
+  --surface-canvas: var(--coal);            /* coal-black canvas          */
+  --surface-canvas-deep: var(--coal-deep);  /* blackened steel            */
+  --surface-charcoal: var(--iron);          /* warm charcoal              */
+  --surface-panel-raised: var(--iron-2);    /* raised iron panel          */
+  --surface-panel-bronze: #2e2418;          /* aged bronze panel          */
+  --surface-parchment: var(--parchment);    /* parchment (hero artifacts) */
+  --surface-parchment-faded: #e8dcc6;       /* faded parchment            */
+  --surface-leather: #3a2a1c;               /* leather                    */
+  --surface-overlay: var(--ink-overlay);    /* smoked glass overlay       */
+
+  /* Text */
+  --text-ivory: var(--parchment);           /* warm ivory (primary)       */
+  --text-parchment-ink: #2a2118;            /* ink on parchment surfaces  */
+  --text-brass: var(--gold);                /* brass display text         */
+  --text-bronze-muted: var(--aged);         /* muted bronze (secondary)   */
+  --text-signal: var(--ember);              /* railway orange (accents)   */
+  --status-success: var(--success);
+  --status-warning: #b07820;
+  --status-danger: #a03a2a;
+  --focus-ring: var(--gold);
+
+  /* Borders & ornament */
+  --border-brass-subtle: var(--brass-line);      /* hairline             */
+  --border-brass-strong: rgba(201, 130, 63, 0.55); /* framed panel       */
+  --border-copper-oxidized: rgba(122, 92, 60, 0.5);
+  --ornament-rivet: #8a6b3a;
+  --panel-inset-shadow: inset 0 1px 0 rgba(245, 236, 221, 0.04);
+  --ticket-edge: rgba(42, 33, 24, 0.35);         /* perforated ticket    */
+  --seal-stamp: rgba(138, 58, 24, 0.65);         /* stamped seal red     */
+  --rail-divider: linear-gradient(90deg, transparent, var(--brass-line), transparent);
+  --engraved-rule: rgba(245, 236, 221, 0.08);
+
+  /* Typography roles (all faces already loaded via index.html) */
+  --font-wordmark: 'Bebas Neue', 'Arial Narrow', sans-serif;   /* brand   */
+  --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;    /* railroad*/
+  --font-archival: 'IM Fell English', 'Playfair Display', serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-operational: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-numeric: 'Source Code Pro', ui-monospace, monospace;  /* stats   */
+  --font-metadata: 'Source Code Pro', ui-monospace, monospace; /* labels  */
+  --font-stamp: 'Source Code Pro', ui-monospace, monospace;    /* micro   */
+
+  /* Spacing scale (mobile-first, 4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* Depth */
+  --shadow-panel: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-raised: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Global accessibility baseline (P.28a) ───────────────────────────────
+   One consistent, high-visibility focus indicator for every interactive
+   element. :focus-visible only — pointer taps stay clean, keyboard and
+   switch users always see where they are. Individual components may layer
+   additional affordances but must not remove this.                        */
+:where(a, button, [role='button'], input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Screen-reader-only utility — status text that shouldn't render visually
+   (e.g. duplicate state already conveyed by ornament).                    */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

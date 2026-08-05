@@ -3,7 +3,17 @@ import { useApp } from '../app/AppContext';
 
 // ================== APP HEADER ==================
 // Three-column layout: Now Pouring | Logo | Profile icon
-// Preserved from v4.6.1 exactly.
+// Structure preserved from v4.6.1.
+//
+// PUBLIC-v7.4B.P.28a:
+//   * The Now Pouring chip and the logo lockup were click-only <div>s —
+//     both are now keyboard-operable (role=button + tabIndex + Enter/
+//     Space), picking up the global :focus-visible ring from tokens.css.
+//   * alt text follows the approved brand hierarchy: the company is
+//     "Trackside Brewing" (the "Co."/"Company" wording inside the logo
+//     ARTWORK is the approved asset and is allowed to remain).
+
+import { pressable } from './interactive';
 
 export function AppHeader() {
   const { state, nav } = useApp();
@@ -20,8 +30,9 @@ export function AppHeader() {
         <div className="app-bar-left">
           <div
             className="live-indicator"
-            onClick={handleNowPouringClick}
-            title="Now pouring at The Wooden Match"
+            {...pressable(handleNowPouringClick)}
+            title="Now pouring — view the menu"
+            aria-label="Now pouring — view the menu"
             style={{ cursor: 'pointer' }}
           >
             <span className="live-indicator-dot" />
@@ -30,10 +41,15 @@ export function AppHeader() {
         </div>
 
         {/* Center: Logo */}
-        <div className="app-bar-center" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>
+        <div
+          className="app-bar-center"
+          {...pressable(handleLogoClick)}
+          aria-label="Trackside Brewing — view Tales"
+          style={{ cursor: 'pointer' }}
+        >
           <img
             src="assets/brand/trackside-header-logo.png"
-            alt="Trackside Brewing Co."
+            alt="Trackside Brewing"
             className="header-logo-img"
             onError={(e) => {
               const img = e.currentTarget;
@@ -54,6 +70,7 @@ export function AppHeader() {
             className={`profile-btn${state.user ? '' : ' guest'}`}
             id="profile-btn"
             onClick={handleProfileClick}
+            aria-label="Passport"
           >
             <img
               src="assets/brand/profile-icon.png"

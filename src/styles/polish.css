@@ -3245,3 +3245,52 @@
   }
   /* .deciding focus and the room hush are static by design. */
 }
+
+/* ── PUBLIC-v7.4B.P.28a — hero HTML fallback ─────────────────────────────
+   The home hero artwork carries its headline inside the raster. When the
+   asset fails to load, HomePage renders this block instead so the panel
+   never appears blank and the CTA affordance survives (gate §9/§16).
+   Consumes the P.28a role tokens; ornament hierarchy tier 1.              */
+.home-hero-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 220px;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(201, 130, 63, 0.10), transparent 65%),
+    var(--surface-canvas-deep);
+}
+.home-hero-fallback__eyebrow {
+  font-family: var(--font-metadata);
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--text-signal);
+}
+.home-hero-fallback__title {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  color: var(--text-ivory);
+}
+.home-hero-fallback__sub {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  color: var(--text-bronze-muted);
+  max-width: 26ch;
+}
+.home-hero-fallback__cta {
+  margin-top: var(--space-2);
+  padding: 0.55rem 1.1rem;
+  font-family: var(--font-metadata);
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  color: var(--text-ivory);
+  background: linear-gradient(180deg, #a35a2a, #7d421d);
+  border: 1px solid var(--border-brass-strong);
+  border-radius: 4px;
+}
