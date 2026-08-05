@@ -1,9 +1,32 @@
 {
-  "name": "Trackside Tales",
+  "name": "Trackside Brewing",
   "short_name": "Trackside",
+  "description": "Trackside Brewing — beer, local rail history, passport stamps, and collectible Trackside Tales.",
+  "id": "/trackside-tales/",
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "background_color": "#151210",
-  "theme_color": "#151210",
-  "icons": []
+  "orientation": "portrait",
+  "background_color": "#191715",
+  "theme_color": "#0c0a07",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
 }
