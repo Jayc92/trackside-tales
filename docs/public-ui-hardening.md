@@ -216,3 +216,106 @@ and progress compatibility are intact by construction.
 5. Screen-reader walkthrough + formal contrast sweep.
 6. In-game keyboard operability (needs a logic-adjacent gate).
 7. Bundle splitting (pre-existing register item).
+
+---
+
+# P.28e — Mandatory Public Visual Rebuild (2026-08-05 → 2026-08-06)
+
+## Gate history
+
+The P.28 implementation above was **rejected at user acceptance**: it did
+not materially change the visual product. P.28e reopened the gate as a
+mandatory visual rebuild with operator screenshot checkpoints.
+
+- **Checkpoint 1** (`4a7aa0e`, approved after two revision rounds + a
+  focused Beer-layout correction): the `px-*` presentation system, shell
+  (compact integrated header, restrained bottom nav, real ≥768px
+  composition), Home ("Stories From the Track" hero + venue plaque +
+  concept editorial + track-line progress rail), Tales hub (state-driven
+  railway archive), the reusable Tale-detail dossier template, and the
+  Beers roster (featured-first desktop composition).
+- **Checkpoint 2** (`fb8784a`, approved after corrections for game
+  isolation, emoji removal, and preview-state evidence): Food tavern-menu
+  board, live Tap Board (renders only from genuine live pours), Passport
+  and Scan/QR coherence passes, the parchment unlock certificate, shared
+  game presentation (viewport ownership, scroll lock/restore, tablet
+  composition), and preview loading/failure presentation.
+- **P.28e.3 finalization** (`ea432f9`, approved after a timeline
+  correction): truthful live-header claim (NOW POURING only with live
+  pours; neutral BEER MENU otherwise, including during load), company
+  brand fallback (TRACKSIDE / BREWING), header lockup scale, timeline
+  scrolling (opens at the first event; state-driven edge fades; per-Tale
+  reset), Passport stamp grammar, preview operational panels,
+  game-completion vertical composition, and desktop rhythm.
+
+## Approved visual system (px-*)
+
+Coal-black and warm-charcoal canvas with faint soot grain; restrained
+antique brass and worn copper reserved for featured tiers, live states,
+and actions; aged parchment reserved for primary artifacts (archive
+tickets, unlock certificate); operational iron panels with single
+neutral hairlines; quiet secondary surfaces with no borders. Exactly
+four typography roles (Bebas display · IM Fell archival accents ·
+system-sans reading copy and controls · mono stamp metadata). Ornament
+hierarchy is enforced by tier (rivets only on the single featured panel
+per view). Mobile-first composition with true desktop responsiveness
+(1024px shell, two-column grids, featured-first Beer roster) and
+structural fixed-bottom-nav clearance derived from the nav's real
+height plus safe-area insets.
+
+## Business boundaries
+
+Trackside Brewing is the parent brand; Trackside Tales is the
+storytelling campaign; The Wooden Match remains the current active
+soft-launch venue. **Alburtis Tavern is not activated, hard-coded, or
+represented as operating anywhere.** Venue configuration remains P.29;
+Alburtis activation remains P.30; mobile packaging remains P.31.
+
+## Functional invariants preserved
+
+Hash routing; QR translation and validation (server-authoritative,
+fail-closed); one-time QR behavior; localStorage key compatibility
+(`tb_*`); Tale unlock behavior; Passport progression; badge awarding;
+game rules and scoring; live Tap List truthfulness (ON TAP and NOW
+POURING claims only from genuine live pours; absence is the loading
+posture); on-tap Tale state precedence; signed-preview fail-closed
+behavior; production security boundaries. Verified by diff scope: no
+change to `supabaseClient`, `qrValidation*`, `scanSlugTranslation`,
+`talePreview`, `guestPersistence`, `badgeService`, `contentService`,
+`eventLogger`, `types.ts`, `App.tsx`, `gameConfigs`, or any game
+component's logic.
+
+## PWA status
+
+Branding and icons corrected and manifest installability improved in
+P.28 (retained). No service worker yet: offline/live-data caching stays
+deferred to P.31 so stale Tap List or QR responses can never be served.
+
+## Accessibility work
+
+Global focus-visible treatment; semantic controls (real buttons,
+tablists, dialogs); dialog viewport ownership with background scroll
+lock and scroll restoration; keyboard-operable timeline scroll region;
+reduced-motion support (including the preview status indicator); no
+emoji or platform-dependent icons (TsIcon SVG system throughout);
+non-color status communication (plates always carry text); ≥44px touch
+targets on primary controls. No formal WCAG certification is claimed.
+
+## Known residuals
+
+- No formal screen-reader walkthrough; no formal contrast audit.
+- Service worker / offline support deferred (P.31).
+- Image optimization (1.3 MB hero PNG et al.) and bundle splitting
+  (646 kB chunk) deferred — pre-existing register items.
+- P.29 venue configuration still required (venue strings remain
+  approved current-venue copy).
+- P.31 mobile packaging still required.
+- 4 pre-existing npm audit findings (unchanged dependency set; covered
+  by the quarterly dependency-review register item).
+
+## Release register
+
+| Gate | State | Branch / SHA |
+|---|---|---|
+| **PUBLIC-v7.4B.P.28e — visual rebuild complete, awaiting merge/deployment** | committed + pushed, NOT merged, NOT deployed | `public-p28e-chatgpt-finalization` @ `ea432f9960f8b9fec8ac8228a5c4e7e91d49630a` (P.28e.1 `4a7aa0e` → P.28e.2 `fb8784a` → P.28e.3 `ea432f9`) |
+| Production | serves `main` | `b4a35b453dcf70c351ad4455536db187e5f8fdf6` |
