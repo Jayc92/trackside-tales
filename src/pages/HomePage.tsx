@@ -1,208 +1,117 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useApp } from '../app/AppContext';
-import { PageId } from '../app/types';
-import { pressable } from '../components/interactive';
+import {
+  IndustrialHero,
+  SectionRail,
+  PrimaryAction,
+  SecondaryAction,
+} from '../components/public/primitives';
 
-// ================== HOME PAGE (== golden #page-menu) ==================
-// Restores the original v4.6.1 Home surface: a tappable home-hero image card
-// stacked above four home-menu-card navigation tiles (TALES, MENU, STORY,
-// PASSPORT). The home-hidden-lists wrapper is kept for structural parity with
-// the golden — it has no visual footprint but matches the v4.6.1 DOM.
-
-interface MenuCard {
-  navTo: PageId;
-  badgeSrc: string;
-  badgeAlt: string;
-  title: string;
-  sub: string;
-  fallback: React.ReactNode;
-}
-
-// Fallback SVGs are taken verbatim from the golden file so the home-menu-badge
-// images degrade exactly the same way when the asset is missing.
-const FALLBACK_TALES = (
-  <svg className="badge-fallback" viewBox="0 0 28 28" fill="none">
-    <path d="M7 9h14M7 13h10M7 17h7" stroke="#C47A36" strokeWidth="1.5" strokeLinecap="round" />
-  </svg>
-);
-const FALLBACK_BEERS = (
-  <svg className="badge-fallback" viewBox="0 0 28 28" fill="none">
-    <rect x="9" y="8" width="10" height="15" rx="1.5" stroke="#C47A36" strokeWidth="1.5" />
-    <path d="M19 11q3 1.5 3 3.5t-3 3.5" stroke="#C47A36" strokeWidth="1.5" fill="none" />
-  </svg>
-);
-const FALLBACK_STORY = (
-  <svg className="badge-fallback" viewBox="0 0 28 28" fill="none">
-    <line x1="8" y1="10" x2="8" y2="20" stroke="#C47A36" strokeWidth="2" strokeLinecap="round" />
-    <line x1="20" y1="10" x2="20" y2="20" stroke="#C47A36" strokeWidth="2" strokeLinecap="round" />
-    <line x1="8" y1="12" x2="20" y2="12" stroke="#D89A58" strokeWidth="1.2" />
-    <line x1="8" y1="16" x2="20" y2="16" stroke="#D89A58" strokeWidth="1.2" />
-  </svg>
-);
-const FALLBACK_PASSPORT = (
-  <svg className="badge-fallback" viewBox="0 0 28 28" fill="none">
-    <rect x="7" y="7" width="14" height="17" rx="1.5" stroke="#C47A36" strokeWidth="1.5" />
-    <circle cx="11" cy="13" r="1.5" stroke="#D89A58" strokeWidth="1" />
-    <circle cx="17" cy="13" r="1.5" stroke="#D89A58" strokeWidth="1" />
-  </svg>
-);
-
-const MENU_CARDS: MenuCard[] = [
-  {
-    navTo: 'tales',
-    badgeSrc: 'assets/home/home-card-tales.png',
-    badgeAlt: 'Tales',
-    title: 'TALES',
-    sub: 'Stories from the track and beyond.',
-    fallback: FALLBACK_TALES,
-  },
-  {
-    navTo: 'menu',
-    badgeSrc: 'assets/home/home-card-beers.png',
-    badgeAlt: 'Beers',
-    title: 'MENU',
-    sub: 'Trackside pours, resident beers, N/A, and food.',
-    fallback: FALLBACK_BEERS,
-  },
-  {
-    navTo: 'ourstory',
-    badgeSrc: 'assets/home/home-card-story.png',
-    badgeAlt: 'Story',
-    title: 'STORY',
-    sub: 'Our history, our founders, our why.',
-    fallback: FALLBACK_STORY,
-  },
-  {
-    navTo: 'passport',
-    badgeSrc: 'assets/home/home-card-passport.png',
-    badgeAlt: 'Passport',
-    title: 'PASSPORT',
-    sub: 'Track your Tales and badge progress.',
-    fallback: FALLBACK_PASSPORT,
-  },
-];
+// ================== HOME — "Stories From the Track" landing ==================
+// PUBLIC-v7.4B.P.28e (checkpoint-1 revision) — each section now has a
+// distinct compositional role instead of a stack of look-alike cards:
+//
+//   1. Atmospheric railroad hero (tier-1 artifact).
+//   2. PARTNER VENUE — an engraved typographic PLAQUE. No photograph:
+//      the available venue art is concept illustration, and a plaque
+//      must not present invented imagery as the real building (§10).
+//      The 1868 CNJ-station date is the venue's real founding fact.
+//   3. THE TRACKSIDE CONCEPT — quiet editorial band directly on the
+//      canvas (no card, no border).
+//   4. SCAN → UNLOCK → COLLECT — a track-line progress system: three
+//      station nodes joined by a rail, then the Passport action.
+//
+// Alburtis is not referenced (P.30 boundary). All navigation uses the
+// existing nav() contract — no routing, unlock, or storage changes.
 
 export function HomePage() {
   const { nav } = useApp();
-  // PUBLIC-v7.4B.P.28a — the hero artwork carries its headline INSIDE the
-  // raster. If the asset fails to load, the old behavior left a blank
-  // riveted panel with no text and no CTA (gate §16 audit finding). The
-  // fallback below renders the same message as real HTML so the hero
-  // stays readable and actionable even with decorative assets missing.
-  const [heroFailed, setHeroFailed] = useState(false);
 
   return (
-    <div className="page active" id="page-menu">
+    <div className="page active px-screen" id="page-menu">
 
-      {/* Hero card — single tappable image, mirrors golden home-hero */}
-      <div
-        className="home-hero"
-        {...pressable(() => nav('tales'))}
-        style={{ cursor: 'pointer' }}
-        aria-label="Trackside Tales — explore the stories"
-      >
-        <div className="home-hero-bolts-bottom">
-          <span />
-          <span />
-        </div>
-        <div className="home-hero-train">
-          {!heroFailed ? (
-            <img
-              src="assets/home/home-hero-trackside-tales.png"
-              alt="Trackside Tales — steam locomotive at golden hour"
-              loading="eager"
-              decoding="async"
-              onError={() => setHeroFailed(true)}
-            />
-          ) : (
-            <div className="home-hero-fallback">
-              <span className="home-hero-fallback__eyebrow">TRACKSIDE TALES</span>
-              <span
-                className="home-hero-fallback__title"
-                role="heading"
-                aria-level={1}
-              >
-                STORIES FROM THE TRACK
-              </span>
-              <span className="home-hero-fallback__sub">
-                Stories, beers, and the people who keep the spirit on track.
-              </span>
-              <span className="home-hero-fallback__cta">EXPLORE THE TALES →</span>
-            </div>
-          )}
-        </div>
-      </div>
+      <IndustrialHero
+        image="assets/tales/tales-scan-unlock.png"
+        eyebrow="Trackside Tales"
+        title={<>STORIES FROM<br />THE TRACK</>}
+        sub="History, heritage, beer, and the people who built and traveled the Lehigh Valley."
+        actions={
+          <PrimaryAction onClick={() => nav('tales')} ariaLabel="Explore the Tales">
+            EXPLORE THE TALES →
+          </PrimaryAction>
+        }
+      />
 
-      {/* v5.2: first-time-user "how it works" strip. Three-step rail-card
-         tells a guest, in one glance, why they're here: scan a can, read
-         the Tale, earn the badges. Sits between the hero and the
-         navigation stack so it's the first piece of copy below the fold.
-         No new routes, no logic — just orientation. */}
-      <div className="home-howitworks" aria-label="How Trackside Tales works">
-        <div className="home-howitworks-label" role="heading" aria-level={2}>
-          HOW TRACKSIDE TALES WORKS
-        </div>
-        <ol className="home-howitworks-steps">
-          <li>
-            <span className="home-howitworks-num">1</span>
-            <span className="home-howitworks-text">
-              <strong>Scan a can</strong> to unlock its Tale.
-            </span>
-          </li>
-          <li>
-            <span className="home-howitworks-num">2</span>
-            <span className="home-howitworks-text">
-              <strong>Read the story</strong> behind the beer.
-            </span>
-          </li>
-          <li>
-            <span className="home-howitworks-num">3</span>
-            <span className="home-howitworks-text">
-              <strong>Play the challenge</strong> to earn both badges.
-            </span>
-          </li>
-        </ol>
-      </div>
+      <div className="px-wrap">
 
-      {/* Navigation stack */}
-      <div className="home-menu-stack">
-        {MENU_CARDS.map((card) => (
-          <div
-            key={card.title}
-            className="home-menu-card"
-            {...pressable(() => nav(card.navTo))}
-            aria-label={card.title}
-          >
-            <div className="home-menu-badge">
-              <img
-                src={card.badgeSrc}
-                alt={card.badgeAlt}
-                loading="lazy"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
-              {card.fallback}
-            </div>
-            <div className="home-menu-body">
-              <div className="home-menu-title">{card.title}</div>
-              <div className="home-menu-sub">{card.sub}</div>
-            </div>
-            <div className="home-menu-arrow">›</div>
+        {/* ── Venue plaque ── */}
+        <SectionRail label="Our Home Station" />
+        <section className="px-plaque" aria-label="Partner venue">
+          <span className="px-eyebrow">Partner Venue</span>
+          <h2 className="px-plaque__title" role="heading" aria-level={2}>
+            THE WOODEN MATCH
+          </h2>
+          <div className="px-plaque__band" aria-hidden="true" />
+          <div className="px-plaque__meta">EST. 1868 · CNJ STATION · BETHLEHEM, PA</div>
+          <p className="px-plaque__copy">
+            Our rail-side home and gathering place, built inside a preserved
+            piece of Lehigh Valley rail history — great beer, hearty fare,
+            and stories that go back generations.
+          </p>
+          <div className="px-plaque__actions">
+            <PrimaryAction onClick={() => nav('woodenmatch')} ariaLabel="Read the Wooden Match story">
+              VISIT THE STATION →
+            </PrimaryAction>
           </div>
-        ))}
+        </section>
+
+        {/* ── Concept editorial ── */}
+        <SectionRail label="The Trackside Concept" />
+        <section className="px-editorial" aria-label="The Trackside concept">
+          <h2 className="px-editorial__title" role="heading" aria-level={2}>
+            BEER. RAILROAD. COMMUNITY.
+          </h2>
+          <p className="px-editorial__copy">
+            Trackside Brewing was built around local history, railroad
+            heritage, and craft beer worth collecting. Every brew has a tale
+            — the beer is the ticket, the history is the destination.
+          </p>
+          <div className="px-editorial__actions">
+            <SecondaryAction onClick={() => nav('ourstory')} ariaLabel="Read our story">
+              OUR STORY →
+            </SecondaryAction>
+          </div>
+        </section>
+
+        {/* ── Passport progress line ── */}
+        <SectionRail label="Scan · Unlock · Collect" />
+        <section aria-label="How Trackside Tales works">
+          <div className="px-track">
+            <div className="px-step">
+              <span className="px-step__glyph" aria-hidden="true">⌗</span>
+              <span className="px-step__name">SCAN</span>
+              <span className="px-step__desc">Find Tales in the real world.</span>
+            </div>
+            <div className="px-step">
+              <span className="px-step__glyph" aria-hidden="true">✦</span>
+              <span className="px-step__name">UNLOCK</span>
+              <span className="px-step__desc">Read, play, and earn stamps.</span>
+            </div>
+            <div className="px-step">
+              <span className="px-step__glyph" aria-hidden="true">◈</span>
+              <span className="px-step__name">COLLECT</span>
+              <span className="px-step__desc">Complete Tales, earn badges.</span>
+            </div>
+          </div>
+          <div className="px-editorial__actions" style={{ marginTop: '1.3rem' }}>
+            <PrimaryAction onClick={() => nav('passport')} ariaLabel="View your passport">
+              VIEW YOUR PASSPORT →
+            </PrimaryAction>
+          </div>
+        </section>
+
+        <div style={{ height: '1rem' }} />
       </div>
-
-      <div className="home-footer-space" />
-
-      {/* Hidden lists preserved from golden for parity — no visual output */}
-      <div className="home-hidden-lists">
-        <div id="tales-list" />
-        <div id="food-list-home" />
-        <div id="how-it-works" />
-        <div id="how-restore" />
-        <div id="coming-next-body" />
-        <span id="today-date" />
-      </div>
-
     </div>
   );
 }

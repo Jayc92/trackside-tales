@@ -1,0 +1,1486 @@
+/* ================== TRACKSIDE BREWING — P.28e VISUAL REBUILD ==================
+   PUBLIC-v7.4B.P.28e — the rebuilt public presentation system.
+
+   Every class here is prefixed `px-` and scoped under `.px-screen`, so the
+   legacy `.ts-*` / golden classes on not-yet-rebuilt routes are untouched.
+
+   HIERARCHY (strictly enforced — restraint is the system):
+     0  atmospheric canvas   — coal, faint soot grain, no frame
+     1  primary artifact     — .px-hero (atmosphere + type)  /  .px-ticket
+                               (parchment archive document). Ornament allowed.
+     2  operational panel    — .px-panel. ONE hairline brass border. Rivets
+                               ONLY on .px-panel--featured (max one per view).
+     3  secondary surface    — .px-quiet. No border. Slight lift only.
+     4  metadata             — bare text. No decoration.
+
+   TYPE ROLES (exactly four):
+     display   Bebas Neue        — titles. Tight, restrained tracking.
+     archival  IM Fell English   — hero subline + pull-quotes ONLY.
+     body      system sans stack — all reading copy and controls.
+     stamp     Source Code Pro   — small metadata, stats, plates ONLY.
+   Mono is never used for paragraphs. Letter-spacing above 0.12em is
+   reserved for 10px stamp labels — never body or buttons.
+*/
+
+/* ── 0. Canvas ─────────────────────────────────────────────────────────── */
+
+.px-screen {
+  --px-body-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(201, 130, 63, 0.05), transparent 60%),
+    repeating-linear-gradient(-35deg, rgba(245, 236, 221, 0.012) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #16130f 0%, #141110 100%);
+  color: var(--steam);
+  font-family: var(--px-body-font);
+  padding-bottom: 7.5rem;
+  min-height: 100dvh;
+}
+.px-screen p { line-height: 1.55; }
+
+.px-wrap { padding: 0 1rem; }
+.px-stack { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── 1a. Industrial hero (atmosphere + HTML type) ─────────────────────── */
+
+.px-hero {
+  position: relative;
+  min-height: 400px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  isolation: isolate;
+}
+.px-hero__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 12%;
+  z-index: -2;
+  filter: saturate(0.85) contrast(1.05) brightness(0.98);
+}
+.px-hero::after {
+  /* smoke + soot: readable type without a boxed card — the source art
+     is already dark, so the wash stays light until the bottom fade */
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(20, 17, 16, 0.35) 0%, rgba(20, 17, 16, 0.06) 24%,
+      rgba(20, 17, 16, 0.66) 48%, rgba(20, 17, 16, 0.88) 74%, #141110 100%),
+    radial-gradient(90% 50% at 50% 100%, rgba(201, 130, 63, 0.08), transparent 70%);
+}
+.px-hero__content {
+  position: relative;
+  width: 100%;
+  padding: 4.5rem 1.25rem 1.9rem;
+  text-align: center;
+}
+.px-hero .px-eyebrow {
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+}
+.px-hero__sub { text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85); }
+.px-hero--short { min-height: 240px; }
+.px-hero--short .px-hero__content { padding-top: 2.5rem; }
+
+.px-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-metadata);
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  color: var(--ember);
+  text-transform: uppercase;
+}
+.px-eyebrow::before,
+.px-eyebrow::after {
+  content: '';
+  width: 22px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ember));
+}
+.px-eyebrow::after { transform: scaleX(-1); }
+
+.px-hero__title {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 11vw, 3.4rem);
+  line-height: 0.98;
+  letter-spacing: 0.025em;
+  color: #efe6d5;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
+}
+.px-hero__divider {
+  width: 70px;
+  height: 9px;
+  margin: 0.8rem auto 0.7rem;
+  background:
+    radial-gradient(circle at 50% 50%, var(--brass) 0 2.5px, transparent 3px),
+    linear-gradient(90deg, transparent, var(--brass-line) 20%, var(--brass-line) 80%, transparent);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 9px 9px, 100% 1px;
+}
+.px-hero__sub {
+  margin: 0 auto;
+  max-width: 30ch;
+  font-family: var(--font-archival);
+  font-size: 1.02rem;
+  line-height: 1.45;
+  color: #cdbb9f;
+}
+.px-hero__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1.15rem;
+}
+
+/* ── 1b. Parchment archive ticket (Tale hero) ─────────────────────────── */
+
+.px-ticket {
+  position: relative;
+  margin: 0.9rem 1rem 0;
+  border-radius: 5px;
+  color: #2b2115;
+  background:
+    radial-gradient(120% 90% at 18% 8%, rgba(120, 88, 44, 0.16), transparent 55%),
+    radial-gradient(100% 80% at 85% 90%, rgba(120, 88, 44, 0.20), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(84, 62, 34, 0.05) 0 1px, transparent 1px 26px),
+    linear-gradient(160deg, #ece0c4 0%, #e5d6b4 55%, #dccaa4 100%);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(84, 62, 34, 0.35),
+    inset 0 0 46px rgba(84, 62, 34, 0.22);
+  overflow: hidden;
+}
+/* perforated stub edge */
+.px-ticket::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 26px;
+  width: 1px;
+  background-image: radial-gradient(circle, rgba(43, 33, 21, 0.5) 0 1.1px, transparent 1.4px);
+  background-size: 1px 9px;
+}
+.px-ticket__spine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.px-ticket__spine span {
+  font-family: var(--font-metadata);
+  font-size: 0.52rem;
+  letter-spacing: 0.3em;
+  color: rgba(43, 33, 21, 0.62);
+  white-space: nowrap;
+  transform: rotate(180deg);
+  writing-mode: vertical-rl;
+}
+.px-ticket__inner { padding: 1rem 1rem 1.1rem 2.4rem; position: relative; }
+.px-ticket__year-ghost {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.6rem;
+  font-family: var(--font-display);
+  font-size: 4.6rem;
+  line-height: 1;
+  color: rgba(84, 62, 34, 0.16);
+  pointer-events: none;
+  user-select: none;
+}
+.px-ticket__topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+.px-ticket__label {
+  font-family: var(--font-metadata);
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  color: #8a4d22;
+  text-transform: uppercase;
+}
+.px-ticket__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.9rem, 8.6vw, 2.6rem);
+  line-height: 0.96;
+  letter-spacing: 0.015em;
+  color: #241a0e;
+  text-transform: uppercase;
+}
+.px-ticket__meta {
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(84, 62, 34, 0.4);
+  font-family: var(--font-metadata);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  color: #4c3a22;
+}
+.px-ticket__body {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.px-ticket__can {
+  flex: 0 0 86px;
+  margin-top: 0.2rem;
+  padding: 5px;
+  background: linear-gradient(180deg, #2a2118, #1c1712);
+  border: 1px solid rgba(176, 120, 32, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.px-ticket__can img { display: block; width: 100%; height: auto; border-radius: 2px; }
+
+/* ── 2. Iron panel (operational surface) ──────────────────────────────── */
+
+.px-panel {
+  position: relative;
+  border: 1px solid rgba(176, 120, 32, 0.26);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(245, 236, 221, 0.025), transparent 32%),
+    linear-gradient(180deg, #211d18 0%, #1a1713 100%);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+}
+/* Rivets — featured tier only, drawn without extra DOM */
+.px-panel--featured {
+  border-color: rgba(176, 120, 32, 0.45);
+  background:
+    radial-gradient(circle at 11px 11px, #7d6234 0 2.4px, rgba(0,0,0,.45) 2.9px, transparent 4px),
+    radial-gradient(circle at calc(100% - 11px) 11px, #7d6234 0 2.4px, rgba(0,0,0,.45) 2.9px, transparent 4px),
+    radial-gradient(circle at 11px calc(100% - 11px), #7d6234 0 2.4px, rgba(0,0,0,.45) 2.9px, transparent 4px),
+    radial-gradient(circle at calc(100% - 11px) calc(100% - 11px), #7d6234 0 2.4px, rgba(0,0,0,.45) 2.9px, transparent 4px),
+    linear-gradient(180deg, rgba(245, 236, 221, 0.03), transparent 32%),
+    linear-gradient(180deg, #232019 0%, #1a1713 100%);
+}
+.px-panel__media {
+  position: relative;
+  height: 168px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(176, 120, 32, 0.22);
+}
+.px-panel__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 62%;
+  filter: saturate(0.88) brightness(1.05);
+}
+.px-panel__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(26, 23, 19, 0.85) 100%);
+}
+.px-panel__body { padding: 1.05rem 1.05rem 1.15rem; }
+.px-panel__title {
+  margin: 0.45rem 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.7rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: #e8ddc8;
+  text-transform: uppercase;
+}
+.px-panel__meta {
+  margin-top: 0.3rem;
+  font-family: var(--font-metadata);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--aged);
+}
+.px-panel__copy {
+  margin: 0.65rem 0 0;
+  font-size: 0.9rem;
+  color: #bfae94;
+}
+.px-panel__actions { display: flex; gap: 0.6rem; margin-top: 0.95rem; flex-wrap: wrap; }
+
+/* ── 3. Quiet secondary surface ───────────────────────────────────────── */
+.px-quiet {
+  border-radius: 6px;
+  background: rgba(245, 236, 221, 0.028);
+  padding: 0.95rem 1rem;
+}
+
+/* ── Section rail ─────────────────────────────────────────────────────── */
+.px-rail-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 1.4rem 0 0.75rem;
+}
+.px-rail-head::before,
+.px-rail-head::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(176, 120, 32, 0.35));
+}
+.px-rail-head::after { transform: scaleX(-1); }
+.px-rail-head span {
+  font-family: var(--font-metadata);
+  font-size: 0.6rem;
+  letter-spacing: 0.24em;
+  color: var(--aged);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── Actions ──────────────────────────────────────────────────────────── */
+
+.px-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 1.15rem;
+  border-radius: 4px;
+  border: 1px solid rgba(232, 170, 106, 0.55);
+  background: linear-gradient(180deg, #a75f2b 0%, #8a4a1f 58%, #7a3f1a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(245, 236, 221, 0.28),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.28),
+    0 3px 9px rgba(0, 0, 0, 0.4);
+  font-family: var(--px-body-font);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #f7ecd9;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.px-act:hover { filter: brightness(1.08); }
+.px-act:active { transform: translateY(1px); }
+.px-act--secondary {
+  background: linear-gradient(180deg, rgba(245, 236, 221, 0.05), rgba(245, 236, 221, 0.015));
+  border-color: rgba(176, 120, 32, 0.4);
+  box-shadow: inset 0 1px 0 rgba(245, 236, 221, 0.06);
+  color: #d3c3a6;
+  text-shadow: none;
+}
+.px-act--secondary:hover { filter: none; background: rgba(245, 236, 221, 0.07); }
+.px-act--quiet {
+  min-height: 36px;
+  padding: 0 0.7rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--aged);
+  font-size: 0.7rem;
+}
+.px-act[disabled], .px-act[aria-disabled='true'] {
+  filter: grayscale(0.5) brightness(0.7);
+  cursor: not-allowed;
+}
+
+/* ── Status plates ────────────────────────────────────────────────────── */
+
+.px-plate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 3px;
+  border: 1px solid rgba(154, 136, 112, 0.4);
+  background: rgba(20, 17, 16, 0.55);
+  font-family: var(--font-metadata);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: var(--aged);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.px-plate--live {
+  border-color: rgba(216, 122, 52, 0.65);
+  color: var(--gold);
+}
+.px-plate--live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 7px rgba(201, 100, 40, 0.9);
+}
+.px-plate--unlocked {
+  border-color: rgba(176, 120, 32, 0.6);
+  color: var(--gold);
+  background: rgba(176, 120, 32, 0.1);
+}
+.px-plate--sealed { opacity: 0.85; }
+.px-plate--danger { border-color: rgba(160, 58, 42, 0.7); color: #c96a52; }
+/* Plates sitting on the parchment ticket read in archive ink, not gold */
+.px-ticket .px-plate {
+  background: rgba(43, 33, 21, 0.06);
+  border-color: rgba(43, 33, 21, 0.45);
+  color: #4c3a22;
+}
+.px-ticket .px-plate--unlocked {
+  border-color: #7a5a1e;
+  background: rgba(122, 90, 30, 0.14);
+  color: #6a4a14;
+}
+.px-ticket .px-plate--live { border-color: #8a4d22; color: #8a4d22; }
+.px-ticket .px-act--quiet { color: #6a5638; }
+
+/* ── Steps (scan / unlock / collect) ──────────────────────────────────── */
+
+.px-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+}
+.px-step { text-align: center; position: relative; padding: 0 0.2rem; }
+.px-step + .px-step::before {
+  content: '→';
+  position: absolute;
+  left: -0.55rem;
+  top: 0.55rem;
+  color: rgba(176, 120, 32, 0.55);
+  font-size: 0.8rem;
+}
+.px-step__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(176, 120, 32, 0.45);
+  color: var(--gold);
+  font-size: 0.95rem;
+}
+.px-step__name {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: var(--font-metadata);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  color: #d3c3a6;
+}
+.px-step__desc {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--aged);
+}
+
+/* ── Tale archive card (Tales hub roster) ─────────────────────────────── */
+
+.px-tale-card {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(176, 120, 32, 0.28);
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgba(245, 236, 221, 0.02), transparent 40%),
+    linear-gradient(180deg, #1f1b16 0%, #191613 100%);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease;
+}
+.px-tale-card:hover { border-color: rgba(216, 154, 88, 0.5); }
+.px-tale-card__stub {
+  flex: 0 0 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.6rem 0.2rem;
+  border-right: 1px dashed rgba(84, 62, 34, 0.55);
+  background:
+    repeating-linear-gradient(0deg, rgba(84, 62, 34, 0.06) 0 1px, transparent 1px 18px),
+    linear-gradient(165deg, #e7dabb 0%, #d9c69d 100%);
+  color: #3a2c18;
+}
+.px-tale-card--sealed .px-tale-card__stub {
+  background: linear-gradient(165deg, #34302a 0%, #292521 100%);
+  border-right-color: rgba(154, 136, 112, 0.35);
+  color: var(--aged);
+}
+.px-tale-card__stub-year {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.px-tale-card__stub-tag {
+  font-family: var(--font-metadata);
+  font-size: 0.48rem;
+  letter-spacing: 0.18em;
+}
+.px-tale-card__stub-glyph { font-size: 0.9rem; }
+.px-tale-card__main { flex: 1; padding: 0.75rem 0.85rem 0.8rem; min-width: 0; display: block; }
+.px-tale-card__title,
+.px-tale-card__beer,
+.px-tale-card__line { display: block; }
+.px-tale-card__plates {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+.px-tale-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.45rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #e8ddc8;
+  text-transform: uppercase;
+}
+.px-tale-card--sealed .px-tale-card__title { color: #b6a68b; }
+.px-tale-card__beer {
+  margin-top: 0.25rem;
+  font-family: var(--font-metadata);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--aged);
+  text-transform: uppercase;
+}
+.px-tale-card__line {
+  margin: 0.4rem 0 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.82rem;
+  color: #ab9a7f;
+}
+.px-tale-card__plates { display: flex; }
+.px-tale-card__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.px-tale-card__progress {
+  font-family: var(--font-metadata);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: var(--aged);
+}
+.px-tale-card__progress b { color: var(--gold); font-weight: 400; }
+.px-tale-card__cta {
+  font-family: var(--px-body-font);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+/* ── Beer roster (Tales beers — prominent) ────────────────────────────── */
+
+.px-roster {
+  display: flex;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(176, 120, 32, 0.3);
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgba(245, 236, 221, 0.025), transparent 36%),
+    linear-gradient(180deg, #201c17 0%, #191613 100%);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+}
+.px-roster__art {
+  flex: 0 0 92px;
+  align-self: flex-start;
+  padding: 4px;
+  border: 1px solid rgba(176, 120, 32, 0.4);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2a241d, #17140f);
+}
+.px-roster__art img { display: block; width: 100%; height: auto; border-radius: 2px; }
+.px-roster__art-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 110px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--aged);
+}
+.px-roster__body { flex: 1; min-width: 0; }
+.px-roster__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+.px-roster__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #e8ddc8;
+}
+.px-roster__style {
+  margin-top: 0.2rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: #ab9a7f;
+}
+.px-roster__desc { margin: 0.45rem 0 0; font-size: 0.84rem; color: #bfae94; }
+.px-roster__meta {
+  margin-top: 0.45rem;
+  font-family: var(--font-metadata);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--aged);
+}
+.px-roster__actions { display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; }
+.px-roster__actions .px-act { min-height: 38px; font-size: 0.7rem; padding: 0 0.85rem; }
+
+/* ── Inventory ledger (resident / N-A — secondary) ────────────────────── */
+
+.px-ledger {
+  border-top: 1px solid rgba(176, 120, 32, 0.25);
+}
+.px-inv {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.25rem;
+  border-bottom: 1px solid rgba(154, 136, 112, 0.16);
+}
+.px-inv__thumb {
+  flex: 0 0 44px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.px-inv__thumb img { max-width: 100%; max-height: 100%; }
+.px-inv__thumb span {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--aged);
+}
+.px-inv__body { flex: 1; min-width: 0; }
+.px-inv__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+  color: #ddd1b8;
+}
+.px-inv__style {
+  margin-top: 0.1rem;
+  font-size: 0.74rem;
+  color: var(--aged);
+}
+.px-inv__right {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+.px-inv__stats {
+  font-family: var(--font-metadata);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--aged);
+  white-space: nowrap;
+}
+
+/* ── Menu header + tabs ───────────────────────────────────────────────── */
+
+.px-page-head { text-align: center; padding: 1.5rem 1rem 0.4rem; }
+.px-page-head__title {
+  margin: 0.4rem 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.6rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #efe6d5;
+}
+.px-page-head__sub {
+  margin: 0.45rem auto 0;
+  max-width: 34ch;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.92rem;
+  color: #ab9a7f;
+}
+
+.px-tabs {
+  display: flex;
+  margin: 1rem 1rem 0.25rem;
+  border: 1px solid rgba(176, 120, 32, 0.3);
+  border-radius: 5px;
+  background: linear-gradient(180deg, #1e1a15, #171410);
+  overflow: hidden;
+}
+.px-tab {
+  flex: 1;
+  min-height: 42px;
+  border: none;
+  background: none;
+  font-family: var(--font-metadata);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: var(--aged);
+  cursor: pointer;
+  position: relative;
+}
+.px-tab + .px-tab { border-left: 1px solid rgba(176, 120, 32, 0.18); }
+.px-tab--active {
+  color: #f0e2c8;
+  background: linear-gradient(180deg, rgba(201, 130, 63, 0.2), rgba(201, 130, 63, 0.06));
+}
+.px-tab--active::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0;
+  height: 2px;
+  background: var(--ember);
+  box-shadow: 0 0 8px rgba(201, 130, 63, 0.7);
+}
+
+/* ── Dossier (tale summary) ───────────────────────────────────────────── */
+
+.px-dossier { display: flex; flex-direction: column; gap: 0.8rem; }
+.px-dossier__head { display: flex; gap: 0.85rem; align-items: flex-start; }
+.px-dossier__portrait {
+  flex: 0 0 84px;
+  padding: 4px;
+  border: 1px solid rgba(176, 120, 32, 0.45);
+  border-radius: 4px;
+  background: #17140f;
+}
+.px-dossier__portrait img { display: block; width: 100%; height: auto; border-radius: 2px; }
+.px-dossier__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #e8ddc8;
+}
+.px-dossier__dates {
+  margin-top: 0.25rem;
+  font-family: var(--font-metadata);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--aged);
+}
+.px-dossier__bio {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.9rem;
+  color: #bfae94;
+}
+.px-fact { display: flex; gap: 0.8rem; padding: 0.5rem 0; border-top: 1px solid rgba(154, 136, 112, 0.16); }
+.px-fact__lbl {
+  flex: 0 0 72px;
+  font-family: var(--font-metadata);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: #a5713a;
+  padding-top: 0.15rem;
+}
+.px-fact__txt { flex: 1; font-size: 0.85rem; color: #c9b99e; }
+
+/* ── Story long-form ──────────────────────────────────────────────────── */
+
+.px-story__body p {
+  margin: 0 0 0.9rem;
+  font-size: 0.94rem;
+  line-height: 1.65;
+  color: #c9b99e;
+}
+.px-story__body p:last-child { margin-bottom: 0; }
+.px-story__quote {
+  margin: 1rem 0;
+  padding: 0.2rem 0 0.2rem 0.9rem;
+  border-left: 2px solid rgba(176, 120, 32, 0.55);
+  font-family: var(--font-archival);
+  font-size: 1.02rem;
+  color: #d3c3a6;
+}
+.px-story__quote cite {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: var(--font-metadata);
+  font-style: normal;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: var(--aged);
+}
+
+/* ── Map panel ────────────────────────────────────────────────────────── */
+
+.px-map__canvas {
+  position: relative;
+  height: 190px;
+  border-radius: 4px;
+  border: 1px solid rgba(176, 120, 32, 0.3);
+  background:
+    repeating-linear-gradient(0deg, rgba(176, 120, 32, 0.07) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(90deg, rgba(176, 120, 32, 0.07) 0 1px, transparent 1px 24px),
+    linear-gradient(160deg, #191712 0%, #131109 100%);
+  overflow: hidden;
+}
+.px-map__pin { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 0.3rem; }
+.px-map__pin-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 8px rgba(201, 130, 63, 0.8);
+}
+.px-map__pin-label {
+  font-family: var(--font-metadata);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: #d3c3a6;
+  background: rgba(20, 17, 16, 0.75);
+  border: 1px solid rgba(176, 120, 32, 0.3);
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.px-map__foot {
+  margin-top: 0.5rem;
+  font-family: var(--font-metadata);
+  font-size: 0.55rem;
+  letter-spacing: 0.16em;
+  color: var(--aged);
+}
+
+/* ── Timeline rail ────────────────────────────────────────────────────── */
+
+.px-timeline { position: relative; }
+.px-timeline__track {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 1.4rem 0.35rem 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(176, 120, 32, 0.4) transparent;
+  position: relative;
+}
+.px-timeline__track::before {
+  content: '';
+  position: absolute;
+  top: calc(1.4rem + 21px);
+  left: 0;
+  right: 0;
+  height: 2px;
+  background:
+    repeating-linear-gradient(90deg, rgba(176, 120, 32, 0.5) 0 14px, transparent 14px 20px);
+}
+.px-timeline__node {
+  flex: 0 0 118px;
+  text-align: center;
+  position: relative;
+}
+.px-timeline__medallion {
+  width: 42px;
+  height: 42px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(176, 120, 32, 0.55);
+  background: radial-gradient(circle at 35% 30%, #33291c, #1c1712 70%);
+  color: var(--gold);
+  font-size: 1rem;
+  position: relative;
+  z-index: 1;
+}
+.px-timeline__node--major .px-timeline__medallion {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(224, 161, 90, 0.35);
+}
+.px-timeline__year {
+  margin-top: 0.4rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+.px-timeline__event {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #d3c3a6;
+  line-height: 1.25;
+}
+.px-timeline__detail {
+  margin-top: 0.25rem;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  color: var(--aged);
+}
+
+/* ── Badge / challenge row ────────────────────────────────────────────── */
+
+.px-badge-plate {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.px-badge-plate__medallion {
+  flex: 0 0 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(176, 120, 32, 0.6);
+  background: radial-gradient(circle at 35% 28%, #3a2e1d, #1c1712 75%);
+  color: var(--gold);
+}
+.px-badge-plate__medallion--locked { filter: grayscale(0.7) brightness(0.75); border-style: dashed; }
+.px-badge-plate__medallion .glyph { font-size: 1.25rem; line-height: 1; }
+.px-badge-plate__medallion .yr {
+  font-family: var(--font-metadata);
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  margin-top: 0.15rem;
+}
+.px-badge-plate__info { min-width: 0; }
+.px-badge-plate__count {
+  font-family: var(--font-metadata);
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+  color: #a5713a;
+}
+.px-badge-plate__title {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.25rem;
+  letter-spacing: 0.03em;
+  color: #e8ddc8;
+}
+
+/* ── Locked tale seal ─────────────────────────────────────────────────── */
+
+.px-sealed {
+  text-align: center;
+  padding: 2rem 1.25rem 2.2rem;
+}
+.px-sealed__stamp {
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 0.9rem;
+  border-radius: 50%;
+  border: 2px dashed rgba(154, 136, 112, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  color: var(--aged);
+  transform: rotate(-8deg);
+}
+.px-sealed__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.7rem;
+  letter-spacing: 0.03em;
+  color: #ddd1b8;
+}
+.px-sealed__copy {
+  margin: 0.6rem auto 1.1rem;
+  max-width: 34ch;
+  font-size: 0.88rem;
+  color: #ab9a7f;
+}
+
+/* ── Responsive (≥640 / ≥900) ─────────────────────────────────────────── */
+
+@media (min-width: 640px) {
+  .px-hero { min-height: 460px; }
+  .px-panel--split { display: grid; grid-template-columns: 1fr 200px; }
+  .px-panel--split .px-panel__media {
+    order: 2;
+    height: auto;
+    border-bottom: none;
+    border-left: 1px solid rgba(176, 120, 32, 0.22);
+  }
+  .px-panel--split .px-panel__media::after {
+    background: linear-gradient(90deg, rgba(26, 23, 19, 0.85) 0%, transparent 45%);
+  }
+  .px-panel--split .px-panel__body { order: 1; }
+  .px-ticket__year-ghost { font-size: 6rem; }
+  .px-steps { gap: 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .px-act, .px-tale-card { transition: none; }
+}
+
+/* ═══════════════ P.28e CHECKPOINT-1 REVISION ═══════════════
+   Operator revision notes applied:
+   §1 compact, integrated header with an authoritative lockup
+   §2 restrained bottom navigation
+   §3 real tablet/desktop composition (no phone-column lock)
+   §8 readable body type, less condensed display, larger metadata
+   §9 brass reserved for state/action; neutral iron hairlines
+   ─────────────────────────────────────────────────────────── */
+
+/* §1 — Header: the bar hugs the lockup instead of floating around it.
+   The lockup keeps its scale relative to a much shorter bar, which is
+   what gives it authority; background blends into the page canvas. */
+.app-bar {
+  background: linear-gradient(180deg, rgba(24, 21, 18, 0.98), rgba(20, 17, 16, 0.96));
+  border-bottom: 1px solid rgba(176, 120, 32, 0.16);
+}
+.app-bar-inner {
+  min-height: 74px;
+  padding: 0.35rem 0;
+}
+.header-logo-img {
+  height: 66px;
+  max-width: 220px;
+}
+@media (max-width: 390px) {
+  .app-bar-inner { min-height: 66px; }
+  .header-logo-img { height: 58px; max-width: 190px; }
+}
+.live-indicator {
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  padding: 0.3rem 0.5rem;
+  border-radius: 3px;
+}
+
+/* §2 — Bottom navigation: half the visual mass, same 5 targets.
+   Labels stay ≥0.55rem (readability note §8); active = warm text +
+   icon lift, no glow bloom. */
+.bottom-nav {
+  padding: 0.3rem 0 max(0.35rem, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(22, 19, 16, 0.97), rgba(18, 15, 13, 0.99));
+  border-top: 1px solid rgba(176, 120, 32, 0.18);
+}
+.nav-btn {
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.5rem;
+  gap: 0.18rem;
+}
+.nav-btn-icon,
+.nav-icon-img { width: 22px; height: 22px; }
+.px-screen { padding-bottom: 5.5rem; }
+
+/* §3 — Desktop / tablet shell: the app column grows into a real
+   composition instead of a 500px phone strip in a black void. */
+@media (min-width: 768px) {
+  :root {
+    --app-shell-width: min(100vw, 1024px);
+    --app-shell-left: max(0px, calc((100vw - 1024px) / 2));
+  }
+  .app-bar, .page, .bottom-nav, #game-overlay, .modal { max-width: 1024px; }
+  .px-wrap { padding: 0 2rem; }
+  .px-hero__content { padding-bottom: 2.6rem; }
+  .px-hero__title { font-size: 4.2rem; }
+  .px-hero__sub { font-size: 1.15rem; max-width: 40ch; }
+}
+
+/* §8 — Typography corrections */
+.px-panel__copy { font-size: 0.95rem; line-height: 1.6; color: #cdbfa8; }
+.px-plate { font-size: 0.62rem; letter-spacing: 0.1em; }
+.px-panel__meta { font-size: 0.66rem; letter-spacing: 0.1em; }
+.px-tale-card__beer { font-size: 0.66rem; }
+.px-roster__meta { font-size: 0.66rem; }
+.px-inv__stats { font-size: 0.64rem; }
+.px-step__desc { font-size: 0.74rem; color: #a8977c; }
+.px-step__name { font-size: 0.64rem; }
+.px-tale-card__stub-tag { font-size: 0.54rem; }
+.px-timeline__event { font-size: 0.78rem; }
+.px-timeline__detail { font-size: 0.72rem; }
+.px-fact__lbl { font-size: 0.62rem; }
+.px-fact__txt { font-size: 0.9rem; line-height: 1.55; }
+
+/* §9 — Materials: neutral iron hairlines by default. Brass lines are
+   now reserved for the featured tier, live states, and actions. */
+.px-panel { border-color: rgba(245, 236, 221, 0.09); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+.px-panel--featured { border-color: rgba(176, 120, 32, 0.4); }
+.px-tale-card { border-color: rgba(245, 236, 221, 0.1); }
+.px-roster { border-color: rgba(245, 236, 221, 0.1); }
+.px-tabs { border-color: rgba(245, 236, 221, 0.12); }
+.px-tab + .px-tab { border-left-color: rgba(245, 236, 221, 0.08); }
+.px-ledger { border-top-color: rgba(245, 236, 221, 0.12); }
+.px-stack { gap: 1.25rem; }
+.px-rail-head { margin: 1.9rem 0 1rem; }
+
+/* §4 — Home: each section gets a distinct compositional role. */
+
+/* 4a. Venue plaque — engraved leather plaque, not a marketing card.
+   No venue photograph: current venue art is concept illustration, so
+   the plaque is typographic + material (note §10). */
+.px-plaque {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(176, 120, 32, 0.35);
+  background:
+    radial-gradient(140% 100% at 50% 0%, rgba(90, 62, 36, 0.35), transparent 60%),
+    repeating-linear-gradient(-40deg, rgba(0, 0, 0, 0.12) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #2c2118 0%, #221a12 100%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(245, 236, 221, 0.05);
+  text-align: center;
+  padding: 1.6rem 1.25rem 1.5rem;
+}
+.px-plaque__title {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.2rem;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  color: #ecdfc4;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.px-plaque__band {
+  width: 130px;
+  height: 3px;
+  margin: 0.8rem auto;
+  background: linear-gradient(90deg, transparent, #8a6b3a 25%, #c99d58 50%, #8a6b3a 75%, transparent);
+}
+.px-plaque__meta {
+  font-family: var(--font-metadata);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  color: #a8916c;
+}
+.px-plaque__copy {
+  margin: 0.9rem auto 0;
+  max-width: 44ch;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #c9b99e;
+}
+.px-plaque__actions { display: flex; justify-content: center; margin-top: 1.15rem; }
+
+/* 4b. Concept — quiet editorial band on the canvas (no card at all). */
+.px-editorial {
+  text-align: center;
+  padding: 0.4rem 1.25rem 0.2rem;
+}
+.px-editorial__title {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.9rem;
+  letter-spacing: 0.04em;
+  color: #e2d5ba;
+}
+.px-editorial__copy {
+  margin: 0.7rem auto 0;
+  max-width: 46ch;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #b6a68b;
+}
+.px-editorial__actions { display: flex; justify-content: center; margin-top: 1rem; }
+
+/* 4c. Scan/Unlock/Collect — a track-line progress system, not icons
+   in a card. Three station nodes joined by a rail. */
+.px-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.7rem 0.4rem 0;
+}
+.px-track::before {
+  content: '';
+  position: absolute;
+  top: calc(0.7rem + 19px);
+  left: 14%;
+  right: 14%;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, rgba(176, 120, 32, 0.55) 0 12px, transparent 12px 18px);
+}
+.px-track .px-step { padding: 0; }
+.px-track .px-step + .px-step::before { content: none; }
+.px-track .px-step__glyph {
+  width: 38px;
+  height: 38px;
+  background: radial-gradient(circle at 35% 30%, #2e251a, #191510 75%);
+  border-color: rgba(201, 130, 63, 0.6);
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  /* §3/§4 — two-column desktop compositions */
+  .px-home-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    align-items: stretch;
+  }
+  .px-plaque { padding: 2.2rem 2rem; }
+  .px-plaque__copy { max-width: 52ch; }
+}
+
+/* §5 — Tales hub: state changes the composition, not just the label. */
+.px-tale-card { padding: 0; }
+.px-tale-card__main { padding: 0.95rem 1rem 0.9rem; }
+.px-tale-card__title { margin-top: 0.1rem; }
+.px-tale-card__beer { margin-top: 0.35rem; }
+.px-tale-card__line { margin-top: 0.5rem; }
+.px-tale-card__foot { margin-top: 0.8rem; }
+/* Unlocked: the parchment stub bleeds into the card body */
+.px-tale-card--open .px-tale-card__stub {
+  border-right: none;
+}
+.px-tale-card--open {
+  background:
+    linear-gradient(90deg, rgba(231, 218, 187, 0.06) 0%, transparent 34%),
+    linear-gradient(180deg, #201c16 0%, #191613 100%);
+  border-color: rgba(176, 120, 32, 0.3);
+}
+.px-tale-card--open .px-tale-card__stub {
+  box-shadow: 6px 0 14px rgba(0, 0, 0, 0.35);
+}
+/* Live pour: an ember rail on the leading edge */
+.px-tale-card--live { border-left: 3px solid #b3622b; }
+/* Sealed: compressed single-band composition — visibly different */
+.px-tale-sealed {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(245, 236, 221, 0.08);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(245, 236, 221, 0.02), transparent 60%), #17141166;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.px-tale-sealed:hover { border-color: rgba(176, 120, 32, 0.3); }
+.px-tale-sealed__lock {
+  flex: 0 0 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px dashed rgba(154, 136, 112, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  color: var(--aged);
+}
+.px-tale-sealed__body { flex: 1; min-width: 0; }
+.px-tale-sealed__title {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.15rem;
+  letter-spacing: 0.03em;
+  color: #a89878;
+}
+.px-tale-sealed__meta {
+  display: block;
+  margin-top: 0.2rem;
+  font-family: var(--font-metadata);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: #7d7161;
+}
+.px-tale-sealed__cta {
+  font-family: var(--px-body-font);
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  color: #b3824a;
+  white-space: nowrap;
+}
+@media (min-width: 768px) {
+  .px-tale-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .px-tale-grid .px-tale-card { height: 100%; }
+}
+
+/* §6 — Tale detail: reading width, less density, fewer boxes. */
+.px-reading { max-width: 60ch; margin-left: auto; margin-right: auto; }
+.px-story-band {
+  border-radius: 6px;
+  background: rgba(245, 236, 221, 0.03);
+  padding: 1.3rem 1.15rem 1.4rem;
+}
+.px-story__body p { font-size: 1rem; line-height: 1.7; color: #cdbfa8; margin-bottom: 1.05rem; }
+.px-dossier__head { gap: 1rem; }
+.px-dossier__bio { font-size: 0.95rem; line-height: 1.55; }
+.px-fact { padding: 0.65rem 0; }
+.px-timeline__track { scroll-snap-type: x mandatory; gap: 0.9rem; }
+.px-timeline__node { flex: 0 0 138px; scroll-snap-align: center; }
+/* Challenge climax: centered, breathing */
+.px-climax .px-panel__body { text-align: center; padding: 1.6rem 1.25rem 1.7rem; }
+.px-climax .px-panel__title { font-size: 2rem; }
+.px-climax .px-panel__copy { margin-left: auto; margin-right: auto; max-width: 40ch; }
+.px-climax .px-panel__actions { justify-content: center; }
+.px-climax .px-badge-plate { justify-content: center; margin-top: 1rem; }
+@media (min-width: 768px) {
+  .px-detail-cols { display: grid; grid-template-columns: 3fr 2fr; gap: 1.25rem; align-items: start; }
+}
+
+/* §7 — Beers: premium product presentation. The can floats on a lit
+   pedestal instead of a boxed frame; zones separated by one rule. */
+.px-roster { padding: 1.15rem 1.1rem; gap: 1rem; }
+.px-roster__art {
+  flex: 0 0 116px;
+  border: none;
+  padding: 0.4rem 0.3rem 0;
+  background:
+    radial-gradient(80% 55% at 50% 88%, rgba(201, 130, 63, 0.16), transparent 75%),
+    transparent;
+}
+.px-roster__art img { filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.55)); }
+.px-roster__name { font-size: 1.7rem; }
+.px-roster__style { font-size: 0.92rem; }
+.px-roster__desc { font-size: 0.92rem; line-height: 1.55; color: #c4b498; }
+.px-roster__actions {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(245, 236, 221, 0.09);
+}
+/* Residents: quieter, utilitarian */
+.px-inv { padding: 0.85rem 0.25rem; }
+.px-inv__thumb { flex: 0 0 36px; height: 48px; opacity: 0.85; }
+.px-inv__name { font-size: 1.02rem; color: #cfc2a9; }
+.px-inv__style { font-size: 0.78rem; line-height: 1.45; }
+@media (min-width: 768px) {
+  .px-roster-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .px-roster-grid .px-roster { height: 100%; }
+  .px-ledger { column-count: 1; max-width: 720px; margin: 0 auto; }
+}
+
+/* ═══════════════ P.28e BEER LAYOUT CORRECTION ═══════════════
+   Operator correction: the mobile roster read as zoomed-in product
+   photography. Proportions rebalanced — can column ≈31% of the card,
+   compact type, one-row actions, single restrained boundary per card
+   (the internal divider rule is removed), and guaranteed clearance
+   above the fixed bottom navigation at every width.
+   ──────────────────────────────────────────────────────────── */
+
+/* §1/§4 — proportions + spacing */
+.px-roster { padding: 0.9rem 0.95rem; gap: 0.85rem; align-items: center; }
+.px-roster__art {
+  flex: 0 0 100px;
+  max-width: 31%;
+  align-self: center;
+  padding: 0.2rem 0.1rem 0;
+}
+.px-roster__art img { filter: drop-shadow(0 7px 12px rgba(0, 0, 0, 0.5)); }
+.px-roster__art-fallback { height: 84px; font-size: 1rem; }
+.px-roster-grid.px-stack { gap: 0.9rem; }
+
+/* §2 — hierarchy: name leads, nothing competes beside it */
+.px-roster__name { font-size: 1.3rem; line-height: 1.02; }
+.px-roster__style { margin-top: 0.15rem; font-size: 0.85rem; }
+.px-roster__desc { margin: 0.4rem 0 0; font-size: 0.85rem; line-height: 1.5; }
+.px-roster__meta { margin-top: 0.45rem; font-size: 0.6rem; letter-spacing: 0.08em; }
+.px-roster__plates { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.px-roster__plates .px-plate { font-size: 0.56rem; padding: 0.18rem 0.45rem; }
+
+/* §3/§4 — compact one-row actions, no internal rule */
+.px-roster__actions {
+  margin-top: 0.7rem;
+  padding-top: 0;
+  border-top: none;
+  gap: 0.35rem;
+  flex-wrap: wrap; /* single row when space permits; stacks only when needed */
+  align-items: center;
+}
+.px-roster__actions .px-act {
+  min-height: 34px;
+  font-size: 0.64rem;
+  padding: 0 0.7rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+/* Secondary stays visibly secondary: a quiet inline action, not a
+   second plate competing with the primary. */
+.px-roster__actions .px-act--secondary {
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: #b3915c;
+  min-height: 34px;
+  padding: 0 0.5rem;
+}
+.px-roster__actions .px-act--secondary:hover { background: rgba(245, 236, 221, 0.05); }
+
+/* §5 — fixed-nav clearance is structural, not cosmetic: the page
+   reserves the nav's real height (icon 22 + label + padding ≈ 64px)
+   plus safe-area plus breathing room, at every width. */
+.px-screen {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 2rem);
+}
+
+/* §6 — desktop roster composition: featured unlocked pour leads at
+   full width; remaining cards share a balanced row. Zero-unlocked
+   fallback: an even three-across row. No empty quadrant. */
+@media (min-width: 768px) {
+  .px-roster-grid { grid-template-columns: 1fr 1fr; }
+  .px-roster--featured {
+    grid-column: 1 / -1;
+    padding: 1.3rem 1.5rem;
+    gap: 1.5rem;
+    border-color: rgba(176, 120, 32, 0.35);
+  }
+  .px-roster--featured .px-roster__art { flex: 0 0 132px; max-width: 132px; }
+  .px-roster--featured .px-roster__name { font-size: 1.75rem; }
+  .px-roster--featured .px-roster__style,
+  .px-roster--featured .px-roster__desc { font-size: 0.95rem; }
+  .px-roster--featured .px-roster__body { max-width: 58ch; }
+  .px-roster-grid--even { grid-template-columns: repeat(3, 1fr); }
+  .px-roster-grid--even .px-roster { flex-direction: column; text-align: center; }
+  .px-roster-grid--even .px-roster__plates,
+  .px-roster-grid--even .px-roster__actions { justify-content: center; }
+}

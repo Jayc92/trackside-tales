@@ -4,23 +4,30 @@ import { GameOverlay } from '../games/GameOverlay';
 import { getGameConfig } from '../games/gameConfigs';
 import { formatDate } from '../services/badgeService';
 import { prodSlugFromAppSlug } from '../services/talePresentationPack';
+import {
+  IronPanel,
+  SectionRail,
+  StatusPlate,
+  PrimaryAction,
+  SecondaryAction,
+} from '../components/public/primitives';
 
-// ================== TALE DETAIL PAGE (v6.2 — Structured Design Pass) ==================
-// Visual rewrite for the unlocked branch only. The locked branch and all
-// game / scan / unlock logic are preserved verbatim.
+// ================== TALE DETAIL — archive dossier template ==================
+// PUBLIC-v7.4B.P.28e — material rebuild of the reusable Tale template
+// following the approved dossier concept: parchment archive-ticket hero
+// (spine · ghost year · title · meta rule · framed can), biography
+// dossier, long-form story, grid map, horizontal timeline rail with
+// medallion nodes, badge + challenge plate, and the game/passport CTAs.
 //
-// Hard constraints honored:
-//   • Badge keys, localStorage keys, Supabase paths, scan/unlock logic, and
-//     routing all unchanged.
-//   • awardGameBadge wiring through GameOverlay unchanged.
-//   • currentTale comes from app state — no data-shape changes.
+// EVERYTHING is data-driven from the Tale model — nothing is hard-coded
+// to W.A. Lager. ALL logic is preserved verbatim from the previous
+// implementation: preview injection (P.15c), unlock/badge/collected
+// state reads, live-tap availability precedence (P.19/P.19a),
+// GameOverlay wiring, and the locked-branch behavior.
 
-// Pick a milestone-level icon glyph from the timeline event title. These
-// are inert visual cues only; they have no effect on logic or routing.
 // PUBLIC-v7.4B.P.12a — build the hero meta line from only the
 // non-blank fragments so a Tale without pack style/ABV/IBU renders
-// "Test Tale" instead of "Test Tale ·  · ABV  · IBU ". Curated Tales
-// have every fragment populated, so their output is unchanged.
+// "Test Tale" instead of "Test Tale ·  · ABV  · IBU ".
 function buildHeroMeta(tale: { name: string; style: string; abv: string; ibu: string }): string {
   const fragments: string[] = [];
   if (tale.name.trim())  fragments.push(tale.name.trim());
@@ -41,24 +48,9 @@ function timelineGlyph(title: string): string {
   return '◈';
 }
 
-// PUBLIC-v7.4B.P.19 — Tale availability label.
-//
-// The LIVE tap list is the sole source of the operational "ON TAP"
-// claim (same P.18 source the beer cards use); tales.tap_status is
-// EDITORIAL lifecycle messaging only. Precedence:
-//   1. a live pour exists for the Tale's beer      → 'ON TAP'
-//   2. no live pour + editorial 'retired'          → 'RETIRED TALE'
-//   3. no live pour + editorial 'coming-soon'      → 'COMING SOON'
-//      (previously collapsed into 'RETIRED TALE' — fixed here)
-//   4. no live pour + editorial 'on-tap'/default   → NO label.
-//      "Not pouring" is deliberately not claimed: an empty live set
-//      also occurs on fetch failure, and a missing label is the only
-//      claim that is always truthful.
-// The Tale's beer is the beer sharing its PRODUCTION slug
-// (prodSlugFromAppSlug reverses the one canonical alias map; generic
-// tales pass through, so an unknown tale claims live state only if a
-// pour genuinely exists for its slug). Tap numbers and notes are
-// never fetched, let alone rendered.
+// PUBLIC-v7.4B.P.19 — Tale availability label. The LIVE tap list is the
+// sole source of the operational "ON TAP" claim; tales.tap_status is
+// EDITORIAL lifecycle messaging only. Precedence preserved verbatim.
 function deriveTaleAvailabilityLabel(
   tale: { id: string; tapStatus: 'on-tap' | 'retired' | 'coming-soon' },
   liveTapSlugs: Set<string>,
@@ -69,171 +61,59 @@ function deriveTaleAvailabilityLabel(
   return null;
 }
 
-// PUBLIC-v7.4B.P.15c — optional preview injection. When `previewTale`
-// is provided (by TalePreviewPage, after server-authoritative token
-// validation), the page renders THAT tale in its normal unlocked
-// layout without touching AppContext state: no unlockTale, no badge
-// award, no collected date, no localStorage write, no analytics.
-// `previewMode` additionally disables the game CTA and hides the
-// in-app navigation buttons (Back to Tales / VIEW PASSPORT), which
-// would dead-end inside the standalone preview shell.
+// PUBLIC-v7.4B.P.15c — optional preview injection (behavior unchanged).
 interface TaleDetailPageProps {
   previewTale?: import('../app/types').Tale;
   previewMode?: boolean;
 }
 
-export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailPageProps = {}) {
-  // ADMIN-v6.8D — `guestId` pulled through to GameOverlay so its event
-  // logger can flush against the current session id. AppContext already
-  // exposes guestId; no other context shape change.
-  const { state, awardGameBadge, nav, guestId, liveTapSlugs } = useApp();
-  const tale = previewTale ?? state.currentTale;
-  const [showGame, setShowGame] = useState(false);
-
-  if (!tale) return null;
-
-  // Preview renders the unlocked layout without persisting anything;
-  // badge/collected state reads stay live-state-based (empty for a
-  // draft tale, so the page shows the pristine 0/2 presentation).
-  const isUnlocked   = previewMode || state.unlocked.has(tale.id);
-  const hasScanBadge = !previewMode && state.scanBadges.has(tale.id);
-  const hasGameBadge = !previewMode && state.gameBadges.has(tale.id);
-  const gameConfig   = getGameConfig(tale.id);
-  const collected    = previewMode ? undefined : state.collectedDates[tale.id];
-
-  const handleBadgeAwarded = (_badgeKey: string) => awardGameBadge(tale.id);
-
-  // P.19a: availability is computed BEFORE the locked-branch early
-  // return so both the sealed and unlocked layouts can surface the
-  // live ON TAP pill. The live claim is split from the editorial
-  // lifecycle labels: ON TAP is promoted to the hero status area;
-  // RETIRED TALE / COMING SOON stay in the restrained lower metadata
-  // strip (they are lifecycle facts, not live status, and must not
-  // share the bright live treatment).
-  const availabilityLabel = deriveTaleAvailabilityLabel(tale, liveTapSlugs);
-  const isLiveOnTap   = availabilityLabel === 'ON TAP';
-  const editorialLabel = isLiveOnTap ? null : availabilityLabel;
-
-  // ── Locked state (unchanged from v5.x — no structural rewrite) ─────────────
-  if (!isUnlocked) {
-    return (
-      <div className="page active" id="page-story">
-        <div className="story-nav">
-          <button className="back-btn" onClick={() => nav('tales')}>Back to Tales</button>
-          <div className="ts-tale-hero__pills">
-            {/* P.19a: a sealed Tale whose beer is genuinely pouring
-                shows ON TAP without implying it is unlocked. */}
-            {isLiveOnTap && (
-              <span className="ts-tale-hero__pill ts-tale-hero__pill--live">ON TAP</span>
-            )}
-            <div className="story-progress">
-              <span className="story-progress-dot" />
-              <span>LOCKED</span>
-            </div>
-          </div>
-        </div>
-        <div id="story-content">
-          <div className="story-hero">
-            <div className="story-hero-bg" />
-            <div className="story-hero-year">{tale.year}</div>
-            <div className="story-hero-content">
-              <div className="story-chapter">{tale.chapter}</div>
-              <h1
-                className="story-title"
-                dangerouslySetInnerHTML={{ __html: tale.title.replace('\n', '<br>') }}
-              />
-            </div>
-          </div>
-          <div className="story-locked-state">
-            <div className="story-locked-icon">◈</div>
-            <div className="story-locked-title">This Tale is still sealed.</div>
-            <div className="story-locked-copy">
-              Scan this Trackside Tale at The Wooden Match to unlock the story, stamp your Passport, and play the mini-game.
-            </div>
-            <button className="story-locked-cta" onClick={() => nav('scan')}>START SCANNING</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Unlocked state (v6.2 visual rewrite) ───────────────────────────────────
-  // P.15c: the game CTA is always unavailable in preview mode — even
-  // for curated tales — so a preview can never open GameOverlay or
-  // award progress.
-  const gameEnabled =
-    !previewMode && (
-      tale.id === 'wa-lager'
-      || tale.id === 'packer-pils'
-      || tale.id === 'wooden-match'
-    );
-  const showAsEarned     = hasGameBadge;
-  const showAsActive     = gameEnabled && !hasGameBadge;
-  const showAsComingSoon = !gameEnabled && !hasGameBadge;
-  const totalMarks       = (hasScanBadge ? 1 : 0) + (hasGameBadge ? 1 : 0);
-
-  // P.19a: the lower strip carries lifecycle/persistence metadata
-  // only (editorial label, collected date, retired date) — ON TAP
-  // lives in the hero now. Fragments join with ' · ' and the whole
-  // strip is omitted when nothing applies (no orphan dot or row).
-  const storyMetaFragments: string[] = [];
-  if (editorialLabel) storyMetaFragments.push(editorialLabel);
-  if (collected) storyMetaFragments.push(`COLLECTED ${formatDate(collected).toUpperCase()}`);
-  if (tale.retiredDate) storyMetaFragments.push(`RETIRED ${formatDate(tale.retiredDate).toUpperCase()}`);
-  const storyMetaText = storyMetaFragments.join(' · ');
-
+/* Shared archive-ticket hero (tier-1 artifact). Used by both the
+   sealed and unlocked branches so the Tale reads as the same document
+   in both states — only the plates and lower content change. */
+function TicketHero({
+  tale,
+  plates,
+  onBack,
+  showCan,
+}: {
+  tale: import('../app/types').Tale;
+  plates: React.ReactNode;
+  onBack?: () => void;
+  showCan: boolean;
+}) {
   return (
-    <div className="page active ts-tale-screen" id="page-story">
-
-      {/* ============== 2. PARCHMENT HERO ============== */}
-      <section className="ts-tale-hero" aria-label={`${tale.name} hero`}>
-        <div className="ts-tale-hero__sidetab" aria-hidden="true">
-          <span className="ts-tale-hero__sidetab-text">
-            {/* PUBLIC-v7.4B.P.12a — drop the № fragment when the remote
-                row has no year (avoids "TRACKSIDE № · RAILWAY ARCHIVE"). */}
-            {tale.year ? `TRACKSIDE №${tale.year} · RAILWAY ARCHIVE` : 'TRACKSIDE · RAILWAY ARCHIVE'}
+    <section className="px-ticket" aria-label={`${tale.title.replace('\n', ' ')} — archive ticket`}>
+      <div className="px-ticket__spine" aria-hidden="true">
+        <span>
+          {tale.year
+            ? `TRACKSIDE RAILWAY ARCHIVE · №${tale.year}`
+            : 'TRACKSIDE RAILWAY ARCHIVE'}
+        </span>
+      </div>
+      <div className="px-ticket__inner">
+        {tale.year && (
+          <div className="px-ticket__year-ghost" aria-hidden="true">{tale.year}</div>
+        )}
+        <div className="px-ticket__topline">
+          {onBack ? (
+            <button type="button" className="px-act px-act--quiet" onClick={onBack} style={{ paddingLeft: 0 }}>
+              ← BACK TO TALES
+            </button>
+          ) : <span />}
+          <span style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {plates}
           </span>
         </div>
-
-        <div className="ts-tale-hero__top">
-          {/* P.15c: in-app nav is hidden in preview mode — the
-              standalone preview shell has its own exit link. */}
-          {!previewMode ? (
-            <button className="ts-tale-hero__back" onClick={() => nav('tales')}>
-              ← Back to Tales
-            </button>
-          ) : (
-            <span />
-          )}
-          <div className="ts-tale-hero__pills">
-            {/* P.19a: live ON TAP promoted to the hero — visible
-                within a glance, beside the unlock pill, wrapping
-                beneath it on narrow screens. */}
-            {isLiveOnTap && (
-              <span className="ts-tale-hero__pill ts-tale-hero__pill--live">ON TAP</span>
-            )}
-            <span className={`ts-tale-hero__pill${hasScanBadge ? '' : ' ts-tale-hero__pill--locked'}`}>
-              {hasScanBadge ? '🔒 UNLOCKED' : '🔒 SEALED'}
-            </span>
-          </div>
-        </div>
-
-        <div className="ts-tale-hero__year" aria-hidden="true">{tale.year}</div>
-
-        <div className="ts-tale-hero__body">
-          <div>
-            <div className="ts-tale-hero__eyebrow">{tale.chapter}</div>
+        <span className="px-ticket__label">{tale.chapter}</span>
+        <div className="px-ticket__body">
+          <div style={{ minWidth: 0 }}>
             <h1
-              className="ts-tale-hero__title"
+              className="px-ticket__title"
               dangerouslySetInnerHTML={{ __html: tale.title.replace('\n', '<br>') }}
             />
-            <hr className="ts-tale-hero__rule" />
-            <div className="ts-tale-hero__meta">
-              {buildHeroMeta(tale)}
-            </div>
           </div>
-          {tale.image && (
-            <div className="ts-tale-hero__can">
+          {showCan && tale.image && (
+            <div className="px-ticket__can">
               <img
                 src={tale.image}
                 alt={tale.name}
@@ -245,247 +125,280 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
             </div>
           )}
         </div>
-      </section>
+        {buildHeroMeta(tale) && (
+          <div className="px-ticket__meta">{buildHeroMeta(tale)}</div>
+        )}
+      </div>
+    </section>
+  );
+}
 
-      {/* ============== 3. SUMMARY PANEL ============== */}
-      {/* PUBLIC-v7.4B.P.12a — the summary panel and each of its parts
-          render only when they carry real content. The default pack
-          ships blank person/barSummary values for non-curated Tales;
-          without these guards the page showed an empty biography panel
-          and empty WHO / WHY HERE / THE BEER labels. Curated Tales
-          populate every field, so their rendering is unchanged. */}
-      {(() => {
-        const hasPersonHeading = tale.person.name.trim().length > 0;
-        const hasPersonDates   = tale.person.dates.trim().length > 0;
-        const hasPersonBio     = tale.personBio.trim().length > 0;
-        const factRows = [
-          { label: 'WHO',      value: tale.barSummary?.who ?? '' },
-          { label: 'WHY HERE', value: tale.barSummary?.why ?? '' },
-          { label: 'THE BEER', value: tale.barSummary?.beer ?? '' },
-        ].filter((fact) => fact.value.trim().length > 0);
-        const hasSummaryContent =
-          hasPersonHeading || hasPersonBio || factRows.length > 0 || Boolean(tale.image);
-        if (!hasSummaryContent) return null;
-        return (
-          <section className="ts-tale-summary" aria-label="Tale summary">
-            {tale.image && (
-              <div className="ts-tale-summary__art">
-                <img src={tale.image} alt="" />
-              </div>
-            )}
-            <div className="ts-tale-summary__body">
-              {(hasPersonHeading || hasPersonDates) && (
-                <div>
+export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailPageProps = {}) {
+  const { state, awardGameBadge, nav, guestId, liveTapSlugs } = useApp();
+  const tale = previewTale ?? state.currentTale;
+  const [showGame, setShowGame] = useState(false);
+
+  if (!tale) return null;
+
+  // Preview renders the unlocked layout without persisting anything.
+  const isUnlocked   = previewMode || state.unlocked.has(tale.id);
+  const hasScanBadge = !previewMode && state.scanBadges.has(tale.id);
+  const hasGameBadge = !previewMode && state.gameBadges.has(tale.id);
+  const gameConfig   = getGameConfig(tale.id);
+  const collected    = previewMode ? undefined : state.collectedDates[tale.id];
+
+  const handleBadgeAwarded = (_badgeKey: string) => awardGameBadge(tale.id);
+
+  const availabilityLabel = deriveTaleAvailabilityLabel(tale, liveTapSlugs);
+  const isLiveOnTap    = availabilityLabel === 'ON TAP';
+  const editorialLabel = isLiveOnTap ? null : availabilityLabel;
+
+  // ── Sealed state ───────────────────────────────────────────────────────
+  if (!isUnlocked) {
+    return (
+      <div className="page active px-screen" id="page-story">
+        <TicketHero
+          tale={tale}
+          onBack={() => nav('tales')}
+          showCan={false}
+          plates={
+            <>
+              {isLiveOnTap && <StatusPlate tone="live">ON TAP</StatusPlate>}
+              <StatusPlate tone="sealed">SEALED</StatusPlate>
+            </>
+          }
+        />
+        <div className="px-wrap" style={{ marginTop: '1rem' }}>
+          <IronPanel>
+            <div className="px-sealed">
+              <div className="px-sealed__stamp" aria-hidden="true">🔒</div>
+              <h2 className="px-sealed__title">THIS TALE IS STILL SEALED.</h2>
+              <p className="px-sealed__copy">
+                Scan this Trackside Tale at The Wooden Match to unlock the
+                story, stamp your Passport, and play the mini-game.
+              </p>
+              <PrimaryAction onClick={() => nav('scan')} ariaLabel="Start scanning">
+                ⌗ START SCANNING
+              </PrimaryAction>
+            </div>
+          </IronPanel>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Unlocked state ─────────────────────────────────────────────────────
+  // P.15c: the game CTA is always unavailable in preview mode.
+  const gameEnabled =
+    !previewMode && (
+      tale.id === 'wa-lager'
+      || tale.id === 'packer-pils'
+      || tale.id === 'wooden-match'
+    );
+  const showAsEarned     = hasGameBadge;
+  const showAsActive     = gameEnabled && !hasGameBadge;
+  const showAsComingSoon = !gameEnabled && !hasGameBadge;
+  const totalMarks       = (hasScanBadge ? 1 : 0) + (hasGameBadge ? 1 : 0);
+
+  // Lifecycle/persistence metadata strip (editorial only — ON TAP is a
+  // hero plate). Omitted entirely when empty.
+  const storyMetaFragments: string[] = [];
+  if (editorialLabel) storyMetaFragments.push(editorialLabel);
+  if (collected) storyMetaFragments.push(`COLLECTED ${formatDate(collected).toUpperCase()}`);
+  if (tale.retiredDate) storyMetaFragments.push(`RETIRED ${formatDate(tale.retiredDate).toUpperCase()}`);
+  const storyMetaText = storyMetaFragments.join(' · ');
+
+  const hasPersonHeading = tale.person.name.trim().length > 0;
+  const hasPersonDates   = tale.person.dates.trim().length > 0;
+  const hasPersonBio     = tale.personBio.trim().length > 0;
+  const factRows = [
+    { label: 'WHO',      value: tale.barSummary?.who ?? '' },
+    { label: 'WHY HERE', value: tale.barSummary?.why ?? '' },
+    { label: 'THE BEER', value: tale.barSummary?.beer ?? '' },
+  ].filter((fact) => fact.value.trim().length > 0);
+  const hasSummaryContent =
+    hasPersonHeading || hasPersonBio || factRows.length > 0;
+
+  return (
+    <div className="page active px-screen" id="page-story">
+
+      <TicketHero
+        tale={tale}
+        onBack={previewMode ? undefined : () => nav('tales')}
+        showCan
+        plates={
+          <>
+            {isLiveOnTap && <StatusPlate tone="live">ON TAP</StatusPlate>}
+            <StatusPlate tone={hasScanBadge ? 'unlocked' : 'sealed'}>
+              {hasScanBadge ? 'UNLOCKED' : 'SEALED'}
+            </StatusPlate>
+          </>
+        }
+      />
+
+      <div className="px-wrap px-stack" style={{ marginTop: '1rem' }}>
+
+        {/* ── Dossier ── */}
+        {hasSummaryContent && (
+          <IronPanel>
+            <div className="px-dossier">
+              <div className="px-dossier__head">
+                {tale.image && (
+                  <div className="px-dossier__portrait" aria-hidden="true">
+                    <img src={tale.image} alt="" />
+                  </div>
+                )}
+                <div style={{ minWidth: 0 }}>
                   {hasPersonHeading && (
-                    <h2 className="ts-tale-summary__name">{tale.person.name}</h2>
+                    <h2 className="px-dossier__name">{tale.person.name}</h2>
                   )}
                   {hasPersonDates && (
-                    <div className="ts-tale-summary__dates">{tale.person.dates}</div>
+                    <div className="px-dossier__dates">{tale.person.dates}</div>
+                  )}
+                  {hasPersonBio && (
+                    <p className="px-dossier__bio">{tale.personBio}</p>
                   )}
                 </div>
-              )}
-              {hasPersonBio && (
-                <p className="ts-tale-summary__bio">{tale.personBio}</p>
-              )}
-
+              </div>
               {factRows.length > 0 && (
-                <div className="ts-tale-summary__facts">
+                <div>
                   {factRows.map((fact) => (
-                    <div key={fact.label} className="ts-tale-fact">
-                      <span className="ts-tale-fact__lbl">{fact.label}</span>
-                      <span className="ts-tale-fact__txt">{fact.value}</span>
+                    <div key={fact.label} className="px-fact">
+                      <span className="px-fact__lbl">{fact.label}</span>
+                      <span className="px-fact__txt">{fact.value}</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </section>
-        );
-      })()}
-
-      {/* ============== 4. STORY + MAP ============== */}
-      <div className="ts-tale-story-row">
-        <article className="ts-tale-story">
-          {/* P.19a: lifecycle/persistence metadata only — ON TAP is a
-              hero pill now. Omitted entirely when empty. */}
-          {storyMetaText && (
-            <div className="ts-tale-story__meta">
-              <span className="ts-tale-story__meta-dot" aria-hidden="true" />
-              {storyMetaText}
-            </div>
-          )}
-          <div className="ts-tale-story__body">
-            {tale.story.map((block, i) => {
-              if (block.type === 'quote') {
-                return (
-                  <blockquote key={i} className="ts-tale-story__quote">
-                    <span>"{block.text}"</span>
-                    {block.cite && (
-                      <cite className="ts-tale-story__quote-cite">{block.cite}</cite>
-                    )}
-                  </blockquote>
-                );
-              }
-              return (
-                <p
-                  key={i}
-                  dangerouslySetInnerHTML={{ __html: block.text || '' }}
-                />
-              );
-            })}
-          </div>
-        </article>
-
-        {/* PUBLIC-v7.4B.P.12a — render the map only when at least one
-            valid pin exists; a pin-less Tale previously showed an empty
-            canvas titled "MAP". Curated Tales always carry pins. */}
-        {tale.pins.length > 0 && (
-          <section className="ts-tale-map" aria-label={tale.mapTitle}>
-            <div className="ts-tale-map__top">
-              <span className="ts-tale-map__title">{tale.mapTitle.toUpperCase()}</span>
-              <button type="button" className="ts-tale-map__btn">● LIVE MAP</button>
-            </div>
-            <div className="ts-tale-map__canvas">
-              {tale.pins.slice(0, 4).map((pin) => (
-                <div
-                  key={pin.label}
-                  className="ts-tale-map__pin"
-                  style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-                >
-                  <span className="ts-tale-map__pin-dot" aria-hidden="true" />
-                  <span className="ts-tale-map__pin-label">{pin.label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="ts-tale-map__foot">{tale.year} GRID REFERENCE</div>
-          </section>
+          </IronPanel>
         )}
-      </div>
 
-      {/* ============== 5. TIMELINE ============== */}
-      {tale.timeline && tale.timeline.length > 0 && (
-        <section className="ts-timeline" aria-label="Historical timeline">
-          <div className="ts-timeline__label">A LIFE IN THE VALLEY</div>
-          <div className="ts-timeline__rail">
-            {tale.timeline.map((ev, i) => (
-              <div
-                key={i}
-                className={`ts-timeline__node${ev.major ? ' ts-timeline__node--major' : ''}`}
-              >
-                <div className="ts-timeline__medallion" aria-hidden="true">
-                  {timelineGlyph(ev.event)}
-                </div>
-                <div className="ts-timeline__year">{ev.year}</div>
-                <div className="ts-timeline__title">{ev.event}</div>
-                {ev.detail && <div className="ts-timeline__detail">{ev.detail}</div>}
+        {/* ── Story — quiet reading band, no border-in-border ── */}
+        <SectionRail label="The Story" />
+        <div className="px-story-band px-reading">
+          <article className="px-story" aria-label="Tale story">
+            {storyMetaText && (
+              <div className="px-panel__meta" style={{ marginBottom: '0.7rem' }}>
+                {storyMetaText}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ============== 6. BADGE + INTERACTIVE CHALLENGE ============== */}
-      <div className="ts-tale-action-row">
-        <aside className="ts-tale-badge-card" aria-label="Discovery badge">
-          <div className="ts-tale-badge-card__count">BADGE {totalMarks}/2</div>
-          <h3 className="ts-tale-badge-card__title">{tale.scanBadge.title}</h3>
-          <div
-            className={`ts-tale-badge-card__medallion${hasScanBadge ? '' : ' ts-tale-badge-card__locked'}`}
-            aria-hidden="true"
-          >
-            <span className="ts-tale-badge-card__medallion-icon">◈</span>
-            <span className="ts-tale-badge-card__medallion-year">{tale.year}</span>
-          </div>
-        </aside>
-
-        <section className="ts-tale-challenge" aria-label="Interactive challenge">
-          <div className="ts-tale-challenge__eyebrow">INTERACTIVE CHALLENGE</div>
-          <h3 className="ts-tale-challenge__title">
-            {showAsComingSoon ? 'Interactive Challenge' : tale.game.title}
-          </h3>
-          <p className="ts-tale-challenge__copy">
-            {showAsEarned     && 'Both Marks are now in your Trackside Passport. The Tale is fully collected.'}
-            {showAsActive     && 'Complete the short challenge below to earn the second badge for this Tale.'}
-            {showAsComingSoon && "This Tale's challenge is on the way — coming soon."}
-          </p>
-          {/* v6.2.1 — Primary "PLAY TO EARN" CTA removed to dedupe with the
-              lower Next Step panel's PLAY MINI-GAME button. WATCH INTRO and
-              SHARE TALE remain as secondary visual actions.
-              UI-v6.6 — Both are no-op placeholders today. They render in a
-              softened "coming soon" treatment so they never visually compete
-              with the lower copper PLAY MINI-GAME CTA, and clicks are wired
-              to a safe no-op (preventing future accidental wiring). */}
-          <div className="ts-tale-challenge__row">
-            <button
-              type="button"
-              className="ts-tale-challenge__btn ts-tale-challenge__btn--placeholder"
-              onClick={(e) => e.preventDefault()}
-              title="Coming soon"
-              aria-disabled="true"
-            >
-              ▶ WATCH INTRO
-              <span className="ts-tale-challenge__btn-hint" aria-hidden="true">SOON</span>
-            </button>
-            <button
-              type="button"
-              className="ts-tale-challenge__btn ts-tale-challenge__btn--placeholder"
-              onClick={(e) => e.preventDefault()}
-              title="Coming soon"
-              aria-disabled="true"
-            >
-              ↗ SHARE TALE
-              <span className="ts-tale-challenge__btn-hint" aria-hidden="true">SOON</span>
-            </button>
-          </div>
-        </section>
-      </div>
-
-      {/* ============== 7. NEXT STEP ============== */}
-      <section className="ts-next-step" aria-label="Next step">
-        <div className="ts-next-step__art" aria-hidden="true">
-          <span className="ts-next-step__art-mark">◈</span>
-          <span>TRACKSIDE</span>
-          <span>PASSPORT</span>
-        </div>
-        <div className="ts-next-step__body">
-          <div className="ts-next-step__eyebrow">NEXT STEP</div>
-          <h3 className="ts-next-step__title">
-            {showAsEarned ? 'TALE FULLY COLLECTED' : 'EARN THE SECOND BADGE'}
-          </h3>
-          <p className="ts-next-step__copy">
-            {showAsEarned
-              ? 'Both Marks are stamped in your Passport. Visit your Passport to admire the spread.'
-              : 'Complete the mini-game to finish this Passport page.'}
-          </p>
-          <div className="ts-next-step__btns">
-            {/* UI-v6.7A — earned Tales can re-open the game as a replay.
-                GameOverlay shows its already-earned banner and the
-                alreadyEarned gate keeps the badge from re-awarding, so
-                replay is purely for fun. Coming-soon stays disabled. */}
-            <button
-              type="button"
-              className="ts-next-step__primary"
-              onClick={() => !showAsComingSoon && setShowGame(true)}
-              disabled={showAsComingSoon}
-              aria-disabled={showAsComingSoon}
-            >
-              {showAsEarned     && '↻ REPLAY MINI-GAME'}
-              {showAsActive     && '🎮 PLAY MINI-GAME'}
-              {showAsComingSoon && 'MINI-GAME COMING SOON'}
-            </button>
-            {/* P.15c: passport nav hidden in preview mode. */}
-            {!previewMode && (
-              <button
-                type="button"
-                className="ts-next-step__secondary"
-                onClick={() => nav('passport')}
-              >
-                📖 VIEW PASSPORT
-              </button>
             )}
-          </div>
+            <div className="px-story__body">
+              {tale.story.map((block, i) => {
+                if (block.type === 'quote') {
+                  return (
+                    <blockquote key={i} className="px-story__quote">
+                      <span>"{block.text}"</span>
+                      {block.cite && <cite>{block.cite}</cite>}
+                    </blockquote>
+                  );
+                }
+                return (
+                  <p key={i} dangerouslySetInnerHTML={{ __html: block.text || '' }} />
+                );
+              })}
+            </div>
+          </article>
         </div>
-      </section>
+
+        {/* ── Map ── */}
+        {tale.pins.length > 0 && (
+          <IronPanel
+            eyebrow={tale.mapTitle}
+          >
+            <div className="px-map" aria-label={tale.mapTitle}>
+              <div className="px-map__canvas">
+                {tale.pins.slice(0, 4).map((pin) => (
+                  <div
+                    key={pin.label}
+                    className="px-map__pin"
+                    style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                  >
+                    <span className="px-map__pin-dot" aria-hidden="true" />
+                    <span className="px-map__pin-label">{pin.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="px-map__foot">
+                {tale.year ? `${tale.year} GRID REFERENCE` : 'GRID REFERENCE'}
+              </div>
+            </div>
+          </IronPanel>
+        )}
+
+        {/* ── Timeline rail ── */}
+        {tale.timeline && tale.timeline.length > 0 && (
+          <>
+            <SectionRail label="A Life in the Valley" />
+            <div className="px-timeline" aria-label="Historical timeline">
+              <div className="px-timeline__track">
+                {tale.timeline.map((ev, i) => (
+                  <div
+                    key={i}
+                    className={`px-timeline__node${ev.major ? ' px-timeline__node--major' : ''}`}
+                  >
+                    <div className="px-timeline__medallion" aria-hidden="true">
+                      {timelineGlyph(ev.event)}
+                    </div>
+                    <div className="px-timeline__year">{ev.year}</div>
+                    <div className="px-timeline__event">{ev.event}</div>
+                    {ev.detail && <div className="px-timeline__detail">{ev.detail}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Badge + interactive challenge ── */}
+        <div className="px-climax">
+        <IronPanel
+          featured
+          eyebrow="Interactive Challenge"
+          title={showAsComingSoon ? 'CHALLENGE COMING SOON' : tale.game.title}
+          copy={
+            showAsEarned
+              ? 'Both stamps are in your Trackside Passport. This Tale is fully collected.'
+              : showAsActive
+                ? 'Complete the short challenge to earn the second stamp for this Tale.'
+                : "This Tale's challenge is on the way."
+          }
+          actions={
+            <>
+              <PrimaryAction
+                onClick={() => !showAsComingSoon && setShowGame(true)}
+                disabled={showAsComingSoon}
+                ariaLabel={showAsEarned ? 'Replay mini-game' : 'Play mini-game'}
+              >
+                {showAsEarned && '↻ REPLAY MINI-GAME'}
+                {showAsActive && '▶ PLAY MINI-GAME'}
+                {showAsComingSoon && 'MINI-GAME COMING SOON'}
+              </PrimaryAction>
+              {!previewMode && (
+                <SecondaryAction onClick={() => nav('passport')} ariaLabel="View passport">
+                  ◈ VIEW PASSPORT
+                </SecondaryAction>
+              )}
+            </>
+          }
+        >
+          <div className="px-badge-plate" style={{ marginTop: '0.8rem' }}>
+            <div
+              className={`px-badge-plate__medallion${hasScanBadge ? '' : ' px-badge-plate__medallion--locked'}`}
+              aria-hidden="true"
+            >
+              <span className="glyph">◈</span>
+              {tale.year && <span className="yr">{tale.year}</span>}
+            </div>
+            <div className="px-badge-plate__info">
+              <div className="px-badge-plate__count">BADGE {totalMarks} OF 2</div>
+              <h3 className="px-badge-plate__title">{tale.scanBadge.title}</h3>
+            </div>
+          </div>
+        </IronPanel>
+        </div>
+
+      </div>
 
       {showGame && gameConfig && (
         <GameOverlay
