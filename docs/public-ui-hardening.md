@@ -317,5 +317,5 @@ targets on primary controls. No formal WCAG certification is claimed.
 
 | Gate | State | Branch / SHA |
 |---|---|---|
-| **PUBLIC-v7.4B.P.28e — visual rebuild complete, awaiting merge/deployment** | committed + pushed, NOT merged, NOT deployed | `public-p28e-chatgpt-finalization` @ `ea432f9960f8b9fec8ac8228a5c4e7e91d49630a` (P.28e.1 `4a7aa0e` → P.28e.2 `fb8784a` → P.28e.3 `ea432f9`) |
-| Production | serves `main` | `b4a35b453dcf70c351ad4455536db187e5f8fdf6` |
+| **PUBLIC-v7.4B.P.28e — merged, deployed, and production-verified (2026-08-06)** | fast-forward merged to `main`; Pages run `31114043802` succeeded (attempt 3 — attempts 1–2 hit a documented GitHub Actions/Pages degraded-performance incident, no source change was needed); read-only production smoke test passed with explicit no-mutation confirmation | implementation `main` @ `9310562ad504a684488d809500afe0ca6ceac547` (P.28e.1 `4a7aa0e` → P.28e.2 `fb8784a` → P.28e.3 `ea432f9` → P.28e.4 `9310562`) |
+| Rollback point | previous production `main` | `b4a35b453dcf70c351ad4455536db187e5f8fdf6` |

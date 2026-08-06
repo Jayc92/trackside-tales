@@ -191,7 +191,49 @@ contains no backend change, so no data/schema rollback exists or is
 needed.
 
 ## 20. Final verdict
-The P.28e visual rebuild is complete, operator-approved at every
-checkpoint, fully committed on `public-p28e-chatgpt-finalization`, and
-verified non-mutating and behavior-preserving. **Awaiting operator
-merge/deploy authorization.**
+
+**Merged, deployed, and production-verified — P.28e CLOSED (2026-08-06).**
+
+### Deployment record (P.28e.5)
+- Merge: `git merge --ff-only public-p28e-chatgpt-finalization` onto
+  `main` (no merge commit, no squash) — main moved `b4a35b4 → 9310562`.
+- Pages workflow: "Deploy to GitHub Pages", run ID `31114043802`,
+  source SHA `9310562ad504a684488d809500afe0ca6ceac547`, succeeded on
+  attempt 3 at 2026-08-06T15:54:39Z (attempts 1–2 failed on a
+  documented GitHub Actions/Pages `degraded_performance` incident —
+  deploy-status polling timeout, then "Service Unavailable" resolving
+  the deploy action; the build job succeeded every time and no source
+  change was made). Environment: https://jayc92.github.io/trackside-tales/
+- Deployed implementation SHA: `9310562ad504a684488d809500afe0ca6ceac547`
+  (verified: served bundle contains the P.28e markers and the exact
+  final-build CSS hash).
+
+### Production smoke test (read-only, 2026-08-06)
+All checks passed at 390/768/1440: title/manifest/icons (5×200, 3
+manifest icons), **zero service-worker registrations**, hash routing,
+truthfully neutral header (BEER MENU, no dot — no live-pour claim
+without live data), zero user-facing Alburtis, Wooden Match plaque,
+all six routes rendering with zero horizontal overflow, Food (4 real
+dishes, venue attribution, no invented prices), timeline opening at
+its first event with the mobile hint, Beers featured-first at 1440
+(1 of 3), Passport `NO STAMPS YET` / `1 STAMP COLLECTED` /
+`2 STAMPS COLLECTED` with zero emoji and 4 SVG stat icons, game
+viewport ownership (body locked, overlay covers viewport, scroll
+restored exactly 1879→1879), keyboard focus, and the TRACKSIDE
+BREWING logo fallback. The only console error was the deliberately
+blocked logo asset in the fallback test. The unlock certificate and
+preview loading/failure states were verified locally during the gate
+(production exposes no demo unlock mechanism and no real preview token
+was used); they were not re-exercised against production.
+
+### Explicit no-mutation confirmation
+PASS — no production QR was consumed;
+PASS — no QR was minted, rotated, downloaded, or revoked;
+PASS — no Tap List action was run;
+PASS — no Tales, Beers, Food, Media, Users, or venue data changed;
+PASS — no account or permission setting changed;
+PASS — no Supabase, SQL, Auth, Storage, or RLS action occurred;
+PASS — only local browser state was used for seeded Passport/game states;
+PASS — production data was not mutated during the smoke test.
+
+Rollback point: `b4a35b453dcf70c351ad4455536db187e5f8fdf6`.
