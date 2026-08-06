@@ -1768,3 +1768,148 @@
 /* CP2 final correction — SVG nav fallbacks (rendered only when a nav
    PNG fails to load) share the nav's warm treatment. */
 .nav-icon-fallback .ts-icon { width: 20px; height: 20px; color: var(--gold); }
+
+/* ═══════════════ P.28e.3 — FINALIZATION PASS ═══════════════ */
+
+/* §2 — neutral menu chip (no live claim, no glow) */
+.live-indicator--neutral {
+  border-color: rgba(154, 136, 112, 0.35);
+  background: rgba(245, 236, 221, 0.03);
+  color: var(--aged);
+}
+.live-indicator { min-height: 44px; display: inline-flex; align-items: center; }
+.profile-btn { min-width: 44px; min-height: 44px; }
+
+/* §4 — shell brand scale: width-driven so the lockup reads with
+   authority at every breakpoint without becoming a masthead. The
+   selector matches polish.css's specificity so this layer wins. */
+.app-bar-center .header-logo-img {
+  width: 100px;
+  max-width: 100px;
+  height: auto;
+}
+@media (max-width: 390px) {
+  .app-bar-center .header-logo-img { width: 92px; max-width: 92px; }
+  .app-bar-inner { min-height: 64px; }
+}
+@media (min-width: 768px) {
+  .app-bar-center .header-logo-img { width: 124px; max-width: 124px; }
+  .app-bar-inner { min-height: 88px; padding: 0.55rem 0; }
+}
+
+/* §5 — timeline scroll affordance (P.28e.3 correction): the fades are
+   STATE-DRIVEN so real content is never obscured. At scrollLeft 0 the
+   first card and medallion are fully visible (no left fade, real
+   inline-start padding); a soft right fade signals continuation and
+   disappears once the user reaches the end. TaleDetailPage toggles
+   the edge classes on scroll/Tale change. */
+.px-timeline__track {
+  outline-offset: -2px;
+  padding-inline-start: 0.9rem;
+  padding-right: 2.2rem; /* keeps a partial next card visible */
+}
+.px-timeline__track--more-right {
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 44px), rgba(0, 0, 0, 0.25) 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 44px), rgba(0, 0, 0, 0.25) 100%);
+}
+.px-timeline__track--more-left {
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25) 0, #000 44px, #000 100%);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25) 0, #000 44px, #000 100%);
+}
+.px-timeline__track--more-left.px-timeline__track--more-right {
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25) 0, #000 44px, #000 calc(100% - 44px), rgba(0, 0, 0, 0.25) 100%);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25) 0, #000 44px, #000 calc(100% - 44px), rgba(0, 0, 0, 0.25) 100%);
+}
+.px-timeline__hint {
+  margin: 0.15rem 0 0;
+  text-align: right;
+  font-family: var(--font-metadata);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: var(--aged);
+  text-transform: uppercase;
+}
+@media (min-width: 768px) {
+  .px-timeline__hint { display: none; }
+}
+
+/* §7 — signed-preview presentation: a centered operational panel in
+   the approved artifact language. */
+.px-preview-note { padding: 2rem 1.25rem; }
+.px-preview-panel {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1.6rem 1.4rem 1.7rem;
+  border: 1px solid rgba(176, 120, 32, 0.35);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(245, 236, 221, 0.03), transparent 32%),
+    linear-gradient(180deg, #211d18 0%, #1a1713 100%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.px-preview-panel--failed { border-color: rgba(160, 58, 42, 0.5); }
+.px-preview-panel__action {
+  display: inline-flex;
+  margin-top: 1.1rem;
+  text-decoration: none;
+}
+/* Railway status indicator: three sleepers pulsing along the line.
+   Static under prefers-reduced-motion. */
+.px-preview-rail {
+  display: flex;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+.px-preview-rail span {
+  width: 22px;
+  height: 4px;
+  border-radius: 1px;
+  background: rgba(176, 120, 32, 0.35);
+  animation: pxRailPulse 1.4s ease-in-out infinite;
+}
+.px-preview-rail span:nth-child(2) { animation-delay: 0.22s; }
+.px-preview-rail span:nth-child(3) { animation-delay: 0.44s; }
+@keyframes pxRailPulse {
+  0%, 100% { background: rgba(176, 120, 32, 0.3); }
+  50% { background: var(--gold); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .px-preview-rail span { animation: none; background: rgba(176, 120, 32, 0.5); }
+}
+
+/* §8 — game-completion stage: the success artifact centers within a
+   bounded stage instead of floating at the top of an empty viewport;
+   a quiet rail-divider foot closes the composition. Content, logic,
+   medallion, and actions untouched. */
+#game-overlay .game-success.active {
+  min-height: calc(100dvh - 120px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 2.5rem;
+}
+#game-overlay .game-success.active::after {
+  content: '';
+  display: block;
+  margin: 2.2rem auto 0;
+  width: min(320px, 70%);
+  height: 9px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--brass) 0 2.5px, transparent 3px) center / 9px 9px no-repeat,
+    linear-gradient(90deg, transparent, rgba(176, 120, 32, 0.4) 20%, rgba(176, 120, 32, 0.4) 80%, transparent) center / 100% 1px no-repeat;
+}
+@media (min-width: 768px) {
+  #game-overlay .game-success.active { max-width: 560px; margin: 0 auto; }
+}
+
+/* §9 — desktop rhythm: tighten dead vertical space between shell,
+   titles, tabs, and content. Spacing only. */
+@media (min-width: 1024px) {
+  .px-page-head { padding-top: 1.1rem; }
+  .px-page-head__title { font-size: 2.4rem; }
+  .px-tabs { margin-top: 0.8rem; }
+  .px-rail-head { margin: 1.5rem 0 0.9rem; }
+  .px-hero__content { padding-top: 3rem; }
+  .px-screen .px-wrap > .px-rail-head:first-child { margin-top: 1.4rem; }
+}

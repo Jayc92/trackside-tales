@@ -132,8 +132,14 @@ export function TalePreviewPage({ request }: { request: TalePreviewRequest }) {
 
       <main id="page-container" className={state.phase !== 'ready' ? 'px-screen' : undefined}>
         {state.phase === 'loading' && (
-          <div className="px-preview-note" role="status">
-            <p>Loading preview…</p>
+          <div className="px-preview-note" role="status" aria-live="polite">
+            <div className="px-preview-panel">
+              <div className="px-preview-rail" aria-hidden="true">
+                <span /><span /><span />
+              </div>
+              <h2>Loading preview</h2>
+              <p>Fetching the draft from the preview service.</p>
+            </div>
           </div>
         )}
         {state.phase === 'ready' && (
@@ -141,8 +147,18 @@ export function TalePreviewPage({ request }: { request: TalePreviewRequest }) {
         )}
         {state.phase !== 'loading' && state.phase !== 'ready' && (
           <div className="px-preview-note" role="alert">
-            <h2>{FAILURE_COPY[state.phase].title}</h2>
-            <p>{FAILURE_COPY[state.phase].body}</p>
+            <div className="px-preview-panel px-preview-panel--failed">
+              <h2>{FAILURE_COPY[state.phase].title}</h2>
+              <p>{FAILURE_COPY[state.phase].body}</p>
+              {/* Existing recovery behavior only: the admin editor link
+                  already present in the banner, surfaced as the action. */}
+              <a
+                className="px-act px-preview-panel__action"
+                href="https://trackside-admin.vercel.app/admin/tales"
+              >
+                BACK TO ADMIN
+              </a>
+            </div>
           </div>
         )}
       </main>

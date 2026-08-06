@@ -187,7 +187,9 @@ export function PassportPage() {
 
         <div className="ts-rewards-panel__center">
           <div className="ts-rewards-panel__headline">
-            {totalStamps === 0 ? 'NO STAMPS YET' : `${totalStamps} STAMPS COLLECTED`}
+            {totalStamps === 0
+              ? 'NO STAMPS YET'
+              : `${totalStamps} ${totalStamps === 1 ? 'STAMP' : 'STAMPS'} COLLECTED`}
           </div>
           <p className="ts-rewards-panel__copy">
             {totalStamps === 0

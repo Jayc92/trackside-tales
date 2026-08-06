@@ -16,27 +16,39 @@ import { useApp } from '../app/AppContext';
 import { pressable } from './interactive';
 
 export function AppHeader() {
-  const { state, nav } = useApp();
+  const { state, nav, liveTapSlugs } = useApp();
 
   const handleLogoClick = () => nav('tales');
   const handleNowPouringClick = () => nav('menu');
   const handleProfileClick = () => nav('passport');
 
+  // PUBLIC-v7.4B.P.28e.3 — the header chip claims NOW POURING only
+  // while the live tap list (P.18) reports at least one live pour.
+  // liveTapSlugs starts as an empty Set, so the loading posture is the
+  // same neutral BEER MENU state — no false live claim ever renders.
+  // No fetching happens here; this only reads the existing AppContext
+  // live state.
+  const hasLivePours = liveTapSlugs.size > 0;
+
   return (
     <div className="app-bar">
       <div className="app-bar-inner">
 
-        {/* Left: Now Pouring */}
+        {/* Left: live status / menu shortcut */}
         <div className="app-bar-left">
           <div
-            className="live-indicator"
+            className={`live-indicator${hasLivePours ? '' : ' live-indicator--neutral'}`}
             {...pressable(handleNowPouringClick)}
-            title="Now pouring — view the menu"
-            aria-label="Now pouring — view the menu"
+            title={hasLivePours
+              ? 'Beers are pouring now — view the live menu'
+              : 'View the beer menu'}
+            aria-label={hasLivePours
+              ? 'Beers are pouring now — view the live menu'
+              : 'View the beer menu'}
             style={{ cursor: 'pointer' }}
           >
-            <span className="live-indicator-dot" />
-            <span>NOW POURING</span>
+            {hasLivePours && <span className="live-indicator-dot" />}
+            <span>{hasLivePours ? 'NOW POURING' : 'BEER MENU'}</span>
           </div>
         </div>
 
@@ -58,9 +70,11 @@ export function AppHeader() {
               if (next) next.style.display = 'flex';
             }}
           />
+          {/* P.28e.3 — fallback follows the approved company hierarchy:
+              the company wordmark, never the venue. */}
           <div className="header-logo-text" aria-hidden="true" style={{ display: 'none' }}>
             <div className="logo-main">TRACKSIDE</div>
-            <div className="logo-sub">at <span>THE WOODEN MATCH</span></div>
+            <div className="logo-sub"><span>BREWING</span></div>
           </div>
         </div>
 

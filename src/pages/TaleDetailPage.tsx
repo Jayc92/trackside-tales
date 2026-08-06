@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { GameOverlay } from '../games/GameOverlay';
 import { getGameConfig } from '../games/gameConfigs';
@@ -140,6 +140,27 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   const { state, awardGameBadge, nav, guestId, liveTapSlugs } = useApp();
   const tale = previewTale ?? state.currentTale;
   const [showGame, setShowGame] = useState(false);
+
+  // P.28e.3 timeline correction — the horizontal track always opens at
+  // its FIRST event: scrollLeft is reset whenever the rendered Tale
+  // changes (initial render included), and never touched afterwards so
+  // user interaction is respected. Edge classes drive the continuation
+  // fades: no left fade while at the start (the first card is fully
+  // readable), no right fade once the user reaches the end.
+  const timelineTrackRef = useRef<HTMLDivElement | null>(null);
+  const updateTimelineEdges = useCallback((track: HTMLDivElement) => {
+    const atStart = track.scrollLeft <= 2;
+    const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+    track.classList.toggle('px-timeline__track--more-left', !atStart);
+    track.classList.toggle('px-timeline__track--more-right', !atEnd);
+  }, []);
+  useEffect(() => {
+    const track = timelineTrackRef.current;
+    if (track) {
+      track.scrollLeft = 0;
+      updateTimelineEdges(track);
+    }
+  }, [tale?.id, updateTimelineEdges]);
 
   if (!tale) return null;
 
@@ -333,8 +354,15 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
         {tale.timeline && tale.timeline.length > 0 && (
           <>
             <SectionRail label="A Life in the Valley" />
-            <div className="px-timeline" aria-label="Historical timeline">
-              <div className="px-timeline__track">
+            <div className="px-timeline">
+              <div
+                className="px-timeline__track"
+                role="region"
+                aria-label="Historical timeline — scrolls horizontally"
+                tabIndex={0}
+                ref={timelineTrackRef}
+                onScroll={(e) => updateTimelineEdges(e.currentTarget)}
+              >
                 {tale.timeline.map((ev, i) => (
                   <div
                     key={i}
@@ -349,6 +377,9 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
                   </div>
                 ))}
               </div>
+              <p className="px-timeline__hint" aria-hidden="true">
+                Swipe to continue the timeline →
+              </p>
             </div>
           </>
         )}
