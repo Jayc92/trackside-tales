@@ -171,7 +171,7 @@ function ScanFallbackPanel() {
         <div className="ts-scan-fallback__title">CAN'T SCAN RIGHT NOW?</div>
         <div className="ts-scan-fallback__copy">Select a Tale to preview.</div>
       </div>
-      <span className="ts-scan-fallback__watermark" aria-hidden="true">⚙</span>
+      <span className="ts-scan-fallback__watermark" aria-hidden="true">◈</span>
     </aside>
   );
 }
@@ -378,7 +378,7 @@ export function ScanPage() {
   }, [state.page]);
 
   return (
-    <div className="page active ts-scan-screen" id="page-scan">
+    <div className="page active px-screen ts-scan-screen" id="page-scan">
 
       {/* ============== 1. SCANNER FRAME ============== */}
       <ScannerFrame scanning={scanning} scannerError={scannerError} />

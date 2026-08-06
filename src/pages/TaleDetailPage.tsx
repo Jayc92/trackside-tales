@@ -4,6 +4,7 @@ import { GameOverlay } from '../games/GameOverlay';
 import { getGameConfig } from '../games/gameConfigs';
 import { formatDate } from '../services/badgeService';
 import { prodSlugFromAppSlug } from '../services/talePresentationPack';
+import { TsIcon } from '../components/TsIcon';
 import {
   IronPanel,
   SectionRail,
@@ -37,15 +38,17 @@ function buildHeroMeta(tale: { name: string; style: string; abv: string; ibu: st
   return fragments.join(' · ');
 }
 
-function timelineGlyph(title: string): string {
+// CP2 correction §2 — timeline medallions use the Trackside icon
+// system (platform-consistent SVG) instead of Unicode pictographs.
+function timelineIcon(title: string): string {
   const t = title.toLowerCase();
-  if (t.includes('born'))         return '☉';
-  if (t.includes('purchase'))     return '✦';
-  if (t.includes('chief'))        return '⚖';
-  if (t.includes('found'))        return '⌂';
-  if (t.includes('liberty'))      return '☼';
-  if (t.includes('died') || t.includes('dies')) return '✦';
-  return '◈';
+  if (t.includes('born'))         return 'station-lantern';
+  if (t.includes('purchase'))     return 'survey-grid';
+  if (t.includes('chief'))        return 'town-seal';
+  if (t.includes('found'))        return 'map-grid';
+  if (t.includes('liberty'))      return 'station-seal';
+  if (t.includes('died') || t.includes('dies')) return 'crossed-spikes';
+  return 'town-seal';
 }
 
 // PUBLIC-v7.4B.P.19 — Tale availability label. The LIVE tap list is the
@@ -171,7 +174,7 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
         <div className="px-wrap" style={{ marginTop: '1rem' }}>
           <IronPanel>
             <div className="px-sealed">
-              <div className="px-sealed__stamp" aria-hidden="true">🔒</div>
+              <div className="px-sealed__stamp" aria-hidden="true"><TsIcon icon="locked-seal" /></div>
               <h2 className="px-sealed__title">THIS TALE IS STILL SEALED.</h2>
               <p className="px-sealed__copy">
                 Scan this Trackside Tale at The Wooden Match to unlock the
@@ -338,7 +341,7 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
                     className={`px-timeline__node${ev.major ? ' px-timeline__node--major' : ''}`}
                   >
                     <div className="px-timeline__medallion" aria-hidden="true">
-                      {timelineGlyph(ev.event)}
+                      <TsIcon icon={timelineIcon(ev.event)} />
                     </div>
                     <div className="px-timeline__year">{ev.year}</div>
                     <div className="px-timeline__event">{ev.event}</div>

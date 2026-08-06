@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../app/AppContext';
 import { PageId } from '../app/types';
+import { TsIcon } from './TsIcon';
 
 // ================== BOTTOM NAV ==================
 // Mirrors the golden v4.6.1 bottom-nav: 5 buttons (HOME, TALES, MENU, SCAN, PASSPORT).
@@ -17,16 +18,18 @@ interface NavItem {
   domId: string;
   label: string;
   iconSrc: string;
+  /** TsIcon name shown only if the PNG asset fails to load (P.28e —
+      platform-consistent SVG, never a Unicode glyph). */
   fallback: string;
   scan?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'home',     domId: 'nav-home',     label: 'HOME',     iconSrc: 'assets/nav/nav-home.png',     fallback: '⊞' },
-  { id: 'tales',    domId: 'nav-tales',    label: 'TALES',    iconSrc: 'assets/nav/nav-tales.png',    fallback: '⚏' },
-  { id: 'menu',     domId: 'nav-beers',    label: 'MENU',     iconSrc: 'assets/nav/nav-menu.png',     fallback: '◫' },
-  { id: 'scan',     domId: 'nav-scan',     label: 'SCAN',     iconSrc: 'assets/nav/nav-scan.png',     fallback: '◈', scan: true },
-  { id: 'passport', domId: 'nav-passport', label: 'PASSPORT', iconSrc: 'assets/nav/nav-passport.png', fallback: '◉' },
+  { id: 'home',     domId: 'nav-home',     label: 'HOME',     iconSrc: 'assets/nav/nav-home.png',     fallback: 'crossed-spikes' },
+  { id: 'tales',    domId: 'nav-tales',    label: 'TALES',    iconSrc: 'assets/nav/nav-tales.png',    fallback: 'ticket-punch' },
+  { id: 'menu',     domId: 'nav-beers',    label: 'MENU',     iconSrc: 'assets/nav/nav-menu.png',     fallback: 'station-lantern' },
+  { id: 'scan',     domId: 'nav-scan',     label: 'SCAN',     iconSrc: 'assets/nav/nav-scan.png',     fallback: 'map-grid', scan: true },
+  { id: 'passport', domId: 'nav-passport', label: 'PASSPORT', iconSrc: 'assets/nav/nav-passport.png', fallback: 'passport-book' },
 ];
 
 export function BottomNav() {
@@ -73,7 +76,7 @@ export function BottomNav() {
                   if (fb) fb.classList.add('show');
                 }}
               />
-              <span className="nav-icon-fallback">{item.fallback}</span>
+              <span className="nav-icon-fallback"><TsIcon icon={item.fallback} /></span>
             </span>
             {item.label}
           </button>

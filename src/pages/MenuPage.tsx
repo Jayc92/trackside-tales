@@ -183,12 +183,17 @@ function InventoryRow({
   );
 }
 
-// ---- Food card (UNCHANGED — P.28e checkpoint 2 scope) -------------------------
-const FOOD_VISUAL_META: Record<string, { sub: string; chefsPick?: boolean; glyph: string }> = {
-  'Other Side Of The Pillow': { sub: 'Pierogies',          glyph: '⌬' },
-  'CNJ Railyard':              { sub: 'Organic Greens Salad', glyph: '✿' },
-  'Broad Street Bully':        { sub: 'Steak Sandwich',     glyph: '✦' },
-  'Burger Flight':             { sub: 'Slider Trio',        glyph: '◈', chefsPick: true },
+// ---- Food menu (P.28e checkpoint 2 — tavern-menu presentation) ---------------
+// A credible tavern menu, deliberately NOT a clone of the beer cards:
+// classic dish rows on one quiet parchment-tinted band — name, dotted
+// leader, price (only when real price data exists), course note,
+// description. Real dishes and descriptions only; imagery renders only
+// when production supplies a real food photo.
+const FOOD_VISUAL_META: Record<string, { sub: string; chefsPick?: boolean }> = {
+  'Other Side Of The Pillow': { sub: 'Pierogies' },
+  'CNJ Railyard':              { sub: 'Organic Greens Salad' },
+  'Broad Street Bully':        { sub: 'Steak Sandwich' },
+  'Burger Flight':             { sub: 'Slider Trio', chefsPick: true },
 };
 
 /**
@@ -201,40 +206,76 @@ function formatFoodPrice(cents: number | null | undefined): string | null {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function FoodCard({ item }: { item: FoodItem }) {
-  const meta = FOOD_VISUAL_META[item.name] || { sub: '', glyph: '◈' };
+function FoodMenuRow({ item }: { item: FoodItem }) {
+  const meta = FOOD_VISUAL_META[item.name] || { sub: '' };
   const isChefsPick = item.isFeatured ?? meta.chefsPick ?? false;
   const price = formatFoodPrice(item.priceCents);
   const hasImage = typeof item.imageUrl === 'string' && item.imageUrl.length > 0;
   return (
-    <article className="ts-food-card" aria-label={item.name}>
-      <div
-        className={`ts-food-card__art${hasImage ? ' ts-food-card__art--has-image' : ''}`}
-        aria-hidden="true"
-      >
-        {hasImage ? (
+    <article className="px-dish" aria-label={item.name}>
+      {hasImage && (
+        <div className="px-dish__photo" aria-hidden="true">
           <img
             src={item.imageUrl}
             alt=""
-            onError={(event) => {
-              event.currentTarget.style.display = 'none';
-            }}
+            loading="lazy"
+            onError={(event) => { event.currentTarget.style.display = 'none'; }}
           />
-        ) : null}
-        <span className="ts-food-card__art-glyph">{meta.glyph}</span>
-      </div>
-      <div className="ts-food-card__body">
-        <div className="ts-food-card__name-row">
-          <h3 className="ts-food-card__name">{item.name}</h3>
-          <span className={`ts-food-card__badge${isChefsPick ? ' ts-food-card__badge--pick' : ''}`}>
-            {isChefsPick ? "CHEF'S PICK" : 'KITCHEN'}
-          </span>
         </div>
-        {meta.sub && <div className="ts-food-card__sub">{meta.sub}</div>}
-        {price && <div className="ts-food-card__price">{price}</div>}
-        <p className="ts-food-card__desc">{item.desc}</p>
+      )}
+      <div className="px-dish__body">
+        <div className="px-dish__row">
+          <h3 className="px-dish__name">{item.name}</h3>
+          <span className="px-dish__leader" aria-hidden="true" />
+          {price && <span className="px-dish__price">{price}</span>}
+        </div>
+        <div className="px-dish__subrow">
+          {meta.sub && <span className="px-dish__sub">{meta.sub}</span>}
+          {isChefsPick && <StatusPlate tone="live">CHEF'S PICK</StatusPlate>}
+        </div>
+        <p className="px-dish__desc">{item.desc}</p>
       </div>
     </article>
+  );
+}
+
+// ---- Live tap departure board (P.28e checkpoint 2) ----------------------------
+// A station departure board for CURRENT pours. Driven exclusively by
+// the live tap list (P.18): a beer appears here only while a genuinely
+// live pour exists for its slug. With no live data the board renders
+// NOTHING — absence is the only always-truthful claim (same posture as
+// the ON TAP plates). No tap numbers or notes are fetched or shown.
+// Exported so the live-state presentation can be exercised in isolation
+// during visual review (the board itself renders only from real live
+// tap data in the app).
+export function TapBoard({
+  beers,
+  liveTapSlugs,
+}: {
+  beers: Beer[];
+  liveTapSlugs: Set<string>;
+}) {
+  const pouring = beers.filter((b) => b.slug !== undefined && liveTapSlugs.has(b.slug));
+  if (pouring.length === 0) return null;
+  return (
+    <section className="px-tapboard" aria-label="Now pouring">
+      <div className="px-tapboard__head">
+        <span className="px-tapboard__dot" aria-hidden="true" />
+        NOW POURING · THE WOODEN MATCH
+      </div>
+      <div role="list">
+        {pouring.map((beer) => (
+          <div key={beer.slug} className="px-tapboard__row" role="listitem">
+            <span className="px-tapboard__name">{beer.name}</span>
+            <span className="px-tapboard__leader" aria-hidden="true" />
+            <span className="px-tapboard__meta">
+              {[beer.style, beer.abv ? `ABV ${beer.abv}` : null].filter(Boolean).join(' · ')}
+            </span>
+            <StatusPlate tone="live">LIVE</StatusPlate>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -261,6 +302,8 @@ export function MenuPage() {
 
       {activeTab === 'tales' && (
         <div className="px-wrap">
+          {/* Live departure board — renders only while real pours are live. */}
+          <TapBoard beers={[...regulars, ...nonAlc]} liveTapSlugs={liveTapSlugs} />
           <SectionRail label="Trackside Tales — The Roster" />
           {/* Desktop roster composition: the unlocked pour leads as the
               full-width featured card; the rest sit in a balanced row.
@@ -322,16 +365,14 @@ export function MenuPage() {
       {activeTab === 'food' && (
         <div className="px-wrap">
           <SectionRail label="Wooden Match Kitchen" />
-          <div className="ts-kitchen-intro">
-            <div className="ts-kitchen-intro__icon" aria-hidden="true">⌥</div>
-            <div className="ts-kitchen-intro__copy">
-              Food and full menu provided by <strong>The Wooden Match</strong>. Our Trackside
-              Brewing partnership is beer-focused — the kitchen is a featured companion offering.
-            </div>
-          </div>
-          <div className="ts-menu-cards">
+          <p className="px-kitchen-note">
+            Food and full menu provided by <strong>The Wooden Match</strong>.
+            Our Trackside Brewing partnership is beer-focused — the kitchen
+            is a featured companion offering.
+          </p>
+          <div className="px-menu-board" role="list" aria-label="Kitchen menu">
             {food.map((item) => (
-              <FoodCard key={item.name} item={item} />
+              <FoodMenuRow key={item.name} item={item} />
             ))}
           </div>
         </div>

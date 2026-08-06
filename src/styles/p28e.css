@@ -1484,3 +1484,287 @@
   .px-roster-grid--even .px-roster__plates,
   .px-roster-grid--even .px-roster__actions { justify-content: center; }
 }
+
+/* ═══════════════ P.28e CHECKPOINT 2 ═══════════════
+   Food (tavern menu), live tap departure board, and coherence
+   passes for Passport, Scan/QR states, the unlock certificate, the
+   shared game presentation, and the signed-preview shell. Legacy
+   ts-* markup on these routes is preserved (behavior-critical);
+   these are presentation overrides bringing them onto the approved
+   px system: neutral iron hairlines, corrected type roles, and the
+   copper action language.
+   ─────────────────────────────────────────────────── */
+
+/* ── Food: tavern menu board ── */
+.px-kitchen-note {
+  margin: 0 auto 1.1rem;
+  max-width: 52ch;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #a8977c;
+}
+.px-kitchen-note strong { color: #cdbfa8; font-weight: 650; }
+.px-menu-board {
+  border-radius: 6px;
+  background: rgba(245, 236, 221, 0.03);
+  padding: 0.5rem 1.1rem;
+}
+.px-dish {
+  display: flex;
+  gap: 0.85rem;
+  padding: 1.05rem 0;
+}
+.px-dish + .px-dish { border-top: 1px solid rgba(245, 236, 221, 0.08); }
+.px-dish__photo {
+  flex: 0 0 64px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(245, 236, 221, 0.12);
+}
+.px-dish__photo img { width: 100%; height: 100%; object-fit: cover; }
+.px-dish__body { flex: 1; min-width: 0; }
+.px-dish__row { display: flex; align-items: baseline; gap: 0.55rem; }
+.px-dish__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.15rem;
+  letter-spacing: 0.03em;
+  color: #e2d5ba;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.px-dish__leader {
+  flex: 1;
+  min-width: 18px;
+  border-bottom: 1px dotted rgba(154, 136, 112, 0.45);
+  transform: translateY(-3px);
+}
+.px-dish__price {
+  font-family: var(--font-metadata);
+  font-size: 0.78rem;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.px-dish__subrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+.px-dish__sub {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.82rem;
+  color: #a8977c;
+}
+.px-dish__desc {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #b6a68b;
+}
+@media (min-width: 768px) {
+  .px-menu-board { max-width: 720px; margin: 0 auto; padding: 0.6rem 1.6rem; }
+}
+
+/* ── Live tap departure board ── */
+.px-tapboard {
+  margin: 1rem 0 0.25rem;
+  border: 1px solid rgba(176, 120, 32, 0.4);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(0deg, rgba(245, 236, 221, 0.015) 0 1px, transparent 1px 30px),
+    linear-gradient(180deg, #191512 0%, #131009 100%);
+  padding: 0.75rem 0.95rem 0.6rem;
+}
+.px-tapboard__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-metadata);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(176, 120, 32, 0.3);
+}
+.px-tapboard__dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 8px rgba(201, 100, 40, 0.9);
+}
+.px-tapboard__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 0.6rem 0;
+}
+.px-tapboard__row + .px-tapboard__row { border-top: 1px solid rgba(245, 236, 221, 0.06); }
+.px-tapboard__name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: #e8ddc8;
+  white-space: nowrap;
+}
+.px-tapboard__leader { flex: 1; border-bottom: 1px dotted rgba(154, 136, 112, 0.35); transform: translateY(-3px); }
+.px-tapboard__meta { font-family: var(--font-metadata); font-size: 0.62rem; color: var(--aged); white-space: nowrap; }
+
+/* ── Passport coherence (ts-passport markup preserved) ── */
+.ts-passport-screen .ts-id-plaque,
+.ts-passport-screen .ts-rewards-panel,
+.ts-passport-screen .ts-personalize {
+  border-color: rgba(245, 236, 221, 0.1) !important;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.38);
+}
+.ts-passport-screen .ts-id-plaque { border-color: rgba(176, 120, 32, 0.4) !important; }
+.ts-passport-screen .ts-rewards-panel__cta,
+.ts-passport-screen .ts-personalize__cta {
+  background: linear-gradient(180deg, #a75f2b 0%, #8a4a1f 58%, #7a3f1a 100%);
+  border: 1px solid rgba(232, 170, 106, 0.55);
+  box-shadow: inset 0 1px 0 rgba(245, 236, 221, 0.28), 0 3px 9px rgba(0, 0, 0, 0.4);
+  color: #f7ecd9;
+  font-family: var(--px-body-font);
+  font-weight: 650;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  min-height: 40px;
+  border-radius: 4px;
+}
+.ts-passport-screen .ts-book { border-color: rgba(176, 120, 32, 0.35); }
+.ts-passport-screen .ts-book-nav__btn {
+  font-family: var(--px-body-font);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  font-weight: 650;
+}
+
+/* ── Scan / QR states coherence (ts-scan markup preserved) ── */
+.ts-scan-screen .ts-scan-frame { border-color: rgba(176, 120, 32, 0.4); }
+.ts-scan-screen .ts-scan-row {
+  border-color: rgba(245, 236, 221, 0.1);
+  font-family: var(--px-body-font);
+}
+.ts-scan-screen .ts-scan-instructions__title {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+.ts-scan-screen .ts-scan-instructions__copy {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+.ts-scan-screen .ts-scan-error {
+  border: 1px solid rgba(160, 58, 42, 0.55);
+  border-radius: 6px;
+  background: rgba(90, 34, 24, 0.18);
+}
+.ts-scan-screen .ts-scan-error__retry {
+  background: linear-gradient(180deg, #a75f2b 0%, #7a3f1a 100%);
+  border: 1px solid rgba(232, 170, 106, 0.55);
+  color: #f7ecd9;
+  font-weight: 650;
+  border-radius: 4px;
+  min-height: 38px;
+}
+
+/* ── Unlock certificate (ts-unlock markup preserved) ──
+   The certificate reads as the same parchment archive-ticket family
+   as the Tale hero: warm parchment field, ink text, stamped edge. */
+.ts-unlock-screen .ts-unlock-cert,
+.ts-unlock-cert {
+  background:
+    radial-gradient(120% 90% at 18% 8%, rgba(120, 88, 44, 0.16), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(84, 62, 34, 0.05) 0 1px, transparent 1px 26px),
+    linear-gradient(160deg, #ece0c4 0%, #e5d6b4 55%, #dccaa4 100%) !important;
+  border: none !important;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(84, 62, 34, 0.35),
+    inset 0 0 46px rgba(84, 62, 34, 0.22) !important;
+}
+.ts-unlock-action--primary {
+  background: linear-gradient(180deg, #a75f2b 0%, #8a4a1f 58%, #7a3f1a 100%) !important;
+  border: 1px solid rgba(232, 170, 106, 0.55) !important;
+  color: #f7ecd9 !important;
+}
+
+/* ── Shared game presentation (GameOverlay markup preserved) ── */
+#game-overlay-react .game-start-btn,
+.game-overlay .game-start-btn {
+  background: linear-gradient(180deg, #a75f2b 0%, #8a4a1f 58%, #7a3f1a 100%);
+  border: 1px solid rgba(232, 170, 106, 0.55);
+  box-shadow: inset 0 1px 0 rgba(245, 236, 221, 0.28), 0 3px 9px rgba(0, 0, 0, 0.4);
+  color: #f7ecd9;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  border-radius: 4px;
+}
+
+/* ── Signed preview shell ── */
+.px-preview-note {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.px-preview-note h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  letter-spacing: 0.03em;
+  color: #e2d5ba;
+  margin: 0 0 0.6rem;
+}
+.px-preview-note p { font-size: 0.92rem; line-height: 1.6; color: #b6a68b; margin: 0; }
+
+/* ═══════════════ P.28e CHECKPOINT-2 CORRECTION ═══════════════
+   §1 game isolation, §2 icon-system sizing after emoji removal,
+   §4 tablet game composition.
+   ─────────────────────────────────────────────────────────── */
+
+/* §1 — the game dialog owns the viewport. The overlay was already
+   fixed and opaque; this guarantees its own scroll surface (only the
+   game scrolls, never the document — GameOverlay locks body scroll)
+   and full dynamic-viewport height. */
+#game-overlay {
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* §2 — TsIcon sizing in the passport stats, input adornments, and
+   seal slots that previously held emoji glyphs. Brass/ivory line
+   treatment via currentColor. */
+.ts-id-stat__icon .ts-icon { width: 22px; height: 22px; color: var(--gold); }
+.ts-input-wrap__icon .ts-icon { width: 16px; height: 16px; color: var(--aged); }
+.px-tale-sealed__lock .ts-icon { width: 18px; height: 18px; color: var(--aged); }
+.px-sealed__stamp .ts-icon { width: 30px; height: 30px; color: var(--aged); }
+.px-timeline__medallion .ts-icon { width: 20px; height: 20px; color: var(--gold); }
+
+/* §4 — tablet/desktop game composition: not a widened phone column.
+   The playing surface centers at a readable measure, the board gets
+   meaningful vertical space, and metadata sizes up. */
+@media (min-width: 768px) {
+  #game-overlay .game-header { padding-left: 2rem; padding-right: 2rem; }
+  #game-overlay .allen-survey-game,
+  #game-overlay .game-body,
+  #game-overlay > div:not(.game-header) {
+    width: 100%;
+    max-width: 820px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #game-overlay .allen-map-wrap { min-height: 46vh; }
+  #game-overlay .allen-map-svg { min-height: 46vh; }
+  #game-overlay .allen-hud-label,
+  #game-overlay .allen-elements-hint { font-size: 0.72rem; }
+  #game-overlay .allen-quiz-options button { min-height: 44px; }
+}
+
+/* CP2 final correction — SVG nav fallbacks (rendered only when a nav
+   PNG fails to load) share the nav's warm treatment. */
+.nav-icon-fallback .ts-icon { width: 20px; height: 20px; color: var(--gold); }

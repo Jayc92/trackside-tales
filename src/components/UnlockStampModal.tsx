@@ -40,7 +40,7 @@ function deriveSerial(taleId: string): string {
 function emblemGlyphFor(taleId: string): string {
   switch (taleId) {
     case 'wa-lager':     return '⌬';
-    case 'packer-pils':  return '⚒';
+    case 'packer-pils':  return '⌖';
     case 'wooden-match': return '⌥';
     default:             return '◈';
   }

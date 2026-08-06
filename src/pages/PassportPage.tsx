@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { LS_HOW_DISMISSED, LS_PASSPORT_PAGE } from '../app/types';
+import { TsIcon } from '../components/TsIcon';
 
 // ================== PASSPORT / PROFILE PAGE (v6.1 — Structured Design Pass) ==================
 // Visual rewrite to match the v6.0 reference. All app behavior is preserved:
@@ -112,7 +113,7 @@ export function PassportPage() {
   }, [currentUnlocked, currentScan, currentGame]);
 
   return (
-    <div className="page active ts-passport-screen" id="page-profile">
+    <div className="page active px-screen ts-passport-screen" id="page-profile">
 
       {/* ============== 2. GUEST PASSPORT IDENTITY PLAQUE ============== */}
       <section className="ts-id-plaque" aria-label="Guest passport">
@@ -137,22 +138,22 @@ export function PassportPage() {
 
         <div className="ts-id-plaque__stats">
           <div className="ts-id-stat">
-            <div className="ts-id-stat__icon" aria-hidden="true">📖</div>
+            <div className="ts-id-stat__icon" aria-hidden="true"><TsIcon icon="ticket-punch" /></div>
             <div className="ts-id-stat__num">{talesUnlocked}</div>
             <div className="ts-id-stat__lbl">TALES<br/>UNLOCKED</div>
           </div>
           <div className="ts-id-stat">
-            <div className="ts-id-stat__icon" aria-hidden="true">⌑</div>
+            <div className="ts-id-stat__icon" aria-hidden="true"><TsIcon icon="station-seal" /></div>
             <div className="ts-id-stat__num">{stampsEarned}</div>
             <div className="ts-id-stat__lbl">STAMPS<br/>EARNED</div>
           </div>
           <div className="ts-id-stat">
-            <div className="ts-id-stat__icon" aria-hidden="true">◈</div>
+            <div className="ts-id-stat__icon" aria-hidden="true"><TsIcon icon="map-grid" /></div>
             <div className="ts-id-stat__num">{gamesDone}</div>
             <div className="ts-id-stat__lbl">GAMES<br/>DONE</div>
           </div>
           <div className="ts-id-stat">
-            <div className="ts-id-stat__icon" aria-hidden="true">★</div>
+            <div className="ts-id-stat__icon" aria-hidden="true"><TsIcon icon="town-seal" /></div>
             <div className="ts-id-stat__num">{rewardsProgress}<span style={{ fontSize: '0.6em' }}>%</span></div>
             <div className="ts-id-stat__lbl">REWARDS<br/>PROGRESS</div>
           </div>
@@ -304,7 +305,7 @@ export function PassportPage() {
 
         <div className="ts-personalize__inputs">
           <div className="ts-input-wrap">
-            <span className="ts-input-wrap__icon" aria-hidden="true">👤</span>
+            <span className="ts-input-wrap__icon" aria-hidden="true"><TsIcon icon="guest-profile" /></span>
             <input
               className="ts-input ts-input--with-icon"
               type="text"
@@ -314,7 +315,7 @@ export function PassportPage() {
             />
           </div>
           <div className="ts-input-wrap">
-            <span className="ts-input-wrap__icon" aria-hidden="true">✉</span>
+            <span className="ts-input-wrap__icon" aria-hidden="true"><TsIcon icon="post-envelope" /></span>
             <input
               className="ts-input ts-input--with-icon"
               type="email"
@@ -334,7 +335,7 @@ export function PassportPage() {
         </button>
 
         <button type="button" className="ts-personalize__reset" onClick={handleReset}>
-          ↻ RESET PREVIEW
+          RESET PREVIEW
         </button>
       </section>
 

@@ -207,13 +207,17 @@ export function getDefaultPresentationPack(): TalePresentationPack {
     abv:        '',
     ibu:        '',
     tagline:    '',
-    icon:       '🍺',
-    unlockSeal: '🍺',
+    // CP2 final correction — semantic TsIcon identifiers, never emoji.
+    // Consumers render badge icons exclusively through <TsIcon>, which
+    // safely falls back for unknown keys; curated packs already use
+    // these identifier strings, so curated presentation is unchanged.
+    icon:       'town-seal',
+    unlockSeal: 'station-seal',
     person:     { name: '', dates: '', role: '', initials: '' },
     personBio:  '',
     mapTitle:   'Map',
-    scanBadge:  { icon: '🍺', title: 'Tale unlocked', desc: '' },
-    gameBadge:  { icon: '🎯', title: 'Game complete', desc: '' },
+    scanBadge:  { icon: 'station-seal', title: 'Tale unlocked', desc: '' },
+    gameBadge:  { icon: 'map-grid', title: 'Game complete', desc: '' },
     barSummary: { who: '', why: '', beer: '' },
     stillHere:  [],
     image:      '',

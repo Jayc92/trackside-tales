@@ -67,6 +67,20 @@ const ICON_BODIES: Record<string, string> = {
     '<line x1="11" y1="11" x2="11" y2="20"/>' +
     '<rect x="10.4" y="10.5" width="1.4" height="2.2" rx="0.3" fill="currentColor" stroke="none"/>',
 
+  'passport-book':
+    '<rect x="5" y="3.5" width="14" height="17" rx="1"/>' +
+    '<line x1="8.5" y1="3.5" x2="8.5" y2="20.5"/>' +
+    '<circle cx="14" cy="10" r="2.6"/>' +
+    '<line x1="11.5" y1="16" x2="16.5" y2="16"/>',
+
+  'guest-profile':
+    '<circle cx="12" cy="8.5" r="3.5"/>' +
+    '<path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/>',
+
+  'post-envelope':
+    '<rect x="3.5" y="6" width="17" height="12" rx="0.5"/>' +
+    '<path d="M3.5 7l8.5 6 8.5-6"/>',
+
   'locked-seal':
     '<circle cx="12" cy="12" r="9"/>' +
     '<rect x="9" y="11.5" width="6" height="5" rx="0.6"/>' +

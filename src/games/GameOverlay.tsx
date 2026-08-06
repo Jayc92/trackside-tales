@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GameConfig, GameType } from './gameConfigs';
 import { AllenTownPlanningGame } from './AllenTownPlanningGame';
 import { PackerRouteGame } from './PackerRouteGame';
@@ -545,6 +545,27 @@ export function GameOverlay({
       </div>
     );
   };
+
+  // PUBLIC-v7.4B.P.28e (CP2 correction §1) — while the game dialog is
+  // open it owns the viewport: the underlying Tale document must not
+  // scroll behind it. The Tale's scroll position is captured on mount
+  // and restored after Exit/close, so leaving the game returns the
+  // reader exactly where they were. Game logic is untouched — this
+  // effect only locks/unlocks the background document.
+  useEffect(() => {
+    const savedScrollY = window.scrollY;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      // Restore after the unmount frame settles — an immediate scrollTo
+      // can be overridden by the browser's post-unmount focus/layout pass.
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedScrollY);
+        setTimeout(() => window.scrollTo(0, savedScrollY), 60);
+      });
+    };
+  }, []);
 
   return (
     <div

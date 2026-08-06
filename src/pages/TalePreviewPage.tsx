@@ -130,15 +130,17 @@ export function TalePreviewPage({ request }: { request: TalePreviewRequest }) {
         </a>
       </div>
 
-      <main id="page-container">
+      <main id="page-container" className={state.phase !== 'ready' ? 'px-screen' : undefined}>
         {state.phase === 'loading' && (
-          <div style={{ padding: 48, textAlign: 'center' }}>Loading preview…</div>
+          <div className="px-preview-note" role="status">
+            <p>Loading preview…</p>
+          </div>
         )}
         {state.phase === 'ready' && (
           <TaleDetailPage previewTale={state.tale} previewMode />
         )}
         {state.phase !== 'loading' && state.phase !== 'ready' && (
-          <div style={{ padding: 48, textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
+          <div className="px-preview-note" role="alert">
             <h2>{FAILURE_COPY[state.phase].title}</h2>
             <p>{FAILURE_COPY[state.phase].body}</p>
           </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../app/AppContext';
 import { Tale } from '../app/types';
 import { prodSlugFromAppSlug } from '../services/talePresentationPack';
+import { TsIcon } from '../components/TsIcon';
 import {
   IndustrialHero,
   SectionRail,
@@ -87,7 +88,7 @@ function SealedTaleBand({
       onClick={onOpen}
       aria-label={`${tale.title.replace('\n', ' ')} — sealed, scan to unlock`}
     >
-      <span className="px-tale-sealed__lock" aria-hidden="true">🔒</span>
+      <span className="px-tale-sealed__lock" aria-hidden="true"><TsIcon icon="locked-seal" /></span>
       <span className="px-tale-sealed__body">
         <span className="px-tale-sealed__title" role="heading" aria-level={3}>
           {tale.title.replace('\n', ' ')}
