@@ -16,6 +16,7 @@ import './styles/p28e.css';          // P.28e — rebuilt public presentation sy
 import './styles/story-page.css';    // P.28g.2 — restored Our Story editorial page (story-*)
 import './styles/tracks-page.css';   // P.28g.3 — restored Tracks rail-history page (tracks-*)
 import './styles/venue-page.css';    // P.28g.4 — Alburtis Tavern venue page (venue-*)
+import './styles/tales-page.css';    // P.28g.5 — polished Tales archive hub (tales-*)
 
 // ================== MOUNT ==================
 console.log('[trackside] App version: 4.6.1 — Vite migration');

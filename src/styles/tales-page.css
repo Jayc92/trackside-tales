@@ -1,0 +1,588 @@
+/* ================== TRACKSIDE BREWING — TALES HUB (archive) ==================
+   PUBLIC-v7.4B.P.28g.5 — the polished Tale archive. All rules are
+   prefixed `tales-` and scoped under `.tales-page`; no other route is
+   affected. Loaded after venue-page.css.
+
+   Direction: the same near-black / ivory / brass family as Our Story,
+   The Tracks, and Alburtis Tavern — but this is the PRODUCT surface of
+   the four: a working archive of collected tickets and sealed registry
+   entries, with clear active states. Ticket punches, station marks and
+   a running ledger instead of plaques or card grids.
+================================================================================ */
+
+.tales-page {
+  --tl-ivory: #ece2cd;
+  --tl-body: #c9bda4;
+  --tl-muted: #96805c;
+  --tl-brass: #a3803f;
+  --tl-brass-hi: #d8b46b;
+  --tl-ember: #c9823f;
+  --tl-live: #d98a4a;
+  --tl-serif: 'Playfair Display', Georgia, serif;
+  --tl-archival: 'IM Fell English', Georgia, serif;
+  --tl-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --tl-mono: 'Source Code Pro', ui-monospace, monospace;
+  --tl-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--tl-sans);
+  border-top: 1px solid rgba(163, 128, 63, 0.4);
+}
+
+/* ── HERO — archive index over the existing atmospheric asset ────────── */
+.tales-hero {
+  position: relative;
+  padding: 3.2rem 1.35rem 2.2rem;
+  text-align: center;
+  overflow: hidden;
+  isolation: isolate;
+}
+.tales-hero-atmo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.tales-hero-atmo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+  opacity: 0.3;
+  filter: saturate(0.7) brightness(0.85);
+}
+.tales-hero-atmo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(95% 75% at 50% 42%, transparent 0%, rgba(13, 11, 9, 0.55) 55%, #100d0a 100%),
+    linear-gradient(180deg, rgba(13, 11, 9, 0.6) 0%, rgba(13, 11, 9, 0.25) 40%, #100d0a 100%);
+}
+.tales-eyebrow {
+  font-family: var(--tl-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.32em;
+  color: var(--tl-ember);
+  text-transform: uppercase;
+}
+.tales-hero-title {
+  margin: 0.85rem 0 0;
+  font-family: var(--tl-display);
+  font-weight: 400;
+  font-size: clamp(3.2rem, 14vw, 4.6rem);
+  line-height: 0.92;
+  letter-spacing: 0.04em;
+  color: var(--tl-ivory);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.85);
+}
+/* parallel-rail rule with a center station node — the family motif */
+.tales-rule {
+  width: 170px;
+  height: 11px;
+  margin: 1.15rem auto 0;
+  border: none;
+  background:
+    radial-gradient(circle at 50% 50%, var(--tl-brass-hi) 0 2.2px, var(--tl-brass) 2.8px, transparent 3.8px) center / 11px 11px no-repeat,
+    linear-gradient(90deg, transparent, var(--tl-brass) 18%, var(--tl-brass) 82%, transparent) center calc(50% - 3px) / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, var(--tl-brass) 18%, var(--tl-brass) 82%, transparent) center calc(50% + 3px) / 100% 1px no-repeat;
+}
+.tales-hero-sub {
+  margin: 1.05rem auto 0;
+  max-width: 30ch;
+  font-family: var(--tl-serif);
+  font-style: italic;
+  font-size: 1.14rem;
+  line-height: 1.45;
+  color: var(--tl-body);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85);
+}
+/* the ledger — real derived counts only */
+.tales-ledger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.5rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid rgba(163, 128, 63, 0.35);
+  border-radius: 3px;
+  background: rgba(13, 11, 9, 0.55);
+  font-family: var(--tl-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  color: var(--tl-muted);
+  text-transform: uppercase;
+}
+.tales-ledger-item { white-space: nowrap; }
+.tales-ledger-item b {
+  font-family: var(--tl-display);
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: var(--tl-brass-hi);
+  margin-right: 0.35rem;
+}
+.tales-ledger-tick {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--tl-brass);
+}
+
+/* ── Section scaffolding ─────────────────────────────────────────────── */
+.tales-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 1.35rem;
+}
+.tales-section { padding: 2.1rem 0 0.2rem; }
+.tales-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(163, 128, 63, 0.3);
+  margin-bottom: 1.05rem;
+}
+.tales-label {
+  font-family: var(--tl-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  color: var(--tl-muted);
+  text-transform: uppercase;
+}
+/* small rail tick before each label — continuity with the family */
+.tales-label::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 6px;
+  margin-right: 0.6rem;
+  vertical-align: 1px;
+  background:
+    linear-gradient(90deg, var(--tl-brass), transparent) 0 0 / 100% 1px no-repeat,
+    linear-gradient(90deg, var(--tl-brass), transparent) 0 5px / 100% 1px no-repeat;
+  opacity: 0.7;
+}
+.tales-count {
+  font-family: var(--tl-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  color: var(--tl-brass-hi);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── State chips ─────────────────────────────────────────────────────── */
+.tales-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 2px;
+  font-family: var(--tl-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.tales-chip--unlocked {
+  border: 1px solid rgba(163, 128, 63, 0.5);
+  color: var(--tl-brass-hi);
+}
+.tales-chip--live {
+  border: 1px solid rgba(217, 138, 74, 0.55);
+  background: rgba(201, 130, 63, 0.12);
+  color: var(--tl-live);
+}
+.tales-chip-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tl-live);
+  box-shadow: 0 0 6px rgba(217, 138, 74, 0.7);
+  animation: tales-pour 2.2s ease-in-out infinite;
+}
+@keyframes tales-pour {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tales-chip-dot { animation: none; }
+}
+
+/* ── Unlocked — the archive ticket ───────────────────────────────────── */
+.tales-ticket-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.tales-ticket {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  padding: 0;
+  border: 1px solid rgba(163, 128, 63, 0.4);
+  border-radius: 4px;
+  background:
+    linear-gradient(170deg, rgba(163, 128, 63, 0.06), transparent 55%),
+    rgba(20, 16, 12, 0.55);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  overflow: hidden;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.tales-ticket:hover,
+.tales-ticket:focus-visible {
+  border-color: rgba(216, 180, 107, 0.65);
+  transform: translateY(-1px);
+}
+/* live pour: ember leading rail on the stub edge */
+.tales-ticket--live { box-shadow: inset 3px 0 0 rgba(201, 130, 63, 0.85); }
+
+/* year stub with perforated edge + punch hole */
+.tales-ticket-stub {
+  flex: 0 0 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.8rem 0.3rem;
+  position: relative;
+  background: rgba(163, 128, 63, 0.08);
+  border-right: 1px dashed rgba(163, 128, 63, 0.45);
+}
+.tales-ticket-stub-tag {
+  font-family: var(--tl-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.24em;
+  color: var(--tl-muted);
+  text-transform: uppercase;
+}
+.tales-ticket-stub-year {
+  font-family: var(--tl-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--tl-brass-hi);
+}
+.tales-ticket-stub-node {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--tl-brass);
+  background: #14100c;
+}
+.tales-ticket-main {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  padding: 0.9rem 1rem 0.85rem;
+}
+.tales-ticket-chips { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+.tales-ticket-title {
+  display: block;
+  margin-top: 0.55rem;
+  font-family: var(--tl-serif);
+  font-weight: 600;
+  font-size: 1.18rem;
+  line-height: 1.2;
+  color: var(--tl-ivory);
+}
+.tales-ticket-beer {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: var(--tl-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--tl-brass);
+  text-transform: uppercase;
+}
+.tales-ticket-line {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--tl-body);
+}
+.tales-ticket-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(163, 128, 63, 0.2);
+}
+.tales-ticket-cta {
+  font-family: var(--tl-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--tl-brass-hi);
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.tales-ticket:hover .tales-ticket-cta,
+.tales-ticket:focus-visible .tales-ticket-cta { color: var(--tl-ivory); }
+
+/* ── Passport punches — visual only; count logic unchanged ───────────── */
+.tales-punches {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.tales-punch {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(163, 128, 63, 0.55);
+  background: transparent;
+}
+.tales-punch--earned {
+  border-color: var(--tl-brass-hi);
+  background: radial-gradient(circle at 40% 35%, var(--tl-brass-hi), var(--tl-brass) 75%);
+  box-shadow: 0 0 6px rgba(216, 180, 107, 0.35);
+}
+.tales-punches-label {
+  margin-left: 0.25rem;
+  font-family: var(--tl-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  color: var(--tl-muted);
+  text-transform: uppercase;
+}
+.tales-punches-label b {
+  font-weight: 400;
+  color: var(--tl-brass-hi);
+}
+
+/* ── Sealed — compressed registry bands ──────────────────────────────── */
+.tales-sealed-stack {
+  display: flex;
+  flex-direction: column;
+}
+.tales-sealed {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.85rem 0.75rem 0.85rem 0.6rem;
+  border: none;
+  border-top: 1px solid rgba(163, 128, 63, 0.22);
+  /* sealed hatching on the leading edge */
+  background:
+    repeating-linear-gradient(-45deg, rgba(163, 128, 63, 0.14) 0 3px, transparent 3px 7px) left / 14px 100% no-repeat;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  transition: background-color 0.15s ease;
+}
+.tales-sealed:last-of-type { border-bottom: 1px solid rgba(163, 128, 63, 0.22); }
+.tales-sealed:hover,
+.tales-sealed:focus-visible { background-color: rgba(163, 128, 63, 0.06); }
+.tales-sealed-lock {
+  flex: 0 0 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(163, 128, 63, 0.45);
+  border-radius: 50%;
+  color: var(--tl-muted);
+  font-size: 0.85rem;
+}
+.tales-sealed-body { flex: 1; min-width: 0; }
+.tales-sealed-title {
+  display: block;
+  font-family: var(--tl-serif);
+  font-weight: 600;
+  font-size: 0.98rem;
+  line-height: 1.25;
+  color: #b6a68b;
+}
+.tales-sealed-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+  font-family: var(--tl-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  color: var(--tl-muted);
+  text-transform: uppercase;
+}
+.tales-sealed-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--tl-live);
+}
+.tales-sealed-cta {
+  font-family: var(--tl-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  color: var(--tl-brass);
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.tales-sealed:hover .tales-sealed-cta,
+.tales-sealed:focus-visible .tales-sealed-cta { color: var(--tl-brass-hi); }
+.tales-helper {
+  margin: 0.95rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--tl-muted);
+}
+
+/* ── Core product actions ────────────────────────────────────────────── */
+.tales-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.tales-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(163, 128, 63, 0.5);
+  border-radius: 3px;
+  background: none;
+  font-family: var(--tl-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  color: var(--tl-brass-hi);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.tales-action:hover,
+.tales-action:focus-visible {
+  border-color: var(--tl-brass-hi);
+  color: var(--tl-ivory);
+}
+.tales-action--primary {
+  border-color: var(--tl-brass);
+  background: linear-gradient(180deg, rgba(163, 128, 63, 0.18), rgba(163, 128, 63, 0.08));
+  color: var(--tl-ivory);
+}
+.tales-action--primary:hover,
+.tales-action--primary:focus-visible {
+  background: linear-gradient(180deg, rgba(163, 128, 63, 0.28), rgba(163, 128, 63, 0.12));
+}
+/* CSS-drawn glyphs — no emoji, no raster */
+.tales-action-glyph {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+/* scan: viewfinder corners + center tick */
+.tales-action-glyph--scan {
+  background:
+    radial-gradient(circle at 50% 50%, var(--tl-brass-hi) 0 1.6px, transparent 2.4px) center / 100% 100% no-repeat,
+    linear-gradient(var(--tl-brass-hi), var(--tl-brass-hi)) top left / 5px 1.5px no-repeat,
+    linear-gradient(var(--tl-brass-hi), var(--tl-brass-hi)) top left / 1.5px 5px no-repeat,
+    linear-gradient(var(--tl-brass-hi), var(--tl-brass-hi)) top right / 5px 1.5px no-repeat,
+    linear-gradient(var(--tl-brass-hi), var(--tl-brass-hi)) top right / 1.5px 5px no-repeat,
+    linear-gradient(var(--tl-brass-hi), var(--tl-brass-hi)) bottom left / 5px 1.5px no-repeat,
+    linear-gradient(var(--tl-brass-hi), var(--tl-brass-hi)) bottom left / 1.5px 5px no-repeat,
+    linear-gradient(var(--tl-brass-hi), var(--tl-brass-hi)) bottom right / 5px 1.5px no-repeat,
+    linear-gradient(var(--tl-brass-hi), var(--tl-brass-hi)) bottom right / 1.5px 5px no-repeat;
+}
+/* passport: small stamped booklet */
+.tales-action-glyph--passport {
+  border: 1.5px solid var(--tl-brass-hi);
+  border-radius: 2px;
+}
+.tales-action-glyph--passport::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 1px solid var(--tl-brass);
+}
+
+/* ── Narrative index — three quiet references ────────────────────────── */
+.tales-index-link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 1rem 0.15rem;
+  border: none;
+  border-top: 1px solid rgba(163, 128, 63, 0.2);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  transition: padding-left 0.15s ease;
+}
+.tales-index-link:last-child { border-bottom: 1px solid rgba(163, 128, 63, 0.2); }
+.tales-index-link:hover { padding-left: 0.5rem; }
+.tales-index-glyph {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--tl-brass);
+  align-self: center;
+}
+.tales-index-link:hover .tales-index-glyph {
+  background: radial-gradient(circle at 40% 35%, var(--tl-brass-hi), var(--tl-brass) 75%);
+}
+.tales-index-title {
+  font-family: var(--tl-display);
+  font-size: 1.12rem;
+  letter-spacing: 0.06em;
+  color: var(--tl-ivory);
+  white-space: nowrap;
+}
+.tales-index-desc {
+  flex: 1;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--tl-muted);
+}
+.tales-index-arrow {
+  color: var(--tl-brass-hi);
+  transition: transform 0.18s ease;
+}
+.tales-index-link:hover .tales-index-arrow,
+.tales-index-link:focus-visible .tales-index-arrow { transform: translateX(6px); }
+@media (prefers-reduced-motion: reduce) {
+  .tales-ticket, .tales-index-link, .tales-index-arrow,
+  .tales-action, .tales-sealed { transition: none; }
+}
+
+.tales-foot-space { height: 2.4rem; }
+
+/* ── Responsive — desktop as a working archive room ──────────────────── */
+@media (min-width: 768px) {
+  .tales-hero { padding: 4.6rem 2rem 2.8rem; }
+  .tales-wrap { max-width: 760px; }
+  .tales-ticket-title { font-size: 1.3rem; }
+  .tales-actions { flex-direction: row; }
+  .tales-action { flex: 1; }
+}
+@media (min-width: 1024px) {
+  .tales-wrap { max-width: 960px; }
+  /* collected tickets sit two abreast; sealed registry stays a ledger */
+  .tales-ticket-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.1rem;
+  }
+  .tales-sealed-stack, .tales-helper { max-width: 760px; }
+  .tales-actions { max-width: 640px; }
+}
