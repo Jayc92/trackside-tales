@@ -1,0 +1,367 @@
+/* ================== TRACKSIDE BREWING — THE TRACKS (rail corridor) ==================
+   PUBLIC-v7.4B.P.28g.3 — the restored rail-history page. All rules are
+   prefixed `tracks-` and scoped under `.tracks-page`; no other route is
+   affected. Loaded after story-page.css.
+
+   Direction: the same near-black / warm-ivory / brass family as Our
+   Story, but composed as a CORRIDOR — a continuous rail spine runs down
+   the page with station nodes at each chapter, and the centerpiece is a
+   two-railroad river diagram. Movement through place, not a plaque wall.
+================================================================================ */
+
+.tracks-page {
+  --tk-ivory: #ece2cd;
+  --tk-body: #c9bda4;
+  --tk-muted: #96805c;
+  --tk-brass: #a3803f;
+  --tk-brass-hi: #d8b46b;
+  --tk-ember: #c9823f;
+  --tk-river: #4a6a72;
+  --tk-serif: 'Playfair Display', Georgia, serif;
+  --tk-archival: 'IM Fell English', Georgia, serif;
+  --tk-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --tk-mono: 'Source Code Pro', ui-monospace, monospace;
+  --tk-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--tk-sans);
+  border-top: 1px solid rgba(163, 128, 63, 0.4);
+}
+
+/* ── HERO — typographic corridor opening ─────────────────────────────── */
+.tracks-hero-blk {
+  position: relative;
+  padding: 4.4rem 1.35rem 3rem;
+  text-align: center;
+  overflow: hidden;
+}
+/* twin rails converging toward the title — pure graphic, no raster */
+.tracks-hero-blk::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 200px;
+  transform: translateX(-50%) perspective(300px) rotateX(58deg);
+  transform-origin: 50% 100%;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 34px), rgba(163, 128, 63, 0.22) calc(50% - 33px), transparent calc(50% - 32px)) ,
+    linear-gradient(90deg, transparent calc(50% + 32px), rgba(163, 128, 63, 0.22) calc(50% + 33px), transparent calc(50% + 34px)),
+    repeating-linear-gradient(0deg, rgba(163, 128, 63, 0.1) 0 2px, transparent 2px 26px);
+  pointer-events: none;
+}
+.tracks-eyebrow {
+  position: relative;
+  font-family: var(--tk-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.3em;
+  color: var(--tk-ember);
+  text-transform: uppercase;
+}
+.tracks-hero-title {
+  position: relative;
+  margin: 0.95rem 0 0;
+  font-family: var(--tk-display);
+  font-weight: 400;
+  font-size: clamp(3.4rem, 15vw, 4.8rem);
+  line-height: 0.92;
+  letter-spacing: 0.03em;
+  color: var(--tk-ivory);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8);
+}
+.tracks-hero-sub {
+  position: relative;
+  margin: 1.1rem auto 0;
+  max-width: 30ch;
+  font-family: var(--tk-serif);
+  font-style: italic;
+  font-size: 1.22rem;
+  line-height: 1.45;
+  color: var(--tk-body);
+}
+.tracks-hero-line {
+  position: relative;
+  margin: 1.35rem auto 0;
+  max-width: 36ch;
+  font-family: var(--tk-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  color: var(--tk-muted);
+  text-transform: uppercase;
+}
+
+/* ── Corridor spine — chapters as stations on one line ───────────────── */
+.tracks-corridor {
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem 1.35rem 0 3.1rem;
+}
+/* the running line */
+.tracks-corridor::before {
+  content: '';
+  position: absolute;
+  left: 1.62rem;
+  top: 0;
+  bottom: 2.2rem;
+  width: 3px;
+  background:
+    linear-gradient(180deg, transparent, rgba(163, 128, 63, 0.4) 3%, rgba(163, 128, 63, 0.4) 97%, transparent) 0 0 / 1px 100% no-repeat,
+    linear-gradient(180deg, transparent, rgba(163, 128, 63, 0.4) 3%, rgba(163, 128, 63, 0.4) 97%, transparent) 2px 0 / 1px 100% no-repeat;
+}
+.tracks-chapter { position: relative; padding: 2.2rem 0 0.6rem; }
+/* station node on the spine at each chapter head */
+.tracks-chapter::before {
+  content: '';
+  position: absolute;
+  left: -1.98rem;
+  top: 2.55rem;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--tk-brass);
+  background: #14100c;
+  box-shadow: 0 0 0 3px #100d0a;
+}
+.tracks-chapter--terminus::before {
+  background: radial-gradient(circle at 40% 35%, var(--tk-brass-hi), var(--tk-brass) 70%);
+  border-color: var(--tk-brass-hi);
+  box-shadow: 0 0 0 3px #100d0a, 0 0 12px rgba(216, 180, 107, 0.3);
+}
+.tracks-label {
+  display: block;
+  font-family: var(--tk-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  color: var(--tk-muted);
+  text-transform: uppercase;
+}
+.tracks-headline {
+  margin: 0.6rem 0 0;
+  font-family: var(--tk-serif);
+  font-weight: 400;
+  font-size: 1.8rem;
+  line-height: 1.15;
+  color: var(--tk-ivory);
+}
+.tracks-copy { margin-top: 1rem; }
+.tracks-copy p {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  line-height: 1.72;
+  color: var(--tk-body);
+}
+.tracks-copy p:last-child { margin-bottom: 0; }
+.tracks-pull {
+  margin: 1.3rem 0 0.4rem;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(163, 128, 63, 0.5);
+  font-family: var(--tk-archival);
+  font-size: 1.16rem;
+  line-height: 1.5;
+  color: var(--tk-brass-hi);
+}
+/* dated marker (only source-supported dates) */
+.tracks-marker {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+  font-family: var(--tk-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  color: var(--tk-muted);
+  text-transform: uppercase;
+}
+.tracks-marker b {
+  font-family: var(--tk-display);
+  font-weight: 400;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+  color: var(--tk-brass-hi);
+}
+
+/* ── Two railroads, one valley — the river diagram ───────────────────── */
+.tracks-river-diagram {
+  margin: 1.5rem 0 1.2rem;
+  border: 1px solid rgba(163, 128, 63, 0.25);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.tracks-riverside {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.95rem 1rem;
+}
+.tracks-riverside-rail {
+  flex: 0 0 46px;
+  height: 9px;
+  background:
+    linear-gradient(90deg, var(--tk-brass), var(--tk-brass-hi)) 0 0 / 100% 1.5px no-repeat,
+    linear-gradient(90deg, var(--tk-brass), var(--tk-brass-hi)) 0 7px / 100% 1.5px no-repeat,
+    repeating-linear-gradient(90deg, transparent 0 8px, rgba(163, 128, 63, 0.4) 8px 9.5px) 0 1.5px / 100% 6px no-repeat;
+}
+.tracks-riverside-name {
+  font-family: var(--tk-display);
+  font-size: 1.12rem;
+  letter-spacing: 0.05em;
+  color: var(--tk-ivory);
+  line-height: 1.1;
+}
+.tracks-riverside-note {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--tk-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--tk-muted);
+  text-transform: uppercase;
+}
+/* the Lehigh between them */
+.tracks-river-band {
+  position: relative;
+  padding: 0.55rem 1rem;
+  text-align: center;
+  background:
+    repeating-linear-gradient(-8deg, rgba(74, 106, 114, 0.16) 0 7px, rgba(74, 106, 114, 0.05) 7px 14px);
+  border-top: 1px solid rgba(74, 106, 114, 0.35);
+  border-bottom: 1px solid rgba(74, 106, 114, 0.35);
+  font-family: var(--tk-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.34em;
+  color: #7fa0a8;
+  text-transform: uppercase;
+}
+.tracks-river-facts {
+  margin: 1.15rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tracks-river-facts li {
+  position: relative;
+  padding: 0.55rem 0 0.55rem 1.3rem;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: var(--tk-body);
+}
+.tracks-river-facts li::before {
+  content: '';
+  position: absolute;
+  left: 0.2rem;
+  top: 1.05rem;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--tk-brass);
+}
+
+/* ── People behind the beers — figure rows on the line ───────────────── */
+.tracks-figures { margin-top: 1.4rem; }
+.tracks-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 1.25rem 0.2rem;
+  border: none;
+  border-top: 1px solid rgba(163, 128, 63, 0.22);
+  background: none;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.tracks-figure:last-of-type { border-bottom: 1px solid rgba(163, 128, 63, 0.22); }
+.tracks-figure:hover .tracks-figure-beer,
+.tracks-figure:focus-visible .tracks-figure-beer { color: var(--tk-brass-hi); }
+.tracks-figure-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.tracks-figure-name {
+  font-family: var(--tk-serif);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--tk-ivory);
+}
+.tracks-figure-beer {
+  font-family: var(--tk-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--tk-brass);
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.tracks-figure-rel {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--tk-body);
+}
+.tracks-figure-cta {
+  margin-top: 0.35rem;
+  font-family: var(--tk-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: var(--tk-muted);
+  text-transform: uppercase;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tracks-figure-beer { transition: none; }
+}
+
+/* ── Closing ─────────────────────────────────────────────────────────── */
+.tracks-close {
+  padding: 3.4rem 1.35rem 1rem;
+  text-align: center;
+}
+.tracks-close-line {
+  margin: 0 auto;
+  max-width: 24ch;
+  font-family: var(--tk-archival);
+  font-size: 1.5rem;
+  line-height: 1.45;
+  color: var(--tk-ivory);
+}
+.tracks-close-line em { font-style: normal; color: var(--tk-brass-hi); }
+.tracks-close-ctas {
+  display: flex;
+  justify-content: center;
+  gap: 1.8rem;
+  margin-top: 1.9rem;
+  flex-wrap: wrap;
+}
+.tracks-close-cta {
+  border: none;
+  background: none;
+  padding: 0.6rem 0.2rem;
+  font-family: var(--tk-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  color: var(--tk-brass-hi);
+  text-transform: uppercase;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(163, 128, 63, 0.4);
+}
+.tracks-close-cta:hover { color: var(--tk-ivory); border-bottom-color: var(--tk-brass-hi); }
+
+.tracks-foot-space { height: 2.4rem; }
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  .tracks-hero-blk { padding: 6rem 2rem 3.8rem; }
+  .tracks-corridor { max-width: 780px; padding-left: 4rem; }
+  .tracks-corridor::before { left: 2.1rem; }
+  .tracks-chapter::before { left: -2.36rem; }
+  .tracks-headline { font-size: 2.15rem; }
+  .tracks-copy p { max-width: 62ch; }
+  .tracks-river-diagram { max-width: 620px; }
+  .tracks-riverside { padding: 1.1rem 1.4rem; }
+  .tracks-riverside-rail { flex-basis: 84px; }
+  .tracks-figure-rel { max-width: 60ch; }
+}
+@media (min-width: 1200px) {
+  .tracks-corridor { max-width: 880px; }
+}

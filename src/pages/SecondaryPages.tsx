@@ -244,14 +244,210 @@ export function WoodenMatchPage() {
   );
 }
 
+// PUBLIC-v7.4B.P.28g.3 — THE TRACKS restored from the v4.3 legacy app
+// (old #page-tracks, lines 4584–4644 of trackside-tales/index.html).
+// Composed as a rail CORRIDOR: a continuous spine with station nodes at
+// each chapter, a two-railroad river diagram, and figure rows that
+// connect the recovered history to the real Tale roster. Styles:
+// tracks-page.css (`tracks-` prefix, scoped under `.tracks-page`).
+//
+// Factual boundary: all history is recovered from the legacy source;
+// only the venue-anchored FRAMING was adjusted ("the station you're
+// sitting in" → "the Central Railroad's Bethlehem station", etc.) so
+// the supported Lehigh Valley facts stand without presuming the reader
+// is inside The Wooden Match. The only dates shown (1868, Aug 18 1967)
+// are the source's own. No Alburtis content.
 export function TracksPage() {
+  const { nav, navToTale, tales } = useApp();
+
+  // Figure rows deep-link to their real Tales via the existing
+  // navToTale contract; if a tale id is unavailable (remote content
+  // failure), fall back to the Tales hub. No data is mutated.
+  const openTale = (taleId: string) => {
+    const tale = tales.find((t) => t.id === taleId);
+    if (tale) navToTale(tale);
+    else nav('tales');
+  };
+
   return (
-    <div className="page active" id="page-tracks">
-      <div className="tracks-hero">
-        <h2>THE TRACKS</h2>
-        <p>The industrial corridor that shaped the Lehigh Valley.</p>
+    <div className="page active px-screen tracks-page" id="page-tracks">
+
+      {/* ── Hero ── */}
+      <header className="tracks-hero-blk">
+        <span className="tracks-eyebrow">Bethlehem, PA · Rail History</span>
+        <h1 className="tracks-hero-title">THE TRACKS</h1>
+        {/* Recovered hero title line */}
+        <p className="tracks-hero-sub">The tracks run through here.</p>
+        {/* Recovered supporting line (venue-anchored second sentence omitted) */}
+        <p className="tracks-hero-line">Every Trackside Tale is rooted in a real place.</p>
+      </header>
+
+      <div className="tracks-corridor">
+
+        {/* ── A city made by trains ── */}
+        <section className="tracks-chapter" aria-label="The age of rail in Bethlehem">
+          <span className="tracks-label">The Age of Rail in Bethlehem</span>
+          <h2 className="tracks-headline">A city made by trains.</h2>
+          <div className="tracks-copy">
+            <p>
+              In the second half of the 19th century, Bethlehem ran on
+              rail. Coal from the anthracite fields moved south. Iron —
+              and later, steel — moved out. People, goods, and ideas moved
+              in. The tracks didn't just pass through the city. They
+              built it.
+            </p>
+            <p>
+              The Central Railroad of New Jersey's Bethlehem station was
+              part of that story. Constructed in 1868, it served the city
+              during the height of American rail travel — and through the
+              decades of industrial growth that followed.
+            </p>
+          </div>
+          <p className="tracks-pull">
+            For nearly a century, this was how the world reached Bethlehem.
+          </p>
+        </section>
+
+        {/* ── Two railroads, one valley ── */}
+        <section className="tracks-chapter" aria-label="Two railroads, one valley">
+          <span className="tracks-label">Two Railroads, One Valley</span>
+          <h2 className="tracks-headline">A rivalry across the river.</h2>
+          <div className="tracks-copy">
+            <p>Bethlehem didn't have one railroad. It had two.</p>
+            <p>
+              The Central Railroad of New Jersey, which ran through that
+              1868 Bethlehem station, was one side of the story. On the
+              opposite bank of the Lehigh River ran its fierce competitor
+              — the Lehigh Valley Railroad, which stretched from Mauch
+              Chunk down to Easton and carried much of the coal that
+              fueled the industrial Northeast.
+            </p>
+          </div>
+
+          <div className="tracks-river-diagram" role="img"
+            aria-label="Two railroads separated by the Lehigh River: the Central Railroad of New Jersey on the north side, the Lehigh Valley Railroad on the south side">
+            <div className="tracks-riverside">
+              <span className="tracks-riverside-rail" aria-hidden="true" />
+              <span>
+                <span className="tracks-riverside-name">Central Railroad of New Jersey</span>
+                <span className="tracks-riverside-note">North side · station built 1868</span>
+              </span>
+            </div>
+            <div className="tracks-river-band">The Lehigh River</div>
+            <div className="tracks-riverside">
+              <span className="tracks-riverside-rail" aria-hidden="true" />
+              <span>
+                <span className="tracks-riverside-name">Lehigh Valley Railroad</span>
+                <span className="tracks-riverside-note">South side · founded by Asa Packer</span>
+              </span>
+            </div>
+          </div>
+
+          <ul className="tracks-river-facts">
+            <li>Two companies. Two sets of tracks. One valley.</li>
+            <li>
+              For decades, they competed for freight, passengers, and the
+              identity of the region.
+            </li>
+          </ul>
+        </section>
+
+        {/* ── People on the platform ── */}
+        <section className="tracks-chapter" aria-label="People on the platform">
+          <span className="tracks-label">A Station That Saw History</span>
+          <h2 className="tracks-headline">Presidents, workers, and everyone between.</h2>
+          <div className="tracks-copy">
+            <p>
+              During the whistle-stop era, presidential candidates crossed
+              the country by rail and spoke to voters from the back
+              platforms of their train cars. Theodore Roosevelt and Harry
+              S. Truman both addressed Bethlehem from the Central
+              Railroad's station.
+            </p>
+            <p>
+              But the station wasn't built for presidents. It was built
+              for the thousands of ordinary passengers who used it every
+              day — steelworkers, merchants, students, soldiers coming
+              home, families heading out. A working stop on a working
+              line.
+            </p>
+            <p>
+              Passenger service ended at the station on August 18, 1967.
+              The rails went quiet. But the building stayed.
+            </p>
+          </div>
+          <span className="tracks-marker">
+            <b>AUG 18, 1967</b> the last passenger train
+          </span>
+        </section>
+
+        {/* ── The people behind the beers ── */}
+        <section className="tracks-chapter tracks-chapter--terminus" aria-label="The people behind the beers">
+          <span className="tracks-label">The People Behind the Beers</span>
+          <h2 className="tracks-headline">Every pour has a name.</h2>
+          <div className="tracks-copy">
+            <p>
+              These aren't invented characters. They're the people who
+              built the Valley — and the Trackside Tales series is how we
+              keep telling their stories.
+            </p>
+          </div>
+
+          <div className="tracks-figures">
+            <button type="button" className="tracks-figure" onClick={() => openTale('packer-pils')}>
+              <span className="tracks-figure-head">
+                <span className="tracks-figure-name">Asa Packer</span>
+                <span className="tracks-figure-beer">PACKER PILSNER</span>
+              </span>
+              <p className="tracks-figure-rel">
+                Named for the man whose Lehigh Valley Railroad ran along
+                the south bank of the river.
+              </p>
+              <span className="tracks-figure-cta">Read the Tale →</span>
+            </button>
+            <button type="button" className="tracks-figure" onClick={() => openTale('wa-lager')}>
+              <span className="tracks-figure-head">
+                <span className="tracks-figure-name">William Allen</span>
+                <span className="tracks-figure-beer">W.A. LAGER</span>
+              </span>
+              <p className="tracks-figure-rel">
+                Honors the founder of Allentown, a few miles west.
+              </p>
+              <span className="tracks-figure-cta">Read the Tale →</span>
+            </button>
+            <button type="button" className="tracks-figure" onClick={() => openTale('wooden-match')}>
+              <span className="tracks-figure-head">
+                <span className="tracks-figure-name">The 1868 Station</span>
+                <span className="tracks-figure-beer">WOODEN MATCH AMBER ALE</span>
+              </span>
+              <p className="tracks-figure-rel">
+                Named for the building that pours it — an 1868 Bethlehem
+                train station that became our rail-side home.
+              </p>
+              <span className="tracks-figure-cta">Read the Tale →</span>
+            </button>
+          </div>
+        </section>
+
       </div>
-      {/* TODO Phase 5: extract full Tracks content from index-v4_6_1-golden.html */}
+
+      {/* ── Closing (recovered close line) ── */}
+      <footer className="tracks-close">
+        <p className="tracks-close-line">
+          The trains moved through here for a hundred years.{' '}
+          <em>The stories stayed.</em>
+        </p>
+        <div className="tracks-close-ctas">
+          <button type="button" className="tracks-close-cta" onClick={() => nav('tales')}>
+            View the Tales
+          </button>
+          <button type="button" className="tracks-close-cta" onClick={() => nav('ourstory')}>
+            Our Story
+          </button>
+        </div>
+      </footer>
+
+      <div className="tracks-foot-space" />
     </div>
   );
 }

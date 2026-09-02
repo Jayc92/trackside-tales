@@ -14,6 +14,7 @@ import './styles/polish.css';        // v5.0.1+ scoped polish overrides
 import './styles/design-system.css'; // v6.0 — Structured Design Language v1 (additive, opt-in)
 import './styles/p28e.css';          // P.28e — rebuilt public presentation system (px-*)
 import './styles/story-page.css';    // P.28g.2 — restored Our Story editorial page (story-*)
+import './styles/tracks-page.css';   // P.28g.3 — restored Tracks rail-history page (tracks-*)
 
 // ================== MOUNT ==================
 console.log('[trackside] App version: 4.6.1 — Vite migration');
