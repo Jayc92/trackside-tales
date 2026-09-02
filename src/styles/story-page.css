@@ -1,0 +1,534 @@
+/* ================== TRACKSIDE BREWING — OUR STORY (editorial) ==================
+   PUBLIC-v7.4B.P.28g.2 — the restored brand-narrative page. All rules are
+   prefixed `story-` and scoped under `.story-page`; no other route is
+   affected. Loaded after the public presentation styles.
+
+   Direction: editorial and cinematic — near-black canvas, warm ivory
+   long-form type, restrained antique brass rules, intentional negative
+   space. No plaques, no rivets, no parchment fields, no card grids.
+================================================================================ */
+
+.story-page {
+  --story-ivory: #ece2cd;
+  --story-body: #c9bda4;
+  --story-muted: #96805c;
+  --story-brass: #a3803f;
+  --story-brass-hi: #d8b46b;
+  --story-ember: #c9823f;
+  --story-serif: 'Playfair Display', Georgia, serif;
+  --story-archival: 'IM Fell English', Georgia, serif;
+  --story-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --story-mono: 'Source Code Pro', ui-monospace, monospace;
+  --story-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--story-sans);
+}
+
+.story-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 1.35rem;
+}
+
+/* thin brass section rule with a center boss — the page's one ornament */
+.story-rule {
+  width: 120px;
+  height: 7px;
+  margin: 0 auto;
+  border: none;
+  background:
+    radial-gradient(circle at 50% 50%, var(--story-brass-hi) 0 1.8px, transparent 2.6px) center / 7px 7px no-repeat,
+    linear-gradient(90deg, transparent, var(--story-brass) 20%, var(--story-brass) 80%, transparent) center / 100% 1px no-repeat;
+}
+
+/* ── HERO — typographic, cinematic through space ─────────────────────── */
+.story-hero-blk {
+  padding: 4.6rem 1.35rem 3.4rem;
+  text-align: center;
+}
+.story-eyebrow {
+  font-family: var(--story-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.34em;
+  color: var(--story-ember);
+  text-transform: uppercase;
+}
+.story-hero-title {
+  margin: 1rem 0 0;
+  font-family: var(--story-display);
+  font-weight: 400;
+  font-size: clamp(3.6rem, 16vw, 5rem);
+  line-height: 0.92;
+  letter-spacing: 0.03em;
+  color: var(--story-ivory);
+}
+.story-hero-blk .story-rule { margin-top: 1.5rem; }
+.story-hero-statement {
+  margin: 1.5rem auto 0;
+  max-width: 30ch;
+  font-family: var(--story-archival);
+  font-size: 1.28rem;
+  line-height: 1.5;
+  color: var(--story-body);
+}
+
+/* ── Section scaffolding ─────────────────────────────────────────────── */
+.story-section { padding: 2.8rem 0 0.4rem; }
+/* split sections carry their own gutters on mobile (their heading block
+   sits outside .story-wrap) */
+.story-section--split { padding-left: 1.35rem; padding-right: 1.35rem; }
+.story-section--split .story-wrap { padding-left: 0; padding-right: 0; }
+.story-section--split > div:first-child { margin-bottom: 1.1rem; }
+.story-label {
+  display: block;
+  font-family: var(--story-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--story-muted);
+  text-transform: uppercase;
+}
+.story-headline {
+  margin: 0.7rem 0 0;
+  font-family: var(--story-serif);
+  font-weight: 400;
+  font-size: 1.9rem;
+  line-height: 1.15;
+  color: var(--story-ivory);
+}
+.story-headline em {
+  font-style: italic;
+  color: var(--story-brass-hi);
+}
+.story-body-copy { margin-top: 1.15rem; }
+.story-body-copy p {
+  margin: 0 0 1.05rem;
+  font-size: 1.02rem;
+  line-height: 1.75;
+  color: var(--story-body);
+}
+.story-body-copy p:last-child { margin-bottom: 0; }
+.story-body-copy strong { color: var(--story-ivory); font-weight: 600; }
+/* editorial drop cap on the opening paragraph */
+.story-body-copy p:first-child::first-letter {
+  font-family: var(--story-archival);
+  font-size: 3.4em;
+  line-height: 0.78;
+  float: left;
+  padding: 0.06em 0.12em 0 0;
+  color: var(--story-brass-hi);
+}
+
+/* ── Principles — numbered editorial rows, not cards ─────────────────── */
+.story-principles { margin-top: 1.6rem; }
+.story-principle {
+  display: flex;
+  gap: 1.15rem;
+  padding: 1.35rem 0;
+  border-top: 1px solid rgba(163, 128, 63, 0.22);
+}
+.story-principle:last-child { border-bottom: 1px solid rgba(163, 128, 63, 0.22); }
+.story-principle-num {
+  flex: 0 0 auto;
+  font-family: var(--story-display);
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--story-brass);
+  padding-top: 0.15rem;
+  min-width: 2.1rem;
+}
+.story-principle-title {
+  margin: 0;
+  font-family: var(--story-serif);
+  font-weight: 600;
+  font-size: 1.12rem;
+  color: var(--story-ivory);
+}
+.story-principle-desc {
+  margin: 0.4rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--story-body);
+}
+
+/* ── The Tales idea — the loop, one quiet line ───────────────────────── */
+.story-loop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 1.5rem 0 1.15rem;
+  font-family: var(--story-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  color: var(--story-brass-hi);
+  text-transform: uppercase;
+}
+.story-loop span[aria-hidden] { color: var(--story-muted); letter-spacing: 0; }
+.story-loop-copy {
+  margin: 0 auto;
+  max-width: 52ch;
+  text-align: center;
+  font-size: 0.96rem;
+  line-height: 1.7;
+  color: var(--story-body);
+}
+
+/* ── Founder ─────────────────────────────────────────────────────────── */
+.story-founder {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1.3rem;
+  align-items: flex-start;
+}
+.story-founder-mark {
+  flex: 0 0 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(163, 128, 63, 0.55);
+  font-family: var(--story-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  color: var(--story-brass-hi);
+}
+.story-founder-name {
+  margin: 0;
+  font-family: var(--story-serif);
+  font-weight: 600;
+  font-size: 1.18rem;
+  color: var(--story-ivory);
+}
+.story-founder-role {
+  margin-top: 0.3rem;
+  font-family: var(--story-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--story-muted);
+  text-transform: uppercase;
+}
+.story-founder-quote {
+  margin: 0.85rem 0 0;
+  font-family: var(--story-archival);
+  font-size: 1.06rem;
+  line-height: 1.6;
+  color: var(--story-body);
+}
+
+/* ── Next chapter — editorial link rows ──────────────────────────────── */
+.story-next { margin-top: 1.4rem; }
+.story-next-link {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.3rem 0.15rem;
+  border: none;
+  border-top: 1px solid rgba(163, 128, 63, 0.22);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  transition: padding-left 0.15s ease;
+}
+.story-next-link:last-child { border-bottom: 1px solid rgba(163, 128, 63, 0.22); }
+.story-next-link:hover { padding-left: 0.55rem; }
+.story-next-title {
+  font-family: var(--story-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.05em;
+  color: var(--story-ivory);
+  white-space: nowrap;
+}
+.story-next-desc {
+  flex: 1;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--story-muted);
+}
+.story-next-arrow {
+  font-size: 1.05rem;
+  color: var(--story-brass-hi);
+}
+
+.story-foot-space { height: 2.6rem; }
+
+/* ── Responsive — desktop uses the width editorially ─────────────────── */
+@media (min-width: 768px) {
+  .story-wrap { max-width: 720px; }
+  .story-hero-blk { padding: 6.5rem 2rem 4.2rem; }
+  .story-hero-statement { font-size: 1.42rem; max-width: 34ch; }
+  .story-section { padding-top: 3.6rem; }
+  .story-headline { font-size: 2.3rem; }
+  /* two-column editorial spread: label/headline left, prose right */
+  .story-section--split {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 2.6rem;
+    max-width: 980px;
+    margin: 0 auto;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+  .story-section--split .story-wrap {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+  .story-principle { gap: 1.6rem; padding: 1.6rem 0; }
+  .story-principle-desc { max-width: 60ch; }
+  .story-founder { gap: 1.7rem; }
+  .story-founder-quote { max-width: 58ch; }
+}
+@media (min-width: 1200px) {
+  .story-section--split { max-width: 1080px; grid-template-columns: 300px 1fr; }
+}
+
+/* ════════════ P.28g.2A — VISUAL IDENTITY REFINEMENT ════════════
+   One motif carried through the page: the parallel-rail line with
+   station nodes. Applied sparingly — hero rule, route diagram,
+   principle spine, next-chapter glyphs. Content and structure of
+   the approved page are unchanged.
+   ──────────────────────────────────────────────────────────────── */
+
+/* page-local rail rule tying the shared header to the page (the
+   AppHeader component itself is untouched) */
+.story-page {
+  border-top: 1px solid rgba(163, 128, 63, 0.4);
+  box-shadow: inset 0 3px 0 -2px rgba(163, 128, 63, 0.18);
+}
+
+/* ── §3 Hero — one restrained atmospheric layer ── */
+.story-hero-blk {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.story-hero-inner { position: relative; }
+.story-hero-atmo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.story-hero-atmo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  /* mobile: low-opacity atmosphere behind the type */
+  opacity: 0.32;
+  filter: saturate(0.7) brightness(0.85);
+}
+.story-hero-atmo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(90% 70% at 50% 45%, transparent 0%, rgba(13, 11, 9, 0.55) 55%, #100d0a 100%),
+    linear-gradient(180deg, rgba(13, 11, 9, 0.55) 0%, rgba(13, 11, 9, 0.25) 40%, #100d0a 100%);
+}
+.story-hero-title { text-shadow: 0 2px 18px rgba(0, 0, 0, 0.85); }
+.story-hero-statement { text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85); }
+
+/* ── §4 Motif: parallel-rail divider (hero) ── */
+.story-rule--rail {
+  width: 170px;
+  height: 11px;
+  background:
+    /* center station node */
+    radial-gradient(circle at 50% 50%, var(--story-brass-hi) 0 2.2px, var(--story-brass) 2.8px, transparent 3.8px) center / 11px 11px no-repeat,
+    /* two running rails */
+    linear-gradient(90deg, transparent, var(--story-brass) 18%, var(--story-brass) 82%, transparent) center calc(50% - 3px) / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, var(--story-brass) 18%, var(--story-brass) 82%, transparent) center calc(50% + 3px) / 100% 1px no-repeat;
+}
+/* section labels carry a tiny rail tick — quiet continuity, not ornament */
+.story-label::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 6px;
+  margin-right: 0.6rem;
+  vertical-align: 1px;
+  background:
+    linear-gradient(90deg, var(--story-brass), transparent) 0 0 / 100% 1px no-repeat,
+    linear-gradient(90deg, var(--story-brass), transparent) 0 5px / 100% 1px no-repeat;
+  opacity: 0.7;
+}
+
+/* ── §5 Route diagram — railroad line with four station stops ── */
+.story-route {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  max-width: 460px;
+  margin: 1.7rem auto 1.4rem;
+  padding: 0 0.4rem;
+}
+/* the running rails behind the stops */
+.story-route::before {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 7px;
+  height: 8px;
+  background:
+    linear-gradient(90deg, rgba(163, 128, 63, 0.35), var(--story-brass) 78%, var(--story-brass-hi)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(90deg, rgba(163, 128, 63, 0.35), var(--story-brass) 78%, var(--story-brass-hi)) 0 7px / 100% 1px no-repeat,
+    /* sleeper ticks between the rails */
+    repeating-linear-gradient(90deg, transparent 0 26px, rgba(163, 128, 63, 0.28) 26px 27px) 0 1px / 100% 6px no-repeat;
+}
+.story-route-stop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+.story-route-node {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid var(--story-brass);
+  background: #14100c;
+  box-shadow: 0 0 0 3px #100d0a;
+}
+.story-route-stop--terminus .story-route-node {
+  background: radial-gradient(circle at 40% 35%, var(--story-brass-hi), var(--story-brass) 70%);
+  border-color: var(--story-brass-hi);
+  box-shadow: 0 0 0 3px #100d0a, 0 0 12px rgba(216, 180, 107, 0.35);
+}
+.story-route-name {
+  font-family: var(--story-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  color: var(--story-body);
+  text-transform: uppercase;
+}
+.story-route-stop--terminus .story-route-name { color: var(--story-brass-hi); }
+
+/* ── §6 Principles — route spine through the number column ──
+   Drawn as a per-row segment BELOW each numeral (never behind it),
+   so the numbers read as stations on the line with no masking. */
+.story-principle { position: relative; }
+.story-principle::before {
+  content: '';
+  position: absolute;
+  left: 0.95rem;
+  top: 3.1rem;
+  bottom: 0.35rem;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(163, 128, 63, 0.35), rgba(163, 128, 63, 0.12));
+  pointer-events: none;
+}
+.story-principle:last-child::before { bottom: 1rem; }
+
+/* ── §7 Founder — ticket-stub mark ── */
+.story-founder-ticket {
+  flex: 0 0 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.75rem 0.35rem;
+  border: 1px solid rgba(163, 128, 63, 0.55);
+  border-radius: 4px;
+  position: relative;
+  background: linear-gradient(170deg, rgba(163, 128, 63, 0.1), transparent 60%);
+}
+/* perforated stub line + punch hole */
+.story-founder-ticket::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 22px;
+  border-top: 1px dashed rgba(163, 128, 63, 0.5);
+}
+.story-founder-ticket::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid rgba(163, 128, 63, 0.6);
+  background: #100d0a;
+}
+.story-founder-ticket-initials {
+  font-family: var(--story-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--story-brass-hi);
+}
+.story-founder-ticket-label {
+  margin-top: 0.55rem;
+  font-family: var(--story-mono);
+  font-size: 0.44rem;
+  letter-spacing: 0.26em;
+  color: var(--story-muted);
+}
+
+/* ── §8 Next chapter — station glyphs + livelier hover ── */
+.story-next-link { align-items: center; }
+.story-next-glyph {
+  flex: 0 0 22px;
+  height: 8px;
+  position: relative;
+  background:
+    linear-gradient(90deg, var(--story-brass), transparent) 0 0 / 100% 1px no-repeat,
+    linear-gradient(90deg, var(--story-brass), transparent) 0 7px / 100% 1px no-repeat;
+}
+.story-next-glyph::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--story-brass-hi);
+  background: #100d0a;
+}
+.story-next-link .story-next-arrow { transition: transform 0.18s ease; }
+.story-next-link:hover .story-next-arrow,
+.story-next-link:focus-visible .story-next-arrow { transform: translateX(6px); }
+.story-next-link:hover .story-next-title { color: var(--story-brass-hi); }
+@media (prefers-reduced-motion: reduce) {
+  .story-next-link, .story-next-link .story-next-arrow { transition: none; }
+}
+
+/* ── §10 Desktop hero balance: image becomes a right-side field ── */
+@media (min-width: 900px) {
+  .story-hero-blk {
+    text-align: left;
+    padding-left: max(2rem, calc((100% - 1080px) / 2 + 2rem));
+    padding-right: max(2rem, calc((100% - 1080px) / 2 + 2rem));
+  }
+  .story-hero-inner { max-width: 520px; }
+  .story-hero-blk .story-rule--rail { margin-left: 0; }
+  .story-hero-statement { margin-left: 0; }
+  .story-hero-atmo img {
+    left: auto;
+    right: 0;
+    width: 42%;
+    opacity: 0.8;
+    object-position: center 35%;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 34%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 34%);
+  }
+  .story-hero-atmo::after {
+    background:
+      linear-gradient(90deg, #100d0a 0%, rgba(16, 13, 10, 0.85) 42%, rgba(16, 13, 10, 0.35) 68%, rgba(16, 13, 10, 0.75) 100%),
+      linear-gradient(180deg, rgba(13, 11, 9, 0.5) 0%, transparent 35%, #100d0a 100%);
+  }
+  .story-route { max-width: 560px; }
+}
