@@ -232,14 +232,180 @@ export function AboutPage() {
   return <OurStoryPage />;
 }
 
+// PUBLIC-v7.4B.P.28g.4 — ALBURTIS TAVERN venue page.
+//
+// ROUTE COMPATIBILITY: the PageId, hash route (#/woodenmatch), element
+// id, and component name are retained TEMPORARILY from the legacy
+// Wooden Match era so existing links and nav contracts keep working —
+// the visible page identity is ALBURTIS TAVERN. Renaming the route is
+// a later gate.
+//
+// FACTUAL BOUNDARY: only project-established facts appear — the venue
+// name, Alburtis PA, and the Trackside-concept role (community
+// gathering place connecting beer, food, local history, railroad
+// heritage, and the Tales). NO establishment year, construction date,
+// railroad provenance, former operators, or historical claims are
+// stated: no verified Alburtis historical source exists in this
+// repository. Structure (hero → place narrative → identity →
+// gathering philosophy → close line) is borrowed from the legacy
+// Wooden Match page's architecture; none of its facts are.
+// Styles: venue-page.css (`venue-` prefix, scoped `.venue-page`).
 export function WoodenMatchPage() {
+  const { nav } = useApp();
+
   return (
-    <div className="page active" id="page-woodenmatch">
-      <div className="woodenmatch-hero">
-        <h2>THE WOODEN MATCH</h2>
-        <p>An 1868 train station. Your table is waiting.</p>
-      </div>
-      {/* TODO Phase 5: extract full Wooden Match content from index-v4_6_1-golden.html */}
+    <div className="page active px-screen venue-page" id="page-woodenmatch">
+
+      {/* ── Hero — tavern signboard (typographic; no repo asset exists
+             for Alburtis, and nothing is fabricated) ── */}
+      <header className="venue-hero-blk">
+        <div className="venue-sign">
+          <span className="venue-sign-eyebrow">Alburtis, Pennsylvania</span>
+          <h1 className="venue-sign-title">ALBURTIS<br />TAVERN</h1>
+          <hr className="venue-sign-rule" aria-hidden="true" />
+          <div className="venue-sign-brand">Home of Trackside Brewing</div>
+          <p className="venue-sign-statement">
+            A tavern, a table, and the stories of the Lehigh Valley.
+          </p>
+        </div>
+      </header>
+
+      {/* ── Our Home ── */}
+      <section className="venue-section venue-section--split" aria-label="Our home">
+        <div>
+          <div className="venue-lintel" aria-hidden="true" />
+          <span className="venue-label">Our Home</span>
+          <h2 className="venue-headline">The room where the <em>concept</em> lives.</h2>
+        </div>
+        <div className="venue-wrap">
+          <div className="venue-copy">
+            <p>
+              Trackside Brewing is built around a real place. Alburtis
+              Tavern is where the concept comes off the page — a gathering
+              place in Alburtis, Pennsylvania where the beer is brewed
+              with a story, the food belongs on the same table, and the
+              history of the Lehigh Valley is part of the room.
+            </p>
+            <p>
+              The tavern is the anchor. Everything else — the Tales, the
+              Passport, the roster of beers named for real people and
+              places — exists to make an evening here mean a little more.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Where the stories meet the table ── */}
+      <section className="venue-section venue-section--split" aria-label="Where the stories meet the table">
+        <div>
+          <div className="venue-lintel" aria-hidden="true" />
+          <span className="venue-label">The Experience</span>
+          <h2 className="venue-headline">Where the stories meet the <em>table</em>.</h2>
+        </div>
+        <div className="venue-wrap">
+          <div className="venue-copy">
+            <p>
+              Order a Trackside Tales beer and the can carries more than a
+              label. Scan it, and the story behind the pour opens — a real
+              figure, a real place, a piece of the Valley you can read
+              before the glass is empty. Every unlocked Tale stamps your
+              Guest Passport.
+            </p>
+          </div>
+          <div className="venue-table-row" aria-label="Order, scan, read, collect">
+            <span>Order</span><span aria-hidden="true">·</span>
+            <span>Scan</span><span aria-hidden="true">·</span>
+            <span>Read</span><span aria-hidden="true">·</span>
+            <span>Collect</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── A community gathering place ── */}
+      <section className="venue-section venue-section--split" aria-label="A community gathering place">
+        <div>
+          <div className="venue-lintel" aria-hidden="true" />
+          <span className="venue-label">The Gathering</span>
+          <h2 className="venue-headline">Dinner, a local pour, and <em>company</em>.</h2>
+        </div>
+        <div className="venue-wrap">
+          <div className="venue-copy">
+            <p>
+              A tavern earns its place by being useful to its neighbors:
+              dinner worth leaving the house for, beer brewed close to
+              home, and a room that holds families, regulars, and people
+              just passing through. That's the standard Alburtis Tavern
+              is meant to keep.
+            </p>
+          </div>
+          <p className="venue-pull">
+            The best local history is told across a table.
+          </p>
+        </div>
+      </section>
+
+      {/* ── Preserve the place / tell the story ── */}
+      <section className="venue-section venue-section--split" aria-label="Preserve the place, tell the story">
+        <div>
+          <div className="venue-lintel" aria-hidden="true" />
+          <span className="venue-label">The Philosophy</span>
+          <h2 className="venue-headline">Add to the place. Don't <em>replace</em> it.</h2>
+        </div>
+        <div className="venue-wrap">
+          <div className="venue-copy">
+            <p>
+              Trackside isn't here to rename the tavern or paper over what
+              makes it itself. The venue keeps its own name and its own
+              identity — Trackside Brewing lives alongside Alburtis
+              Tavern, adding the beer, the Tales, and the Passport to a
+              place that already knows how to gather people.
+            </p>
+          </div>
+          <div className="venue-creed">
+            <p>
+              Preserve the place. Tell the story. Pour something worth
+              staying for.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Next chapter ── */}
+      <section className="venue-section" aria-label="Keep exploring">
+        <div className="venue-wrap">
+          <div className="venue-lintel" aria-hidden="true" />
+          <span className="venue-label">The Next Chapter</span>
+          <div className="venue-next">
+            <button type="button" className="venue-next-link" onClick={() => nav('tales')}>
+              <span className="venue-next-glyph" aria-hidden="true" />
+              <span className="venue-next-title">THE TALES</span>
+              <span className="venue-next-desc">The stories behind every pour.</span>
+              <span className="venue-next-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" className="venue-next-link" onClick={() => nav('tracks')}>
+              <span className="venue-next-glyph" aria-hidden="true" />
+              <span className="venue-next-title">THE TRACKS</span>
+              <span className="venue-next-desc">Two railroads, one valley, and the city they built.</span>
+              <span className="venue-next-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" className="venue-next-link" onClick={() => nav('ourstory')}>
+              <span className="venue-next-glyph" aria-hidden="true" />
+              <span className="venue-next-title">OUR STORY</span>
+              <span className="venue-next-desc">Why we pair beer with history.</span>
+              <span className="venue-next-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Closing ── */}
+      <footer className="venue-close">
+        <p className="venue-close-line">
+          Pull up a chair. <em>The Valley has stories left.</em>
+        </p>
+      </footer>
+
+      <div className="venue-foot-space" />
     </div>
   );
 }

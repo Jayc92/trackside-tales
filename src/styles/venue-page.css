@@ -1,0 +1,280 @@
+/* ================== TRACKSIDE BREWING — ALBURTIS TAVERN (venue) ==================
+   PUBLIC-v7.4B.P.28g.4 — the venue page. All rules are prefixed `venue-`
+   and scoped under `.venue-page`; no other route is affected. Loaded
+   after tracks-page.css.
+
+   Direction: the same near-black / ivory / brass family as Our Story and
+   The Tracks, composed around PLACE — tavern signage and doorway/lintel
+   geometry instead of rails. The hero is a hanging-sign panel; each
+   section is headed by a post-and-lintel beam. No fabricated imagery,
+   no invented dates, no plaque walls.
+================================================================================ */
+
+.venue-page {
+  --vn-ivory: #ece2cd;
+  --vn-body: #c9bda4;
+  --vn-muted: #96805c;
+  --vn-brass: #a3803f;
+  --vn-brass-hi: #d8b46b;
+  --vn-ember: #c9823f;
+  --vn-serif: 'Playfair Display', Georgia, serif;
+  --vn-archival: 'IM Fell English', Georgia, serif;
+  --vn-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --vn-mono: 'Source Code Pro', ui-monospace, monospace;
+  --vn-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--vn-sans);
+  border-top: 1px solid rgba(163, 128, 63, 0.4);
+}
+
+/* ── HERO — tavern signboard ─────────────────────────────────────────── */
+.venue-hero-blk {
+  padding: 3.6rem 1.35rem 3rem;
+  display: flex;
+  justify-content: center;
+}
+.venue-sign {
+  position: relative;
+  width: min(100%, 560px);
+  padding: 2.1rem 1.4rem 2rem;
+  text-align: center;
+  /* double-line sign frame with corner joints */
+  border: 1px solid rgba(163, 128, 63, 0.55);
+  outline: 1px solid rgba(163, 128, 63, 0.25);
+  outline-offset: 5px;
+  border-radius: 3px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(201, 130, 63, 0.06), transparent 60%),
+    linear-gradient(180deg, rgba(245, 236, 221, 0.015), transparent 40%);
+}
+/* hanging-sign mounts above the panel */
+.venue-sign::before,
+.venue-sign::after {
+  content: '';
+  position: absolute;
+  top: -1.55rem;
+  width: 1px;
+  height: 1.05rem;
+  background: linear-gradient(180deg, transparent, rgba(163, 128, 63, 0.6));
+}
+.venue-sign::before { left: 22%; }
+.venue-sign::after { right: 22%; }
+.venue-sign-eyebrow {
+  font-family: var(--vn-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.32em;
+  color: var(--vn-ember);
+  text-transform: uppercase;
+}
+.venue-sign-title {
+  margin: 0.85rem 0 0;
+  font-family: var(--vn-display);
+  font-weight: 400;
+  font-size: clamp(3rem, 13vw, 4.4rem);
+  line-height: 0.94;
+  letter-spacing: 0.04em;
+  color: var(--vn-ivory);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+}
+.venue-sign-rule {
+  width: 150px;
+  height: 7px;
+  margin: 1.05rem auto;
+  border: none;
+  background:
+    radial-gradient(circle at 50% 50%, var(--vn-brass-hi) 0 1.9px, transparent 2.7px) center / 7px 7px no-repeat,
+    linear-gradient(90deg, transparent, var(--vn-brass) 18%, var(--vn-brass) 82%, transparent) center / 100% 1px no-repeat;
+}
+.venue-sign-brand {
+  font-family: var(--vn-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.3em;
+  color: var(--vn-brass-hi);
+  text-transform: uppercase;
+}
+.venue-sign-statement {
+  margin: 1.15rem auto 0;
+  max-width: 28ch;
+  font-family: var(--vn-archival);
+  font-size: 1.16rem;
+  line-height: 1.5;
+  color: var(--vn-body);
+}
+
+/* ── Section scaffolding — post-and-lintel heads ─────────────────────── */
+.venue-wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1.35rem;
+}
+.venue-section { padding: 2.6rem 0 0.4rem; }
+/* split sections carry their own gutters on mobile (their heading block
+   sits outside .venue-wrap) */
+.venue-section--split { padding-left: 1.35rem; padding-right: 1.35rem; }
+.venue-section--split .venue-wrap { padding-left: 0; padding-right: 0; }
+.venue-section--split > div:first-child { margin-bottom: 1rem; }
+/* the lintel: a beam line with two post ticks — doorway geometry */
+.venue-lintel {
+  position: relative;
+  height: 10px;
+  margin-bottom: 1.1rem;
+  background: linear-gradient(90deg, rgba(163, 128, 63, 0.45), rgba(163, 128, 63, 0.12)) 0 0 / 100% 1px no-repeat;
+}
+.venue-lintel::before,
+.venue-lintel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 10px;
+  background: rgba(163, 128, 63, 0.45);
+}
+.venue-lintel::before { left: 0; }
+.venue-lintel::after { left: 44px; }
+.venue-label {
+  display: block;
+  font-family: var(--vn-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  color: var(--vn-muted);
+  text-transform: uppercase;
+}
+.venue-headline {
+  margin: 0.6rem 0 0;
+  font-family: var(--vn-serif);
+  font-weight: 400;
+  font-size: 1.8rem;
+  line-height: 1.15;
+  color: var(--vn-ivory);
+}
+.venue-headline em { font-style: italic; color: var(--vn-brass-hi); }
+.venue-copy { margin-top: 1rem; }
+.venue-copy p {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  line-height: 1.72;
+  color: var(--vn-body);
+}
+.venue-copy p:last-child { margin-bottom: 0; }
+.venue-copy strong { color: var(--vn-ivory); font-weight: 600; }
+.venue-pull {
+  margin: 1.25rem 0 0.3rem;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(163, 128, 63, 0.5);
+  font-family: var(--vn-archival);
+  font-size: 1.14rem;
+  line-height: 1.5;
+  color: var(--vn-brass-hi);
+}
+
+/* ── The table sequence (venue ↔ app) ────────────────────────────────── */
+.venue-table-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1.1rem;
+  margin-top: 1.2rem;
+  font-family: var(--vn-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  color: var(--vn-brass-hi);
+  text-transform: uppercase;
+}
+.venue-table-row span[aria-hidden] { color: var(--vn-muted); }
+
+/* ── Philosophy — the one framed statement on the page ───────────────── */
+.venue-creed {
+  margin-top: 1.3rem;
+  padding: 1.25rem 1.2rem;
+  border-left: 1px solid rgba(163, 128, 63, 0.5);
+  border-right: 1px solid rgba(163, 128, 63, 0.15);
+  background: linear-gradient(90deg, rgba(163, 128, 63, 0.05), transparent 70%);
+}
+.venue-creed p {
+  margin: 0;
+  font-family: var(--vn-serif);
+  font-size: 1.08rem;
+  line-height: 1.6;
+  color: var(--vn-ivory);
+}
+
+/* ── Next chapter — doorway rows ─────────────────────────────────────── */
+.venue-next { margin-top: 1.3rem; }
+.venue-next-link {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 1.25rem 0.15rem;
+  border: none;
+  border-top: 1px solid rgba(163, 128, 63, 0.22);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  transition: padding-left 0.15s ease;
+}
+.venue-next-link:last-child { border-bottom: 1px solid rgba(163, 128, 63, 0.22); }
+.venue-next-link:hover { padding-left: 0.55rem; }
+/* small doorway glyph: two posts + lintel */
+.venue-next-glyph {
+  flex: 0 0 16px;
+  height: 14px;
+  border-top: 1.5px solid var(--vn-brass);
+  border-left: 1px solid rgba(163, 128, 63, 0.6);
+  border-right: 1px solid rgba(163, 128, 63, 0.6);
+}
+.venue-next-title {
+  font-family: var(--vn-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+  color: var(--vn-ivory);
+  white-space: nowrap;
+}
+.venue-next-desc { flex: 1; font-size: 0.85rem; line-height: 1.5; color: var(--vn-muted); }
+.venue-next-arrow { color: var(--vn-brass-hi); transition: transform 0.18s ease; }
+.venue-next-link:hover .venue-next-arrow,
+.venue-next-link:focus-visible .venue-next-arrow { transform: translateX(6px); }
+@media (prefers-reduced-motion: reduce) {
+  .venue-next-link, .venue-next-arrow { transition: none; }
+}
+
+/* ── Closing ─────────────────────────────────────────────────────────── */
+.venue-close {
+  padding: 3rem 1.35rem 1rem;
+  text-align: center;
+}
+.venue-close-line {
+  margin: 0 auto;
+  max-width: 26ch;
+  font-family: var(--vn-archival);
+  font-size: 1.4rem;
+  line-height: 1.5;
+  color: var(--vn-ivory);
+}
+.venue-close-line em { font-style: normal; color: var(--vn-brass-hi); }
+
+.venue-foot-space { height: 2.4rem; }
+
+/* ── Responsive — desktop as a designed venue editorial ──────────────── */
+@media (min-width: 768px) {
+  .venue-hero-blk { padding: 5.4rem 2rem 3.6rem; }
+  .venue-sign { padding: 2.8rem 2.4rem 2.6rem; }
+  .venue-wrap { max-width: 700px; }
+  .venue-headline { font-size: 2.15rem; }
+  /* two-column venue spread: lintel/heading left, prose right */
+  .venue-section--split {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 2.6rem;
+    max-width: 980px;
+    margin: 0 auto;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+  .venue-section--split .venue-wrap { max-width: none; margin: 0; padding: 0; }
+  .venue-copy p { max-width: 60ch; }
+  .venue-creed { max-width: 56ch; }
+}
+@media (min-width: 1200px) {
+  .venue-section--split { max-width: 1060px; grid-template-columns: 300px 1fr; }
+}
