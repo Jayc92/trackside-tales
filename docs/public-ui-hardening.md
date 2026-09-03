@@ -313,9 +313,111 @@ targets on primary controls. No formal WCAG certification is claimed.
 - 4 pre-existing npm audit findings (unchanged dependency set; covered
   by the quarterly dependency-review register item).
 
+# P.28g — Portfolio Redesign & Content Restoration (2026-08-06 → 2026-09-03)
+
+**PUBLIC-v7.4B.P.28g — COMPLETE / PRODUCTION VERIFIED.**
+Production SHA `1b4927ec5f7389e8be5b093d004cad351abbbdc5` · Pages run
+`33714926924` (push-triggered, `main`, success, 41s) ·
+https://jayc92.github.io/trackside-tales/ · Release decision:
+**A. PORTFOLIO REDESIGN PROMOTED AND VERIFIED IN PRODUCTION** (P.28g.18,
+2026-09-03; read-only verification — no production QR consumed, no
+production state mutated).
+
+## Gate history
+
+Twelve implementation commits on `public-concept-fidelity-redesign`
+(base `5e185a7`), each operator-approved at a review checkpoint before
+its commit gate:
+
+| Gate | Commit | Scope |
+|---|---|---|
+| P.28g.2 | `5a268af` | restore and refine Our Story (editorial + rail motif, `story-*`) |
+| P.28g.3 | `829f134` | restore The Tracks (rail corridor, river diagram, `tracks-*`) |
+| P.28g.4 | `327eeb7` | restore Alburtis Tavern venue page (signboard, `venue-*`; route kept temporarily) |
+| P.28g.5 | `b50fb6f` | refine Tales archive (tickets, punch stamps, derived ledger, `tales-*`) |
+| P.28g.6 | `ee30521` | refine Tale Detail dossier (record header, folio, route timeline, `tale-detail-*`) |
+| P.28g.7 | `d6565b3` | refine Passport ledger (document head, stamp wells, `passport-*`; TS-0NaN fix) |
+| P.28g.8 | `c5c4553` | refine Scan gate (validation window, reticle, `scan-*`) |
+| P.28g.9 | `661952a` | rebuild Menu as Alburtis Tap List (pour rows, tap board, `menu-*`) |
+| P.28g.10 | `91927c9` | rebuild Home (BEER. HISTORY. PLACE., four-section entry, `home-*`) |
+| P.28g.12 | `ace6694` | correct Wooden Match present-tense content (five data strings) |
+| P.28g.13 | `491347d` | shared header chrome (TAP LIST label, semantic buttons) |
+| P.28g.14 | `1b4927e` | canonicalize public routes (`#/ourstory`, `#/alburtis` + aliases) |
+
+Read-only audit/QA gates: P.28g.1/.1A recovery audit, P.28g.11 full
+portfolio QA, P.28g.15 final release QA (decision A, zero P0–P2),
+P.28g.17 remote-branch review (fast-forward ancestry `0 12`,
+byte-identical unlock call sites, zero secrets). P.28g.1B removed the
+rejected P.28f Home prototype. P.28g.16 push initially held on GitHub
+GH007 email-privacy (operator adjusted the account setting; P.28g.16R
+pushed the identical SHAs — no history rewrite).
+
+## Core shipped surfaces
+
+Home · Tap List/Menu · Tales Archive · Tale Detail · Scan · Passport ·
+Our Story · The Tracks · Alburtis Tavern venue page · shared header
+chrome · canonical portfolio routes. One shared visual family
+(near-black / warm ivory / brass, ember reserved for genuinely live
+state) with a page-distinct motif per surface; each page owns a scoped
+stylesheet layer (`story-* / tracks-* / venue-* / tales-* /
+tale-detail-* / passport-* / scan-* / menu-* / home-*`) loaded after
+`p28e.css`, collision-swept against the legacy sheets.
+
+## Routes
+
+Canonical: `#/home` `#/beers` `#/tales` `#/scan` `#/passport`
+`#/ourstory` `#/tracks` `#/alburtis`.
+Retained compatibility (inbound aliases that canonicalize via the
+existing `replaceState`, no history entries): `#/story` → `#/ourstory`,
+`#/about` → `#/ourstory`, `#/woodenmatch` → `#/alburtis`.
+`#/story/<id>` remains Tale Detail (deep links navigate only — sealed
+stays sealed; verified in production with a fresh browser profile).
+PageIds are intentionally unchanged (`woodenmatch` remains the internal
+id for the Alburtis page).
+
+## Venue identity boundary
+
+Page chrome across the app reads **Alburtis Tavern · Alburtis, PA /
+Trackside Brewing**, with no establishment-year or provenance claims.
+The Wooden Match remains intact as its own historical Tale and beer
+(“The Wooden Match Amber Ale”); P.28g.12 removed the stale
+present-tense wording that had framed it as Trackside's current home
+(timeline “Today”, dossier bio/WHO row, `stillHere[0]`,
+`scanBadge.desc`).
+
+## Accepted deferred backlog (P3 — non-blocking, carried forward)
+
+1. **AppHeader stale comment** — a comment still references the old
+   “BEER MENU” neutral state; the rendered UI already says TAP LIST.
+   Comment-only cleanup (`src/components/AppHeader.tsx`).
+2. **Wooden Match dormant map-pin metadata** — the unrendered pin
+   `title`/`desc` (`src/data/tales.ts:173`) still contain old
+   soft-launch/current-pour language; only `pin.label` renders. Future
+   content cleanup.
+3. **Bundle size** — the >500 kB Vite chunk advisory, largely base64
+   can art; defer to P.31 packaging/performance work.
+4. **Passport “founders tier” wording** — preview-only reward concept,
+   protected by the rendered no-live-redemption disclaimer; optional
+   pre-portfolio wording cleanup.
+
+**stillHere boundary preserved:** the `stillHere` Tale data exists and
+remains intentionally unrendered; a content decision is required before
+enabling it (the wooden-match entry was corrected in P.28g.12).
+
+## Next roadmap (not started)
+
+- **P.29 — venue configuration layer.**
+- **P.30 — Alburtis activation** — blocked until signed operating
+  commitment / venue certainty.
+- **P.31 — mobile packaging / app-shell performance** — service
+  worker/offline work plus the bundle-size/base64-can-art item above as
+  a likely input.
+
 ## Release register
 
 | Gate | State | Branch / SHA |
 |---|---|---|
 | **PUBLIC-v7.4B.P.28e — merged, deployed, and production-verified (2026-08-06)** | fast-forward merged to `main`; Pages run `31114043802` succeeded (attempt 3 — attempts 1–2 hit a documented GitHub Actions/Pages degraded-performance incident, no source change was needed); read-only production smoke test passed with explicit no-mutation confirmation | implementation `main` @ `9310562ad504a684488d809500afe0ca6ceac547` (P.28e.1 `4a7aa0e` → P.28e.2 `fb8784a` → P.28e.3 `ea432f9` → P.28e.4 `9310562`) |
-| Rollback point | previous production `main` | `b4a35b453dcf70c351ad4455536db187e5f8fdf6` |
+| Rollback point (pre-P.28e) | previous production `main` | `b4a35b453dcf70c351ad4455536db187e5f8fdf6` |
+| **PUBLIC-v7.4B.P.28g — merged, deployed, and production-verified (2026-09-03)** | fast-forward merged to `main` (`--ff-only`, no merge commit); Pages run `33714926924` succeeded (push-triggered, 41s); read-only production verification passed — 8 canonical routes, 3 legacy-alias canonicalizations, 3 sealed Tale deep links with no auto-unlock, truthful no-live TAP LIST posture, zero console errors/404s/overflow | `main` @ `1b4927ec5f7389e8be5b093d004cad351abbbdc5` (12 commits, P.28g.2 `5a268af` → P.28g.14 `1b4927e`; see gate table above) |
+| Rollback point (pre-P.28g) | previous production `main` | `5e185a7c784c7b58092b3352adc6266f2ae1db77` |
