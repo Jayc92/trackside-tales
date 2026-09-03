@@ -214,14 +214,20 @@ export interface LegacyGameRuntimeProps {
 
 export type LegacyGameRuntimeComponent = ComponentType<LegacyGameRuntimeProps>;
 
-export type RegisteredRuntimeComponent =
-  | GameRuntimeComponent
-  | LegacyGameRuntimeComponent;
-
-/** Lazy loader — dynamic import keeps runtimes OUT of the initial
- *  bundle once the registry is wired in (the current GameOverlay's
- *  eager imports are unchanged in this gate). */
-export type GameRuntimeLoader = () => Promise<{ default: RegisteredRuntimeComponent }>;
+/** Lazy loader — the registry is the ONLY runtime source; GameOverlay
+ *  loads the selected game's chunk on demand (PUBLIC-v7.4B.GAME.4), so
+ *  no runtime ships in the initial bundle.
+ *
+ *  GAME.4 typing decision: the loader resolves the LEGACY runtime
+ *  contract, because that is the contract the shell's adapter actually
+ *  speaks today — all three active runtimes take
+ *  { config, onWin, onLose, quizShowing }. The GAME.2 transitional
+ *  union (GameRuntimeComponent | LegacyGameRuntimeComponent) is
+ *  narrowed to this honest single type rather than force-casting the
+ *  active games to the future GameRuntimeProps contract. Remaining
+ *  future cleanup: when a later gate migrates runtimes to
+ *  GameRuntimeProps, this alias flips to GameRuntimeComponent. */
+export type GameRuntimeLoader = () => Promise<{ default: LegacyGameRuntimeComponent }>;
 
 // ── Definition ──────────────────────────────────────────────────────────
 export interface GameDefinition {
@@ -274,7 +280,12 @@ export const GAME_REGISTRY: Record<GameId, GameDefinition> = {
     gameId: 'station-preservation',
     taleId: WOODEN_MATCH_GAME.taleId,          // 'wooden-match'
     legacyConfig: WOODEN_MATCH_GAME,
-    title: WOODEN_MATCH_GAME.title,            // 'PRESERVE THE STATION LIGHT'
+    // PUBLIC-v7.4B.GAME.4 — canonical public title (operator-approved).
+    // The definition is the authoritative title source; the legacy
+    // config's internal 'PRESERVE THE STATION LIGHT' heading is
+    // superseded in all chrome. Mechanics, instructions, success copy,
+    // and badge titles are untouched.
+    title: 'STRIKE THE MATCH',
     type: WOODEN_MATCH_GAME.type,              // 'match'
     requires: { unlockedTale: WOODEN_MATCH_GAME.taleId },
     runtime: () =>

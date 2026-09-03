@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { GameOverlay } from '../games/GameOverlay';
-import { getGameConfig } from '../games/gameConfigs';
+import { getGamesForTale } from '../games/registry';
 import { formatDate } from '../services/badgeService';
 import { prodSlugFromAppSlug } from '../services/talePresentationPack';
 import { TsIcon } from '../components/TsIcon';
@@ -180,7 +180,13 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   const isUnlocked   = previewMode || state.unlocked.has(tale.id);
   const hasScanBadge = !previewMode && state.scanBadges.has(tale.id);
   const hasGameBadge = !previewMode && state.gameBadges.has(tale.id);
-  const gameConfig   = getGameConfig(tale.id);
+  // PUBLIC-v7.4B.GAME.4 — the registry is the launch authority. Current
+  // production model: at most one registered game per Tale; a Tale with
+  // no registered game keeps the COMING SOON disabled CTA exactly as
+  // before (registry presence alone never implies playability — the
+  // climax is only reachable from the unlocked branch below, matching
+  // definition.requires.unlockedTale).
+  const gameDefinition = getGamesForTale(tale.id)[0];
   const collected    = previewMode ? undefined : state.collectedDates[tale.id];
 
   const handleBadgeAwarded = (_badgeKey: string) => awardGameBadge(tale.id);
@@ -231,12 +237,9 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
 
   // ── Unlocked state ─────────────────────────────────────────────────────
   // P.15c: the game CTA is always unavailable in preview mode.
-  const gameEnabled =
-    !previewMode && (
-      tale.id === 'wa-lager'
-      || tale.id === 'packer-pils'
-      || tale.id === 'wooden-match'
-    );
+  // GAME.4: the registry replaces the old hard-coded three-Tale-id list —
+  // a game is enabled iff this Tale has a registered GameDefinition.
+  const gameEnabled = !previewMode && gameDefinition !== undefined;
   const showAsEarned     = hasGameBadge;
   const showAsActive     = gameEnabled && !hasGameBadge;
   const showAsComingSoon = !gameEnabled && !hasGameBadge;
@@ -429,7 +432,13 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
               </li>
             </ol>
             <h3 className="tale-detail-game-title">
-              {showAsComingSoon ? 'CHALLENGE COMING SOON' : tale.game.title}
+              {/* GAME.4 — GameDefinition.title is the authoritative
+                  public game title (canonical STRIKE THE MATCH for the
+                  wooden-match Tale; resolves the old page/overlay
+                  mismatches). */}
+              {showAsComingSoon || !gameDefinition
+                ? 'CHALLENGE COMING SOON'
+                : gameDefinition.title}
             </h3>
             <p className="tale-detail-game-copy">
               {showAsEarned
@@ -500,9 +509,9 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
         <div className="tale-detail-foot-space" />
       </div>
 
-      {showGame && gameConfig && (
+      {showGame && gameDefinition && (
         <GameOverlay
-          config={gameConfig}
+          definition={gameDefinition}
           onClose={() => setShowGame(false)}
           onBadgeAwarded={handleBadgeAwarded}
           alreadyEarned={hasGameBadge}

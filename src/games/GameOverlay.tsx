@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { GameConfig, GameType } from './gameConfigs';
-import { AllenTownPlanningGame } from './AllenTownPlanningGame';
-import { PackerRouteGame } from './PackerRouteGame';
-import { WoodenStationGame } from './WoodenStationGame';
+import { GameType } from './gameConfigs';
 import { TsIcon } from '../components/TsIcon';
 import { logEvent, flushEvents } from '../services/eventLogger';
-import { GameResult, getGamesForTale } from './registry';
+import {
+  GameDefinition,
+  GameResult,
+  LegacyGameRuntimeComponent,
+} from './registry';
 import {
   DEFAULT_DIFFICULTY_BAND,
   createGameSession,
@@ -121,7 +122,11 @@ const DEFAULT_THEME: ShellTheme = {
 };
 
 interface GameOverlayProps {
-  config: GameConfig;
+  /** PUBLIC-v7.4B.GAME.4 — the registry GameDefinition is now the
+   *  launch authority (identity, title, type, runtime loader, scoring,
+   *  legacy config bridge). The overlay no longer resolves runtimes
+   *  from config.type or imports them eagerly. */
+  definition: GameDefinition;
   onClose: () => void;
   onBadgeAwarded: (badgeKey: string) => void;
   alreadyEarned: boolean;
@@ -145,7 +150,32 @@ interface GameOverlayProps {
   onResult?: (result: GameResult) => void;
 }
 
-export function GameOverlay({
+export function GameOverlay(props: GameOverlayProps) {
+  // The legacy config remains the copy/quiz/content bridge for the
+  // active runtimes (GAME.4 §10). Every registered game carries one;
+  // a definition without it fails CLOSED here (readable panel, no
+  // crash, no hooks-order hazard) instead of reaching gameplay.
+  const config = props.definition.legacyConfig;
+  if (!config) {
+    return (
+      <div id="game-overlay" className="active" role="dialog" aria-modal="true"
+        aria-label={props.definition.title}>
+        <div className="game-canvas-wrap">
+          <p className="game-instructions">
+            This challenge couldn't be prepared. Please try again later.
+          </p>
+          <button type="button" className="game-start-btn" onClick={props.onClose}>
+            CLOSE
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <GameOverlayInner {...props} config={config} />;
+}
+
+function GameOverlayInner({
+  definition,
   config,
   onClose,
   onBadgeAwarded,
@@ -154,8 +184,44 @@ export function GameOverlay({
   successBadgeTitle,
   guestId,
   onResult,
-}: GameOverlayProps) {
+}: GameOverlayProps & { config: NonNullable<GameDefinition['legacyConfig']> }) {
   const [phase, setPhase] = useState<GamePhase>('intro');
+
+  // ── PUBLIC-v7.4B.GAME.4 — lazy runtime loading state machine ──
+  // The definition's loader is the ONLY runtime source. Loading starts
+  // at mount (intro phase) so BEGIN usually lands on a ready runtime;
+  // 'playing' renders a quiet loading panel until then. A failed chunk
+  // load fails CLOSED: readable message, TRY AGAIN re-invokes the
+  // loader, CLOSE exits — no badge, no GameResult, and no
+  // game_completed/game_failed analytics (a load failure is not
+  // gameplay; game_started may already have fired at BEGIN, which
+  // correctly records intent).
+  const [RuntimeComp, setRuntimeComp] =
+    useState<LegacyGameRuntimeComponent | null>(null);
+  const [runtimeLoad, setRuntimeLoad] =
+    useState<'loading' | 'loaded' | 'load-failed'>('loading');
+  // Chromium caches a FAILED dynamic import in the module map, so a
+  // bare re-import can reject instantly without refetching. TRY AGAIN
+  // therefore re-attempts the loader once (browsers that refetch will
+  // recover), and after a second failure the panel escalates to a
+  // deterministic RELOAD PAGE — hash routing + persisted unlock state
+  // land the guest back on this Tale. No crash loop either way.
+  const [loadAttempts, setLoadAttempts] = useState(0);
+  const loadRuntime = useCallback(() => {
+    setLoadAttempts((n) => n + 1);
+    setRuntimeLoad('loading');
+    definition
+      .runtime()
+      .then((mod) => {
+        setRuntimeComp(() => mod.default);
+        setRuntimeLoad('loaded');
+      })
+      .catch(() => {
+        setRuntimeComp(null);
+        setRuntimeLoad('load-failed');
+      });
+  }, [definition]);
+  useEffect(() => { loadRuntime(); }, [loadRuntime]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [answerResult, setAnswerResult] = useState<'correct' | 'wrong' | null>(null);
 
@@ -191,26 +257,20 @@ export function GameOverlay({
   const attemptsRef            = useRef(1);
   const gameStartedAtRef       = useRef(0);
 
-  // ── PUBLIC-v7.4B.GAME.3 — platform result sealing (observational) ──
-  // One GameSession per overlay session (created lazily at mount from
-  // the registry association for this config's Tale; retries share the
-  // session and vary only the per-result attempt count — matching the
-  // attemptsRef semantics above). If a config has no registry entry
-  // (defensive: future unregistered configs), sealing is skipped
-  // entirely and the overlay behaves exactly as before.
+  // ── PUBLIC-v7.4B.GAME.3/4 — platform result sealing (observational) ──
+  // One GameSession per overlay session. GAME.4: identity comes
+  // DIRECTLY from the passed GameDefinition (gameId + taleId) — the
+  // overlay no longer derives it indirectly from the Tale id. Retries
+  // share the session and vary only the per-result attempt count,
+  // matching the attemptsRef semantics above.
   //
   // Emission gates mirror the analytics gates deliberately but stay
   // SEPARATE refs so the result pipeline can never entangle the frozen
   // analytics contract:
   //   resultWonEmittedRef  — once per overlay session (win is terminal)
   //   resultLostEmittedRef — once per attempt; cleared by retryGame
-  const platformGameRef = useRef(
-    getGamesForTale(config.taleId)[0],
-  );
   const sessionRef = useRef(
-    platformGameRef.current
-      ? createGameSession(platformGameRef.current.gameId, config.taleId)
-      : null,
+    createGameSession(definition.gameId, definition.taleId),
   );
   const resultWonEmittedRef  = useRef(false);
   const resultLostEmittedRef = useRef(false);
@@ -219,9 +279,9 @@ export function GameOverlay({
    *  effect is the optional onResult callback. Badge award, phases, and
    *  analytics are all decided BEFORE this runs and never depend on it. */
   const emitResult = useCallback((won: boolean) => {
-    const def = platformGameRef.current;
+    const def = definition;
     const session = sessionRef.current;
-    if (!def || !session) return;
+    if (!session) return;
     if (won) {
       if (resultWonEmittedRef.current) return;
       resultWonEmittedRef.current = true;
@@ -247,7 +307,7 @@ export function GameOverlay({
       attempt: attemptsRef.current,
     });
     onResult?.(result);
-  }, [onResult]);
+  }, [definition, onResult]);
 
   /** Compute per-attempt durationMs from gameStartedAtRef, or undefined
    *  if we never recorded a start (defensive — shouldn't happen via the
@@ -442,54 +502,52 @@ export function GameOverlay({
     );
   };
 
+  // PUBLIC-v7.4B.GAME.4 — the definition's lazy-loaded runtime is the
+  // only runtime source (the config.type switch and the three eager
+  // runtime imports are gone). The adapter contract is unchanged: the
+  // active runtimes still receive their legacy props, and the GAME.3
+  // outcome/result funnel stays the platform boundary.
   const renderPlaying = () => {
-    if (config.type === 'grid') {
+    if (runtimeLoad === 'load-failed') {
+      // Fail CLOSED: no badge, no GameResult, no gameplay analytics.
+      const exhausted = loadAttempts >= 2;
       return (
-        <div className="game-canvas-wrap game-canvas-planning">
-          <AllenTownPlanningGame
-            config={config}
-            onWin={handleGameWin}
-            onLose={handleGameLose}
-            quizShowing={quizShowingRef.current}
-          />
+        <div className="game-canvas-wrap">
+          <p className="game-instructions">
+            The challenge couldn't be loaded. Check your connection and
+            try again.
+          </p>
+          <button
+            type="button"
+            className="game-start-btn"
+            onClick={exhausted ? () => window.location.reload() : loadRuntime}
+          >
+            {exhausted ? 'RELOAD PAGE' : 'TRY AGAIN'}
+          </button>
+          <button type="button" className="game-quiz-skip" onClick={onClose}>
+            CLOSE
+          </button>
         </div>
       );
     }
-    if (config.type === 'spike') {
-      // v5.1.14: Packer Pilsner sequenced rail-building puzzle.
+    if (runtimeLoad === 'loading' || !RuntimeComp) {
+      // Quiet neutral loading state — no fabricated progress.
       return (
-        <div className="game-canvas-wrap game-canvas-planning">
-          <PackerRouteGame
-            config={config}
-            onWin={handleGameWin}
-            onLose={handleGameLose}
-            quizShowing={quizShowingRef.current}
-          />
+        <div className="game-canvas-wrap">
+          <p className="game-instructions" role="status">
+            LOADING THE CHALLENGE…
+          </p>
         </div>
       );
     }
-    if (config.type === 'match') {
-      // v5.1.15: Wooden Match preservation-decision puzzle.
-      return (
-        <div className="game-canvas-wrap game-canvas-planning">
-          <WoodenStationGame
-            config={config}
-            onWin={handleGameWin}
-            onLose={handleGameLose}
-            quizShowing={quizShowingRef.current}
-          />
-        </div>
-      );
-    }
-    // Defensive fallback for any future unwired type.
     return (
-      <div className="game-canvas-wrap">
-        <p className="game-instructions">
-          This challenge is on the way — coming soon.
-        </p>
-        <button type="button" className="game-start-btn" onClick={onClose}>
-          CLOSE
-        </button>
+      <div className="game-canvas-wrap game-canvas-planning">
+        <RuntimeComp
+          config={config}
+          onWin={handleGameWin}
+          onLose={handleGameLose}
+          quizShowing={quizShowingRef.current}
+        />
       </div>
     );
   };
@@ -658,10 +716,10 @@ export function GameOverlay({
       className="active"
       role="dialog"
       aria-modal="true"
-      aria-label={config.title}
+      aria-label={definition.title}
     >
       <div className="game-header">
-        <h2 className="game-title">{config.title}</h2>
+        <h2 className="game-title">{definition.title}</h2>
         <button
           type="button"
           className="game-close"
