@@ -206,16 +206,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const nav = useCallback((page: PageId) => {
     dispatch({ type: 'NAV', page });
-    // Update URL hash for deep-linking
+    // Update URL hash for deep-linking.
+    // PUBLIC-v7.4B.P.28g.14 — these are the CANONICAL public hashes.
+    // Legacy aliases (#/story exact, #/about, #/woodenmatch) are still
+    // accepted inbound by hashToPage and canonicalize here via the
+    // existing replaceState (no history entry added). The PageIds
+    // themselves are unchanged — 'woodenmatch' stays the internal id
+    // for the Alburtis Tavern page.
     const hashMap: Partial<Record<PageId, string>> = {
       home:       '#/home',
       menu:       '#/beers',
       tales:      '#/tales',
       scan:       '#/scan',
       passport:   '#/passport',
-      ourstory:   '#/story',
-      about:      '#/about',
-      woodenmatch:'#/woodenmatch',
+      ourstory:   '#/ourstory',
+      about:      '#/ourstory',
+      woodenmatch:'#/alburtis',
       tracks:     '#/tracks',
     };
     const hash = hashMap[page] || '#/home';

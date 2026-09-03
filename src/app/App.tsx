@@ -27,8 +27,16 @@ function hashToPage(hash: string): PageId | 'story-deeplink' | null {
   if (raw.startsWith('passport') || raw.startsWith('profile')) return 'passport';
   if (raw.startsWith('tales'))                   return 'tales';
   if (raw.startsWith('story/'))                  return 'story-deeplink';
+  // PUBLIC-v7.4B.P.28g.14 — canonical public hashes with legacy aliases.
+  // Inbound: canonical #/ourstory and #/alburtis are accepted alongside
+  // the migration-era #/story (exact), #/about, and #/woodenmatch. The
+  // aliases resolve to the SAME PageIds, and nav()'s hashMap then
+  // replaceState-canonicalizes the visible hash — no extra history
+  // entry, no second render. Tale deep links (#/story/<id>) are matched
+  // above and are never captured by the exact-'story' alias.
   if (raw.startsWith('ourstory') || raw === 'story') return 'ourstory';
-  if (raw.startsWith('about'))                   return 'about';
+  if (raw.startsWith('about'))                   return 'ourstory';
+  if (raw.startsWith('alburtis'))                return 'woodenmatch';
   if (raw.startsWith('woodenmatch'))             return 'woodenmatch';
   if (raw.startsWith('tracks'))                  return 'tracks';
 
