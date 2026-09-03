@@ -46,6 +46,15 @@ function formatDurationMs(ms: number): string {
   return `${minutes}:${rest < 10 ? '0' : ''}${rest.toFixed(1)}`;
 }
 
+/** GAME.6B — compact canonical-score display: 8420 → "8,420",
+ *  10000 → "10,000". No decimals, no suffix. Pure; guarded like the
+ *  duration formatter (hydration already bounds stored scores, so the
+ *  guard is defense-in-depth only). */
+function formatScore(score: number): string {
+  if (!Number.isFinite(score) || score < 0) return '—';
+  return Math.round(score).toLocaleString('en-US');
+}
+
 export function ArcadePage() {
   const { state, tales, nav, navToTale, awardGameBadge, guestId, recordGameResult } = useApp();
   const [activeGame, setActiveGame] = useState<GameDefinition | null>(null);
@@ -111,13 +120,15 @@ export function ArcadePage() {
           <div className="arcade-cabinets">
             {catalog.map(({ def, tale }) => {
               const cab = stateFor(tale);
-              // GAME.6 — truthful best-run indicator: only a PERSISTED
-              // WON result shows a metric (duration — the one real
-              // measure today; the compatibility score is never shown
-              // as a player achievement). A legacy badge-holder with no
-              // stored result sees no PB until their next replay.
+              // GAME.6B — truthful personal-best row: only a PERSISTED
+              // WON result shows metrics, and hydration guarantees the
+              // stored best carries the game's CURRENT scoringVersion
+              // (real formula scores — the GAME.6 placeholder era was
+              // invalidated wholesale). A legacy badge-holder with no
+              // current-version stored result sees no PB until their
+              // next replay. Shown on COMPLETE cards only.
               const best = state.gameResultsBest[def.gameId];
-              const bestRun = best?.won ? formatDurationMs(best.durationMs) : null;
+              const bestWon = best?.won ? best : null;
               return (
                 <article
                   key={def.gameId}
@@ -150,9 +161,11 @@ export function ArcadePage() {
                     </>
                   ) : (
                     <>
-                      {cab === 'complete' && bestRun && (
+                      {cab === 'complete' && bestWon && (
                         <p className="arcade-cab-best">
-                          BEST RUN <b>{bestRun}</b>
+                          BEST SCORE <b>{formatScore(bestWon.score)}</b>
+                          <span className="arcade-cab-best-sep" aria-hidden="true">·</span>
+                          BEST RUN <b>{formatDurationMs(bestWon.durationMs)}</b>
                         </p>
                       )}
                       <button
@@ -197,6 +210,13 @@ export function ArcadePage() {
       {/* ── Shared production game shell (GAME.4 path) ── */}
       {activeGame && activeTale && (
         <GameOverlay
+          // GAME.6B — keyed by GameId: GameOverlay initializes its
+          // GameSession (and attempt/result gates) per MOUNT, so a
+          // definition swap without remount would seal results under
+          // the previous game's identity. Unreachable by touch (the
+          // modal covers the page) but reachable by keyboard focus on
+          // a background PLAY button; the key forces a clean remount.
+          key={activeGame.gameId}
           definition={activeGame}
           onClose={() => setActiveGame(null)}
           // Badge award mirrors TaleDetailPage exactly: ownership stays

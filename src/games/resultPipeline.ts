@@ -97,6 +97,10 @@ export function sealGameResult(args: SealGameResultArgs): GameResult {
     durationMs: Number.isFinite(durationMs) && durationMs >= 0 ? Math.round(durationMs) : 0,
     won: outcome.won,
     score: clampScore(scoring.score(outcome, difficultyBand)),
+    // GAME.6B — stamp which formula version produced this score;
+    // downstream comparison/persistence is only valid within one
+    // scoringVersion of one game.
+    scoringVersion: scoring.scoringVersion,
     difficultyBand,
     metrics: { ...outcome.metrics },
   };

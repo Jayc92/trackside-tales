@@ -205,8 +205,10 @@ function IconForRoom({ id }: { id: string }) {
 // ── Props ────────────────────────────────────────────────────────────
 interface WoodenStationGameProps {
   config: GameConfig;
-  onWin: () => void;
-  onLose: () => void;
+  /** GAME.6B — terminal callbacks now carry the runtime's honest
+   *  metric snapshot (see METRIC CONTRACT below). */
+  onWin: (metrics?: Record<string, number>) => void;
+  onLose: (metrics?: Record<string, number>) => void;
   quizShowing: boolean;
 }
 
@@ -239,11 +241,36 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing }: Wooden
     }
   }, []);
 
+  // ── GAME.6B — METRIC CONTRACT (honest values only) ────────────────
+  // Reported to the platform shell on the terminal onWin/onLose:
+  //   mistakes      0..4   — matches burned (wrong preservation
+  //                          decisions — the pool the HUD pips show)
+  //   timeLeftSec   0..120 — game clock remaining at the terminal moment
+  //   hintsUsed     0..1   — hints consumed (recorded; not score-bearing)
+  //   roomsRestored 0..5   — rooms relit (partial progress on a loss)
+  // Snapshot ref mirrored via effect — never mutated inside setState
+  // updaters (StrictMode double-invokes those), and always current
+  // before the setTimeout-deferred triggerWin/triggerLose fire.
+  const metricsRef = useRef<Record<string, number>>({
+    mistakes: 0,
+    timeLeftSec: GAME_DURATION_SEC,
+    hintsUsed: 0,
+    roomsRestored: 0,
+  });
+  useEffect(() => {
+    metricsRef.current = {
+      mistakes: STARTING_MATCHES - matchesLeft,
+      timeLeftSec: timeLeft,
+      hintsUsed: STARTING_HINTS - hintsLeft,
+      roomsRestored: restored.size,
+    };
+  }, [matchesLeft, timeLeft, hintsLeft, restored]);
+
   const triggerLose = useCallback(() => {
     if (completedRef.current || quizShowing || winFiredRef.current || loseFiredRef.current) return;
     loseFiredRef.current = true;
     stopTimer();
-    onLose();
+    onLose({ ...metricsRef.current });
   }, [quizShowing, onLose, stopTimer]);
 
   const triggerWin = useCallback(() => {
@@ -253,7 +280,7 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing }: Wooden
     setPreservedRoomId(null);
     setFalteredRoomId(null);
     stopTimer();
-    onWin();
+    onWin({ ...metricsRef.current });
   }, [onWin, stopTimer]);
 
   // Countdown
@@ -263,6 +290,10 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing }: Wooden
       setTimeLeft((t) => {
         if (t <= 1) {
           stopTimer();
+          // GAME.6B — the clock truly hit zero; the snapshot still
+          // holds last commit's value (1). Constant write: idempotent
+          // under StrictMode's double-invoked updater.
+          metricsRef.current = { ...metricsRef.current, timeLeftSec: 0 };
           triggerLose();
           return 0;
         }

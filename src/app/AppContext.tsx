@@ -29,6 +29,9 @@ export function toGameResultSummary(result: GameResult): GameResultSummary {
     gameId: result.gameId,
     won: result.won,
     score: result.score,
+    // GAME.6B — which formula version produced the score; persisted so
+    // hydration can reject bests from retired scoring models.
+    scoringVersion: result.scoringVersion,
     difficultyBand: result.difficultyBand,
     completedAt: result.completedAt,
     durationMs: result.durationMs,
@@ -52,7 +55,16 @@ export function isBetterResult(
   return false; // full tie — keep the existing best
 }
 
-/** Validate one stored summary from untrusted localStorage. */
+/** Validate one stored summary from untrusted localStorage.
+ *
+ *  GAME.6B SCORING-VERSION POLICY: a stored best is only valid while
+ *  its scoringVersion equals the game's CURRENT ScoringSpec version.
+ *  Anything else — including every GAME.6 record, which carried the
+ *  placeholder score (won → 5000) and no scoringVersion field — is
+ *  discarded whole: a placeholder 5000 must never survive as a "real"
+ *  best score, no transitional duration is retained, and no new score
+ *  is synthesized from old data. The player simply establishes a fresh
+ *  PB on their next win. Badge/completion state is untouched. */
 function isValidStoredSummary(gameId: string, raw: unknown): raw is GameResultSummary {
   if (!(gameId in GAME_REGISTRY)) return false;               // unknown GameId
   if (typeof raw !== 'object' || raw === null) return false;
@@ -60,6 +72,7 @@ function isValidStoredSummary(gameId: string, raw: unknown): raw is GameResultSu
   return (
     r.resultVersion === 1 &&
     r.gameId === gameId &&
+    r.scoringVersion === GAME_REGISTRY[gameId as GameId].scoring.scoringVersion &&
     typeof r.won === 'boolean' &&
     typeof r.score === 'number' && Number.isFinite(r.score) &&
     r.score >= 0 && r.score <= 10_000 &&

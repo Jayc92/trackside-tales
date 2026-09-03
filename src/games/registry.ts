@@ -37,6 +37,11 @@ import {
   PACKER_RAIL_GAME,
   WOODEN_MATCH_GAME,
 } from './gameConfigs';
+import {
+  ALLEN_TOWN_SCORING,
+  PACKER_ROUTE_SCORING,
+  STATION_PRESERVATION_SCORING,
+} from './scoring';
 
 // ── Stable game identity ────────────────────────────────────────────────
 // GameId is the platform's primary identity and is independent of Tale
@@ -100,6 +105,11 @@ export interface GameResult {
   won: boolean;
   /** Canonical normalized score, clamped to 0..10000. */
   score: number;
+  /** PUBLIC-v7.4B.GAME.6B — the ScoringSpec version that produced
+   *  `score` (stamped by sealGameResult). Scores are only comparable
+   *  within one scoringVersion of one game; hydration rejects persisted
+   *  bests whose version is not the game's current one. */
+  scoringVersion: number;
   difficultyBand: DifficultyBand;
   /** Numeric-only, game-namespaced metrics. */
   metrics: Record<string, number>;
@@ -109,12 +119,18 @@ export interface GameResult {
  *  cards, and (later) ghost metadata. Intentionally minimal.
  *  PUBLIC-v7.4B.GAME.6 — carries resultVersion so persisted summaries
  *  (tb_game_results_best) can be version-checked/rejected safely when
- *  future result versions appear. */
+ *  future result versions appear.
+ *  PUBLIC-v7.4B.GAME.6B — also carries scoringVersion: a persisted best
+ *  is only valid while its game's ScoringSpec version matches. GAME.6
+ *  summaries (placeholder scoring, no scoringVersion field) fail
+ *  hydration and are discarded — the player re-establishes a real PB on
+ *  their next win. */
 export interface GameResultSummary {
   resultVersion: 1;
   gameId: GameId;
   won: boolean;
   score: number;
+  scoringVersion: number;
   difficultyBand: DifficultyBand;
   completedAt: string;
   durationMs: number;
@@ -147,21 +163,16 @@ export function clampScore(value: number): number {
 // Deterministic, side-effect-free conversion of an outcome (at a
 // difficulty band) onto the canonical scale. Versioned so future tuning
 // can trigger clean recomputation of derived values.
+// PUBLIC-v7.4B.GAME.6B — scoringVersion widened from the literal 1 to
+// number and BUMPED to 2 for all three games (real formulas in
+// scoring.ts replace the GAME.2 compatibility placeholder, which was
+// version 1: won → 5000). Any formula change must bump the game's
+// version — persisted bests from other versions are never comparable
+// and are dropped at hydration (see AppContext).
 export interface ScoringSpec {
-  scoringVersion: 1;
+  scoringVersion: number;
   score(outcome: GameOutcome, band: DifficultyBand): number;
 }
-
-// GAME.2 placeholder ONLY — present for type completeness of the three
-// registrations. Completion-shaped: won → mid-scale, lost → 0. Real
-// per-game scoring arrives with the GAME.3 result adapter; NOTHING in
-// current gameplay calls or depends on this function.
-export const LEGACY_COMPLETION_SCORING: ScoringSpec = {
-  scoringVersion: 1,
-  score(outcome: GameOutcome, _band: DifficultyBand): number {
-    return clampScore(outcome.won ? 5_000 : 0);
-  },
-};
 
 // ── Requirements / capabilities ─────────────────────────────────────────
 export interface GameRequirements {
@@ -209,10 +220,17 @@ export type GameRuntimeComponent = ComponentType<GameRuntimeProps>;
 // these until the GAME.3 compatibility adapter wraps them into
 // GameRuntimeComponent, at which point RegisteredRuntimeComponent
 // collapses to the future type and this alias can retire.
+//
+// PUBLIC-v7.4B.GAME.6B — onWin/onLose now carry an OPTIONAL numeric
+// metrics payload (the smallest honest evolution toward the GameOutcome
+// contract): each runtime reports only values derived from its actual
+// gameplay state (see each game's METRIC CONTRACT comment). The shell
+// merges them into the sealed GameResult. Runtimes still never award
+// badges, persist, or score — they report raw performance only.
 export interface LegacyGameRuntimeProps {
   config: GameConfig;
-  onWin: () => void;
-  onLose: () => void;
+  onWin: (metrics?: Record<string, number>) => void;
+  onLose: (metrics?: Record<string, number>) => void;
   quizShowing: boolean;
 }
 
@@ -265,7 +283,8 @@ export const GAME_REGISTRY: Record<GameId, GameDefinition> = {
     requires: { unlockedTale: ALLEN_TOWN_GAME.taleId },
     runtime: () =>
       import('./AllenTownPlanningGame').then((m) => ({ default: m.AllenTownPlanningGame })),
-    scoring: LEGACY_COMPLETION_SCORING,
+    // GAME.6B — real planning-accuracy scoring (v2), see scoring.ts.
+    scoring: ALLEN_TOWN_SCORING,
     capabilities: {},
   },
   'packer-rail-line': {
@@ -277,7 +296,8 @@ export const GAME_REGISTRY: Record<GameId, GameDefinition> = {
     requires: { unlockedTale: PACKER_RAIL_GAME.taleId },
     runtime: () =>
       import('./PackerRouteGame').then((m) => ({ default: m.PackerRouteGame })),
-    scoring: LEGACY_COMPLETION_SCORING,
+    // GAME.6B — real route-execution scoring (v2), see scoring.ts.
+    scoring: PACKER_ROUTE_SCORING,
     capabilities: {},
   },
   'station-preservation': {
@@ -294,7 +314,8 @@ export const GAME_REGISTRY: Record<GameId, GameDefinition> = {
     requires: { unlockedTale: WOODEN_MATCH_GAME.taleId },
     runtime: () =>
       import('./WoodenStationGame').then((m) => ({ default: m.WoodenStationGame })),
-    scoring: LEGACY_COMPLETION_SCORING,
+    // GAME.6B — real preservation-decision scoring (v2), see scoring.ts.
+    scoring: STATION_PRESERVATION_SCORING,
     capabilities: {},
   },
 };

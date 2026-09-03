@@ -275,6 +275,12 @@ function GameOverlayInner({
   const resultWonEmittedRef  = useRef(false);
   const resultLostEmittedRef = useRef(false);
 
+  // GAME.6B — the CURRENT attempt's runtime metric payload, captured at
+  // the onWin/onLose funnel (each runtime's METRIC CONTRACT documents
+  // its keys). Cleared by retryGame so a stale attempt's numbers can
+  // never leak into the next attempt's sealed result.
+  const runtimeMetricsRef = useRef<Record<string, number> | null>(null);
+
   /** Seal + surface one terminal result. Pure sealing; the only side
    *  effect is the optional onResult callback. Badge award, phases, and
    *  analytics are all decided BEFORE this runs and never depend on it. */
@@ -295,11 +301,15 @@ function GameOverlayInner({
       session,
       outcome: {
         won,
-        // Only metrics genuinely observable at this funnel today. The
-        // legacy runtimes' onWin/onLose callbacks carry no payload, so
-        // nothing richer exists to report yet (GAME.4+ migrates the
-        // runtimes to the GameOutcome contract with real metrics).
-        metrics: { attempts: attemptsRef.current },
+        // GAME.6B — the runtime's honest per-attempt metrics (mistakes,
+        // timeLeftSec, hintsUsed, progress), merged under the
+        // platform-owned attempts count. The shell never edits or
+        // reinterprets runtime values; the game's own ScoringSpec is
+        // the only consumer that assigns them meaning.
+        metrics: {
+          ...(runtimeMetricsRef.current ?? {}),
+          attempts: attemptsRef.current,
+        },
       },
       scoring: def.scoring,
       difficultyBand: DEFAULT_DIFFICULTY_BAND,
@@ -338,7 +348,10 @@ function GameOverlayInner({
   }, [config, guestId]);
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
-  const handleGameWin = useCallback(() => {
+  const handleGameWin = useCallback((metrics?: Record<string, number>) => {
+    // GAME.6B — capture the runtime's terminal metric payload FIRST so
+    // emitResult below seals it into this attempt's GameResult.
+    runtimeMetricsRef.current = metrics ?? null;
     // v5.1.7+: planning game (grid) integrates its own unlock-quiz.
     // v5.1.14: Packer route game (spike) does the same — interleaved
     // unlock quizzes per junction, no post-puzzle quiz needed.
@@ -365,7 +378,9 @@ function GameOverlayInner({
     // in handleAnswer below, not the moment we route to the quiz.
   }, [config, alreadyEarned, onBadgeAwarded, emitGameCompleted]);
 
-  const handleGameLose = useCallback(() => {
+  const handleGameLose = useCallback((metrics?: Record<string, number>) => {
+    // GAME.6B — same capture-first contract as handleGameWin.
+    runtimeMetricsRef.current = metrics ?? null;
     setPhase('fail');
     // ADMIN-v6.8D — game_failed emits AFTER setPhase. Gated by
     // gameFailedLoggedRef so a single onLose firing twice can't
@@ -433,6 +448,9 @@ function GameOverlayInner({
     // GAME.3 — re-arm the per-attempt result gate (mirrors the
     // game_failed gate; the won gate stays terminal for the session).
     resultLostEmittedRef.current = false;
+    // GAME.6B — drop the failed attempt's runtime metrics; the retried
+    // attempt reports its own.
+    runtimeMetricsRef.current = null;
   }, []);
 
   // ADMIN-v6.8D — BEGIN handler. Visible behavior is identical to the

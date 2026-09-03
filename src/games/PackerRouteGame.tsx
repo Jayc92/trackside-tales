@@ -141,8 +141,10 @@ function toRoman(n: number): string {
 // ── Props ────────────────────────────────────────────────────────────
 interface PackerRouteGameProps {
   config: GameConfig;
-  onWin: () => void;
-  onLose: () => void;
+  /** GAME.6B — terminal callbacks now carry the runtime's honest
+   *  metric snapshot (see METRIC CONTRACT below). */
+  onWin: (metrics?: Record<string, number>) => void;
+  onLose: (metrics?: Record<string, number>) => void;
   quizShowing: boolean;
 }
 
@@ -200,11 +202,36 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
     }
   }, []);
 
+  // ── GAME.6B — METRIC CONTRACT (honest values only) ────────────────
+  // Reported to the platform shell on the terminal onWin/onLose:
+  //   mistakes    0..7  — moves burned (wrong junction, out-of-order
+  //                       lay, or wrong unlock-quiz answer — one pool)
+  //   timeLeftSec 0..90 — game clock remaining at the terminal moment
+  //   hintsUsed   0..2  — hints consumed (recorded; not score-bearing)
+  //   placements  0..5  — junctions laid (partial progress on a loss)
+  // Snapshot ref mirrored via effect — never mutated inside setState
+  // updaters (StrictMode double-invokes those), and always current
+  // before the setTimeout-deferred triggerWin/triggerLose fire.
+  const metricsRef = useRef<Record<string, number>>({
+    mistakes: 0,
+    timeLeftSec: GAME_DURATION_SEC,
+    hintsUsed: 0,
+    placements: 0,
+  });
+  useEffect(() => {
+    metricsRef.current = {
+      mistakes: STARTING_MOVES - movesLeft,
+      timeLeftSec: timeLeft,
+      hintsUsed: STARTING_HINTS - hintsLeft,
+      placements: Object.keys(placements).length,
+    };
+  }, [movesLeft, timeLeft, hintsLeft, placements]);
+
   const triggerLose = useCallback(() => {
     if (completedRef.current || quizShowing || winFiredRef.current || loseFiredRef.current) return;
     loseFiredRef.current = true;
     stopTimer();
-    onLose();
+    onLose({ ...metricsRef.current });
   }, [quizShowing, onLose, stopTimer]);
 
   const triggerWin = useCallback(() => {
@@ -214,7 +241,7 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
     setApproveElementId(null);
     setReconsider(null);
     stopTimer();
-    onWin();
+    onWin({ ...metricsRef.current });
   }, [onWin, stopTimer]);
 
   // Countdown
@@ -224,6 +251,10 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
       setTimeLeft((t) => {
         if (t <= 1) {
           stopTimer();
+          // GAME.6B — the clock truly hit zero; the snapshot still
+          // holds last commit's value (1). Constant write: idempotent
+          // under StrictMode's double-invoked updater.
+          metricsRef.current = { ...metricsRef.current, timeLeftSec: 0 };
           triggerLose();
           return 0;
         }

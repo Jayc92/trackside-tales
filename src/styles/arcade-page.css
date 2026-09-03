@@ -233,7 +233,8 @@
   line-height: 1.5;
   color: var(--ar-muted);
 }
-/* GAME.6 — truthful best-run line on completed cabinets */
+/* GAME.6 — truthful personal-best line on completed cabinets.
+   GAME.6B — now a compact two-metric row: BEST SCORE · BEST RUN. */
 .arcade-cab-best {
   margin: 0.6rem 0 0;
   font-family: var(--ar-mono);
@@ -247,6 +248,10 @@
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   color: var(--ar-brass-hi);
+}
+.arcade-cab-best-sep {
+  margin: 0 0.55rem;
+  color: var(--ar-brass);
 }
 .arcade-action {
   display: inline-flex;
