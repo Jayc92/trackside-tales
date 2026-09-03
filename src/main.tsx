@@ -22,6 +22,7 @@ import './styles/passport-page.css';    // P.28g.7 — refined Passport document
 import './styles/scan-page.css';        // P.28g.8 — refined Scan archive gate (scan-*)
 import './styles/menu-page.css';        // P.28g.9 — rebuilt Menu pour board (menu-*)
 import './styles/home-page.css';        // P.28g.10 — rebuilt Home front door (home-*)
+import './styles/arcade-page.css';      // GAME.5 — Trackside Arcade cabinets (arcade-*)
 
 // ================== MOUNT ==================
 console.log('[trackside] App version: 4.6.1 — Vite migration');

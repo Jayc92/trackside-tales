@@ -249,6 +249,21 @@ export function TalesPage() {
           </div>
         </section>
 
+        {/* ── The Arcade — replay layer over the collection (GAME.5) ── */}
+        <section className="tales-section">
+          <div className="tales-section-head">
+            <span className="tales-label">The Arcade</span>
+          </div>
+          <div className="tales-index">
+            <button type="button" className="tales-index-link" onClick={() => nav('arcade')}>
+              <span className="tales-index-glyph" aria-hidden="true" />
+              <span className="tales-index-title">OPEN ARCADE</span>
+              <span className="tales-index-desc">Replay the challenges you've discovered.</span>
+              <span className="tales-index-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </section>
+
         {/* ── Quiet index into the narrative backbone ── */}
         <section className="tales-section tales-section--index">
           <div className="tales-section-head">

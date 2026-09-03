@@ -1,0 +1,327 @@
+/* ================== TRACKSIDE BREWING — ARCADE (game cabinets) ==================
+   PUBLIC-v7.4B.GAME.5 — the Trackside Arcade. All rules are prefixed
+   `arcade-` and scoped under `.arcade-page`; no other route is
+   affected. Loaded after home-page.css.
+
+   Direction: the same near-black / warm ivory / brass family, composed
+   as a row of ARCHIVE GAME CABINETS — marquee head, ledger summary,
+   cabinet records with clear textual states. Premium product surface;
+   no neon, no casino chrome, no retro-arcade cosplay.
+
+   NAMESPACE NOTE — collision sweep against the legacy sheets returned
+   zero hits for every arcade-* family used here.
+================================================================================ */
+
+.arcade-page {
+  --ar-ivory: #ece2cd;
+  --ar-body: #c9bda4;
+  --ar-muted: #96805c;
+  --ar-brass: #a3803f;
+  --ar-brass-hi: #d8b46b;
+  --ar-ember: #c9823f;
+  --ar-serif: 'Playfair Display', Georgia, serif;
+  --ar-archival: 'IM Fell English', Georgia, serif;
+  --ar-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --ar-mono: 'Source Code Pro', ui-monospace, monospace;
+  --ar-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--ar-sans);
+  border-top: 1px solid rgba(163, 128, 63, 0.4);
+}
+
+/* ── Head — marquee ──────────────────────────────────────────────────── */
+.arcade-head {
+  padding: 2.6rem 1.35rem 0.6rem;
+  text-align: center;
+}
+.arcade-eyebrow {
+  font-family: var(--ar-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--ar-ember);
+  text-transform: uppercase;
+}
+.arcade-title {
+  margin: 0.85rem 0 0;
+  font-family: var(--ar-display);
+  font-weight: 400;
+  font-size: clamp(2.8rem, 12vw, 4rem);
+  line-height: 0.94;
+  letter-spacing: 0.05em;
+  color: var(--ar-ivory);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+}
+.arcade-brand {
+  margin-top: 0.55rem;
+  font-family: var(--ar-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.3em;
+  color: var(--ar-brass-hi);
+  text-transform: uppercase;
+}
+.arcade-rule {
+  width: 150px;
+  height: 11px;
+  margin: 0.95rem auto 0;
+  border: none;
+  background:
+    radial-gradient(circle at 50% 50%, var(--ar-brass-hi) 0 2.2px, var(--ar-brass) 2.8px, transparent 3.8px) center / 11px 11px no-repeat,
+    linear-gradient(90deg, transparent, var(--ar-brass) 18%, var(--ar-brass) 82%, transparent) center calc(50% - 3px) / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, var(--ar-brass) 18%, var(--ar-brass) 82%, transparent) center calc(50% + 3px) / 100% 1px no-repeat;
+}
+.arcade-sub {
+  margin: 0.95rem auto 0;
+  max-width: 44ch;
+  font-family: var(--ar-serif);
+  font-style: italic;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--ar-body);
+}
+.arcade-summary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem 0.7rem;
+  margin-top: 1.3rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid rgba(163, 128, 63, 0.35);
+  border-radius: 3px;
+  background: rgba(13, 11, 9, 0.55);
+  font-family: var(--ar-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+.arcade-summary-item { white-space: nowrap; }
+.arcade-summary-item b {
+  font-family: var(--ar-display);
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: var(--ar-brass-hi);
+  margin-right: 0.3rem;
+}
+.arcade-summary-tick {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--ar-brass);
+}
+
+/* ── Wrap / sections ─────────────────────────────────────────────────── */
+.arcade-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 1.35rem;
+}
+.arcade-section { padding: 2rem 0 0.2rem; }
+.arcade-section-head {
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(163, 128, 63, 0.3);
+  margin-bottom: 1.05rem;
+}
+.arcade-label {
+  font-family: var(--ar-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+.arcade-label::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 6px;
+  margin-right: 0.6rem;
+  vertical-align: 1px;
+  background:
+    linear-gradient(90deg, var(--ar-brass), transparent) 0 0 / 100% 1px no-repeat,
+    linear-gradient(90deg, var(--ar-brass), transparent) 0 5px / 100% 1px no-repeat;
+  opacity: 0.7;
+}
+
+/* ── Cabinets ────────────────────────────────────────────────────────── */
+.arcade-cabinets {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.arcade-cab {
+  padding: 1.05rem 1.1rem 1.15rem;
+  border: 1px solid rgba(163, 128, 63, 0.35);
+  border-radius: 4px;
+  background:
+    linear-gradient(170deg, rgba(163, 128, 63, 0.06), transparent 55%),
+    rgba(20, 16, 12, 0.5);
+}
+.arcade-cab--complete {
+  border-color: rgba(216, 180, 107, 0.55);
+  background:
+    radial-gradient(130% 100% at 0% 0%, rgba(216, 180, 107, 0.08), transparent 55%),
+    linear-gradient(170deg, rgba(163, 128, 63, 0.08), transparent 55%),
+    rgba(20, 16, 12, 0.5);
+}
+.arcade-cab--sealed {
+  background:
+    repeating-linear-gradient(-45deg, rgba(163, 128, 63, 0.1) 0 3px, transparent 3px 7px) left / 12px 100% no-repeat,
+    rgba(20, 16, 12, 0.35);
+  border-color: rgba(163, 128, 63, 0.22);
+}
+.arcade-cab-marquee {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.arcade-cab-type {
+  font-family: var(--ar-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.24em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+.arcade-chip {
+  padding: 0.2rem 0.5rem;
+  border-radius: 2px;
+  font-family: var(--ar-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.arcade-chip--playable {
+  border: 1px solid rgba(217, 138, 74, 0.55);
+  background: rgba(201, 130, 63, 0.12);
+  color: #d98a4a;
+}
+.arcade-chip--complete {
+  border: 1px solid rgba(163, 128, 63, 0.5);
+  color: var(--ar-brass-hi);
+}
+.arcade-chip--sealed {
+  border: 1px solid rgba(150, 128, 92, 0.4);
+  color: var(--ar-muted);
+}
+.arcade-cab-title {
+  margin: 0.7rem 0 0;
+  font-family: var(--ar-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--ar-ivory);
+}
+.arcade-cab--sealed .arcade-cab-title { color: #b6a68b; }
+.arcade-cab-tale {
+  margin: 0.45rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ar-body);
+}
+.arcade-cab-tale em {
+  font-family: var(--ar-serif);
+  font-style: italic;
+  color: var(--ar-brass-hi);
+}
+.arcade-cab--sealed .arcade-cab-tale em { color: var(--ar-muted); }
+.arcade-cab-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ar-muted);
+}
+.arcade-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid rgba(163, 128, 63, 0.5);
+  border-radius: 3px;
+  background: none;
+  font-family: var(--ar-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  color: var(--ar-brass-hi);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.arcade-action:hover, .arcade-action:focus-visible {
+  border-color: var(--ar-brass-hi);
+  color: var(--ar-ivory);
+}
+.arcade-action--primary {
+  border-color: var(--ar-brass);
+  background: linear-gradient(180deg, rgba(163, 128, 63, 0.18), rgba(163, 128, 63, 0.08));
+  color: var(--ar-ivory);
+}
+.arcade-action--primary:hover, .arcade-action--primary:focus-visible {
+  background: linear-gradient(180deg, rgba(163, 128, 63, 0.28), rgba(163, 128, 63, 0.12));
+}
+
+/* ── Quiet index ─────────────────────────────────────────────────────── */
+.arcade-next-link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 1rem 0.15rem;
+  border: none;
+  border-top: 1px solid rgba(163, 128, 63, 0.2);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  transition: padding-left 0.15s ease;
+}
+.arcade-next-link:last-child { border-bottom: 1px solid rgba(163, 128, 63, 0.2); }
+.arcade-next-link:hover { padding-left: 0.5rem; }
+.arcade-next-glyph {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--ar-brass);
+  align-self: center;
+}
+.arcade-next-link:hover .arcade-next-glyph {
+  background: radial-gradient(circle at 40% 35%, var(--ar-brass-hi), var(--ar-brass) 75%);
+}
+.arcade-next-title {
+  font-family: var(--ar-display);
+  font-size: 1.12rem;
+  letter-spacing: 0.06em;
+  color: var(--ar-ivory);
+  white-space: nowrap;
+}
+.arcade-next-desc { flex: 1; font-size: 0.82rem; line-height: 1.45; color: var(--ar-muted); }
+.arcade-next-arrow { color: var(--ar-brass-hi); transition: transform 0.18s ease; }
+.arcade-next-link:hover .arcade-next-arrow,
+.arcade-next-link:focus-visible .arcade-next-arrow { transform: translateX(6px); }
+@media (prefers-reduced-motion: reduce) {
+  .arcade-action, .arcade-next-link, .arcade-next-arrow { transition: none; }
+}
+
+.arcade-foot-space { height: 2.4rem; }
+
+/* ── Responsive — desktop as a cabinet row, not stretched cards ──────── */
+@media (min-width: 768px) {
+  .arcade-head { padding-top: 3.4rem; }
+  .arcade-wrap { max-width: 760px; }
+  .arcade-cab-title { font-size: 1.85rem; }
+}
+@media (min-width: 1024px) {
+  .arcade-wrap { max-width: 960px; }
+  .arcade-cabinets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.1rem;
+  }
+  /* keep the third cabinet from stretching full-width alone */
+  .arcade-cab { align-self: start; }
+}

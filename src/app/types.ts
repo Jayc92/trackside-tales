@@ -166,7 +166,8 @@ export type PageId =
   | 'ourstory'
   | 'about'
   | 'woodenmatch'
-  | 'tracks';
+  | 'tracks'
+  | 'arcade';
 
 export interface AppState {
   page: PageId;

@@ -223,6 +223,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       about:      '#/ourstory',
       woodenmatch:'#/alburtis',
       tracks:     '#/tracks',
+      arcade:     '#/arcade',
     };
     const hash = hashMap[page] || '#/home';
     if (location.hash !== hash) history.replaceState(null, '', hash);

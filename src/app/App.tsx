@@ -12,6 +12,7 @@ import { TaleDetailPage } from '../pages/TaleDetailPage';
 import { ScanPage } from '../pages/ScanPage';
 import { PassportPage } from '../pages/PassportPage';
 import { OurStoryPage, AboutPage, WoodenMatchPage, TracksPage } from '../pages/SecondaryPages';
+import { ArcadePage } from '../pages/ArcadePage';
 import { PageId, Tale } from './types';
 
 // ── Route parser ─────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ function hashToPage(hash: string): PageId | 'story-deeplink' | null {
   if (raw.startsWith('alburtis'))                return 'woodenmatch';
   if (raw.startsWith('woodenmatch'))             return 'woodenmatch';
   if (raw.startsWith('tracks'))                  return 'tracks';
+  if (raw.startsWith('arcade'))                  return 'arcade';
 
   return 'home'; // safe fallback
 }
@@ -86,6 +88,7 @@ function ActivePage({ page }: { page: PageId }) {
     case 'about':       return <AboutPage />;
     case 'woodenmatch': return <WoodenMatchPage />;
     case 'tracks':      return <TracksPage />;
+    case 'arcade':      return <ArcadePage />;
     default:            return <HomePage />;
   }
 }

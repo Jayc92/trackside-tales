@@ -297,6 +297,16 @@ export function PassportPage() {
             >
               ◈ THE TALE ARCHIVE
             </button>
+            {/* GAME.5 — the Arcade holds this passport's unlocked
+                challenges; existing nav contract, no new state. */}
+            <button
+              type="button"
+              className="passport-action"
+              onClick={() => nav('arcade')}
+              aria-label="View the Trackside Arcade"
+            >
+              ▶ TRACKSIDE ARCADE
+            </button>
           </div>
         </section>
 
