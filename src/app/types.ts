@@ -4,6 +4,7 @@
 // stays a runtime leaf). The registry imports nothing from this file,
 // so there is no cycle.
 import type { GameResultSummary } from '../games/registry';
+import type { GameMasteryRecord } from '../games/mastery';
 
 export interface StoryBlock {
   type: 'p' | 'quote' | 'h2' | 'h3';
@@ -199,6 +200,13 @@ export interface AppState {
    *  result never marks a game COMPLETE by itself, and badge ownership
    *  never synthesizes a best result. */
   gameResultsBest: Record<string, GameResultSummary>;
+  /** PUBLIC-v7.4B.GAME.7 — per-GameId earned mastery achievements
+   *  (persisted to LS_GAME_MASTERY). Monotone: tiers only ever rise
+   *  (bronze → silver → gold → engineer). SEPARATE from both badge
+   *  completion (gameBadges, Tale ids) and personal bests
+   *  (gameResultsBest — which may be version-invalidated; earned
+   *  mastery survives version changes by grandfathering). */
+  gameMastery: Record<string, GameMasteryRecord>;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)
@@ -212,6 +220,9 @@ export const LS_USER             = 'tb_user';
 // packer-rail-line / station-preservation), never Tale ids — the first
 // persisted system where GameId is a durable, migration-sensitive key.
 export const LS_GAME_RESULTS_BEST = 'tb_game_results_best';
+// PUBLIC-v7.4B.GAME.7 — per-GameId durable mastery achievements
+// (bronze/silver/gold/engineer). GameId-keyed like the PB store.
+export const LS_GAME_MASTERY      = 'tb_game_mastery';
 export const LS_UNLOCKED         = 'tb_unlocked';
 export const LS_SCAN_BADGES      = 'tb_scan_badges';
 export const LS_GAME_BADGES      = 'tb_game_badges';

@@ -42,6 +42,12 @@ import {
   PACKER_ROUTE_SCORING,
   STATION_PRESERVATION_SCORING,
 } from './scoring';
+import type { MasteryDefinition } from './mastery';
+import {
+  ALLEN_TOWN_MASTERY,
+  PACKER_ROUTE_MASTERY,
+  STATION_PRESERVATION_MASTERY,
+} from './mastery';
 
 // ── Stable game identity ────────────────────────────────────────────────
 // GameId is the platform's primary identity and is independent of Tale
@@ -264,6 +270,10 @@ export interface GameDefinition {
   requires: GameRequirements;
   runtime: GameRuntimeLoader;
   scoring: ScoringSpec;
+  /** PUBLIC-v7.4B.GAME.7 — per-game mastery thresholds + Engineer
+   *  predicate inputs (see mastery.ts). Evaluation is the shared pure
+   *  evaluateMastery; persistence is AppContext's tb_game_mastery. */
+  mastery: MasteryDefinition;
   capabilities: GameCapabilities;
 }
 
@@ -285,6 +295,8 @@ export const GAME_REGISTRY: Record<GameId, GameDefinition> = {
       import('./AllenTownPlanningGame').then((m) => ({ default: m.AllenTownPlanningGame })),
     // GAME.6B — real planning-accuracy scoring (v2), see scoring.ts.
     scoring: ALLEN_TOWN_SCORING,
+    // GAME.7 — mastery thresholds (v1), see mastery.ts.
+    mastery: ALLEN_TOWN_MASTERY,
     capabilities: {},
   },
   'packer-rail-line': {
@@ -298,6 +310,8 @@ export const GAME_REGISTRY: Record<GameId, GameDefinition> = {
       import('./PackerRouteGame').then((m) => ({ default: m.PackerRouteGame })),
     // GAME.6B — real route-execution scoring (v2), see scoring.ts.
     scoring: PACKER_ROUTE_SCORING,
+    // GAME.7 — mastery thresholds (v1), see mastery.ts.
+    mastery: PACKER_ROUTE_MASTERY,
     capabilities: {},
   },
   'station-preservation': {
@@ -316,6 +330,8 @@ export const GAME_REGISTRY: Record<GameId, GameDefinition> = {
       import('./WoodenStationGame').then((m) => ({ default: m.WoodenStationGame })),
     // GAME.6B — real preservation-decision scoring (v2), see scoring.ts.
     scoring: STATION_PRESERVATION_SCORING,
+    // GAME.7 — mastery thresholds (v1), see mastery.ts.
+    mastery: STATION_PRESERVATION_MASTERY,
     capabilities: {},
   },
 };

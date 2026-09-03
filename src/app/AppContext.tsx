@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
-import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST } from './types';
+import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
 import {
   GAME_REGISTRY,
@@ -7,6 +7,13 @@ import {
   GameResult,
   GameResultSummary,
 } from '../games/registry';
+import {
+  GameMasteryRecord,
+  MASTERY_TIER_RANK,
+  createMasteryRecord,
+  evaluateMastery,
+  isTierUpgrade,
+} from '../games/mastery';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import {
@@ -106,6 +113,56 @@ function loadBestResults(): Record<string, GameResultSummary> {
   }
 }
 
+// ================== GAME.7 — mastery persistence helpers ==================
+
+/** Validate one stored mastery record from untrusted localStorage.
+ *
+ *  GRANDFATHERING POLICY (GAME.7 §12) — the deliberate difference from
+ *  PB validation: mastery is a durable ACHIEVEMENT. A record earned
+ *  under an OLDER masteryVersion/scoringVersion is kept (a future
+ *  tuning pass must never silently take away an earned tier; a later
+ *  result may raise it, never lower it). Records claiming an
+ *  unsupported FUTURE version fail closed and are ignored. */
+function isValidStoredMasteryRecord(gameId: string, raw: unknown): raw is GameMasteryRecord {
+  if (!(gameId in GAME_REGISTRY)) return false;               // unknown GameId
+  if (typeof raw !== 'object' || raw === null) return false;
+  const definition = GAME_REGISTRY[gameId as GameId];
+  const r = raw as Record<string, unknown>;
+  return (
+    r.gameId === gameId &&
+    typeof r.tier === 'string' && r.tier in MASTERY_TIER_RANK &&
+    typeof r.masteryVersion === 'number' &&
+    Number.isInteger(r.masteryVersion) && r.masteryVersion >= 1 &&
+    r.masteryVersion <= definition.mastery.masteryVersion &&
+    typeof r.scoringVersion === 'number' &&
+    Number.isInteger(r.scoringVersion) && r.scoringVersion >= 1 &&
+    r.scoringVersion <= definition.scoring.scoringVersion &&
+    typeof r.achievedAt === 'string'
+  );
+}
+
+/** Sanitize the whole stored mastery record; malformed children are
+ *  dropped individually (same isolation posture as the PB store). */
+export function sanitizeStoredMastery(raw: unknown): Record<string, GameMasteryRecord> {
+  const out: Record<string, GameMasteryRecord> = {};
+  if (typeof raw !== 'object' || raw === null) return out;
+  for (const [gameId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (isValidStoredMasteryRecord(gameId, value)) out[gameId] = value;
+  }
+  return out;
+}
+
+/** Hydrate tb_game_mastery — same fail-safe posture as loadBestResults. */
+function loadMastery(): Record<string, GameMasteryRecord> {
+  try {
+    const raw = localStorage.getItem(LS_GAME_MASTERY);
+    if (!raw) return {};
+    return sanitizeStoredMastery(JSON.parse(raw));
+  } catch (_) {
+    return {};
+  }
+}
+
 // ================== STATE ==================
 
 const initialState: AppState = {
@@ -115,6 +172,7 @@ const initialState: AppState = {
   lastEarnedGame: null,
   lastUnlocked: null,
   gameResultsBest: loadBestResults(),
+  gameMastery: loadMastery(),
   ...loadState(),
 };
 
@@ -198,8 +256,9 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'RESET_DEMO':
-      // GAME.6 — the demo reset also clears personal bests: reset is
-      // expected to restore a clean local Trackside experience.
+      // GAME.6 — the demo reset also clears personal bests; GAME.7 —
+      // and earned mastery: reset restores a clean local Trackside
+      // experience. No other reset semantics broadened.
       return {
         ...state,
         unlocked: new Set(),
@@ -209,21 +268,41 @@ function reducer(state: AppState, action: Action): AppState {
         lastEarnedGame: null,
         lastUnlocked: null,
         gameResultsBest: {},
+        gameMastery: {},
       };
 
     // GAME.6 — fold a sealed GameResult into the per-GameId personal
-    // bests. Idempotent: a result that does not beat the incumbent
-    // returns the SAME state object (no re-render, no persist write).
-    // No badge/XP/mastery side effects — parallel system by design.
+    // bests. GAME.7 — the SAME single result seam now also evaluates
+    // mastery; PB and mastery update INDEPENDENTLY (a result can
+    // improve either, both, or neither). Idempotent: when nothing
+    // improves, the SAME state object returns (no re-render, and each
+    // persist effect is reference-gated so no storage writes occur).
+    // No badge side effects — completion stays a parallel system.
     case 'RECORD_GAME_RESULT': {
       const gameId = action.result.gameId as GameId;
       if (!(gameId in GAME_REGISTRY)) return state;
+      const definition = GAME_REGISTRY[gameId];
+
+      // 1 — personal best (GAME.6 semantics, unchanged)
       const candidate = toGameResultSummary(action.result);
       const incumbent = state.gameResultsBest[gameId];
-      if (!isBetterResult(candidate, incumbent)) return state;
+      const pbImproved = isBetterResult(candidate, incumbent);
+
+      // 2 — mastery (GAME.7): monotone — only a strictly higher tier
+      // writes; worse replays and losses leave the achievement alone.
+      const earnedTier = evaluateMastery(definition, action.result);
+      const existingMastery = state.gameMastery[gameId];
+      const masteryUpgraded = isTierUpgrade(earnedTier, existingMastery?.tier);
+
+      if (!pbImproved && !masteryUpgraded) return state;
       return {
         ...state,
-        gameResultsBest: { ...state.gameResultsBest, [gameId]: candidate },
+        gameResultsBest: pbImproved
+          ? { ...state.gameResultsBest, [gameId]: candidate }
+          : state.gameResultsBest,
+        gameMastery: masteryUpgraded && earnedTier !== null
+          ? { ...state.gameMastery, [gameId]: createMasteryRecord(definition, earnedTier) }
+          : state.gameMastery,
       };
     }
 
@@ -331,6 +410,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(LS_GAME_RESULTS_BEST, JSON.stringify(state.gameResultsBest));
     } catch (_) { /* storage full or blocked */ }
   }, [state.gameResultsBest]);
+
+  // GAME.7 — persist mastery achievements on the same narrow pattern.
+  // Reference-gated: non-upgrading results keep the record identity.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_GAME_MASTERY, JSON.stringify(state.gameMastery));
+    } catch (_) { /* storage full or blocked */ }
+  }, [state.gameMastery]);
 
   const nav = useCallback((page: PageId) => {
     dispatch({ type: 'NAV', page });

@@ -3,6 +3,7 @@ import { useApp } from '../app/AppContext';
 import { Tale } from '../app/types';
 import { GameOverlay } from '../games/GameOverlay';
 import { GameDefinition, getAllGameDefinitions } from '../games/registry';
+import { MASTERY_TIER_LABELS, MasteryTier } from '../games/mastery';
 import { GameType } from '../games/gameConfigs';
 
 // ================== TRACKSIDE ARCADE — the games of the archive ==================
@@ -21,8 +22,9 @@ import { GameType } from '../games/gameConfigs';
 // Launching reuses the shared production GameOverlay path (GAME.4):
 // definition prop, lazy runtime chunk, legacy badge funnel — badge
 // award mirrors TaleDetailPage exactly (awardGameBadge(taleId)).
-// No score persistence, no mastery/XP/leaderboards (later gates);
-// onResult is intentionally not passed until GAME.6.
+// GAME.6/6B wired onResult → shared PB persistence + real scores;
+// GAME.7 adds the mastery stamp (bronze/silver/gold/engineer) on
+// COMPLETE cards. Still no XP/ranks/leaderboards (later gates).
 
 // Restrained public descriptors for the frozen internal GameType
 // strings (never shown raw). Derived from what each game actually is.
@@ -53,6 +55,19 @@ function formatDurationMs(ms: number): string {
 function formatScore(score: number): string {
   if (!Number.isFinite(score) || score < 0) return '—';
   return Math.round(score).toLocaleString('en-US');
+}
+
+/** GAME.7 — the compact next-target line under a mastery stamp (§19).
+ *  Thresholds come from the game's own MasteryDefinition — no raw
+ *  threshold values live in this component. Engineer criteria use the
+ *  definition's player-language label (9,500+ · FLAWLESS · NO HINTS),
+ *  never implementation metric names; full completion is implicit
+ *  because the game must be won. Engineer itself renders MASTERED. */
+function masteryNextLine(def: GameDefinition, tier: MasteryTier): string {
+  if (tier === 'bronze') return `NEXT: SILVER · ${formatScore(def.mastery.silverScore)}`;
+  if (tier === 'silver') return `NEXT: GOLD · ${formatScore(def.mastery.goldScore)}`;
+  if (tier === 'gold') return `NEXT: ENGINEER'S MARK · ${def.mastery.engineerCriteriaLabel}`;
+  return 'MASTERED';
 }
 
 export function ArcadePage() {
@@ -129,6 +144,18 @@ export function ArcadePage() {
               // next replay. Shown on COMPLETE cards only.
               const best = state.gameResultsBest[def.gameId];
               const bestWon = best?.won ? best : null;
+              // GAME.7 — displayed mastery tier (§15): the persisted
+              // achievement, else the Bronze compatibility floor — a
+              // legacy badge-holder completed the game at least once,
+              // which IS Bronze (resolved at display time only; no
+              // record is synthesized into storage). Shown on COMPLETE
+              // cards only (§16): completion still derives solely from
+              // gameBadges, so seeded mastery without the badge stays
+              // PLAYABLE and renders no tier.
+              const masteryTier: MasteryTier | null =
+                cab === 'complete'
+                  ? state.gameMastery[def.gameId]?.tier ?? 'bronze'
+                  : null;
               return (
                 <article
                   key={def.gameId}
@@ -167,6 +194,20 @@ export function ArcadePage() {
                           <span className="arcade-cab-best-sep" aria-hidden="true">·</span>
                           BEST RUN <b>{formatDurationMs(bestWon.durationMs)}</b>
                         </p>
+                      )}
+                      {masteryTier && (
+                        <div
+                          className={`arcade-mastery arcade-mastery--${masteryTier}`}
+                          aria-label={`Mastery: ${MASTERY_TIER_LABELS[masteryTier]}`}
+                        >
+                          <span className="arcade-mastery-eyebrow">Mastery</span>
+                          <span className="arcade-mastery-tier">
+                            {MASTERY_TIER_LABELS[masteryTier]}
+                          </span>
+                          <span className="arcade-mastery-next">
+                            {masteryNextLine(def, masteryTier)}
+                          </span>
+                        </div>
                       )}
                       <button
                         type="button"

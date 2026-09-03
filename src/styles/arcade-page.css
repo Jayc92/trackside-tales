@@ -253,6 +253,75 @@
   margin: 0 0.55rem;
   color: var(--ar-brass);
 }
+
+/* ── GAME.7 — mastery stamp on completed cabinets ─────────────────────
+   Restrained tier hierarchy inside the existing brass/ivory archive
+   language: typography + border intensity only — no rarity colors, no
+   glow, no medal art. ENGINEER'S MARK gets the strongest treatment
+   (double rule + rail diamond) as the house's highest distinction. */
+.arcade-mastery {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  margin: 0.65rem 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px dashed rgba(163, 128, 63, 0.25);
+}
+.arcade-mastery-eyebrow {
+  font-family: var(--ar-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.24em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+.arcade-mastery-tier {
+  padding: 0.18rem 0.5rem;
+  border: 1px solid rgba(163, 128, 63, 0.4);
+  border-radius: 2px;
+  font-family: var(--ar-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.arcade-mastery-next {
+  flex-basis: 100%;
+  font-family: var(--ar-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+/* tier hierarchy — quiet → prestigious */
+.arcade-mastery--bronze .arcade-mastery-tier {
+  border-color: rgba(163, 128, 63, 0.38);
+  color: #b08d55;
+}
+.arcade-mastery--silver .arcade-mastery-tier {
+  border-color: rgba(201, 189, 164, 0.5);
+  color: #cfc6b0;
+}
+.arcade-mastery--gold .arcade-mastery-tier {
+  border-color: rgba(216, 180, 107, 0.65);
+  background: rgba(216, 180, 107, 0.07);
+  color: var(--ar-brass-hi);
+}
+.arcade-mastery--engineer .arcade-mastery-tier {
+  border-color: var(--ar-brass-hi);
+  box-shadow: 0 0 0 3px rgba(216, 180, 107, 0.14);
+  background: linear-gradient(180deg, rgba(216, 180, 107, 0.14), rgba(216, 180, 107, 0.05));
+  color: var(--ar-ivory);
+}
+.arcade-mastery--engineer .arcade-mastery-tier::before {
+  content: '◆';
+  margin-right: 0.45rem;
+  font-size: 0.5rem;
+  color: var(--ar-brass-hi);
+}
+.arcade-mastery--engineer .arcade-mastery-next {
+  color: var(--ar-brass-hi);
+}
 .arcade-action {
   display: inline-flex;
   align-items: center;
