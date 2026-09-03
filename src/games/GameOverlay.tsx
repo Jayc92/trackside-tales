@@ -5,6 +5,12 @@ import { PackerRouteGame } from './PackerRouteGame';
 import { WoodenStationGame } from './WoodenStationGame';
 import { TsIcon } from '../components/TsIcon';
 import { logEvent, flushEvents } from '../services/eventLogger';
+import { GameResult, getGamesForTale } from './registry';
+import {
+  DEFAULT_DIFFICULTY_BAND,
+  createGameSession,
+  sealGameResult,
+} from './resultPipeline';
 
 // ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
 // First playable vertical slice. Renders against the golden CSS schema in
@@ -129,6 +135,14 @@ interface GameOverlayProps {
    *  to log-events. Required because the analytics path is meaningless
    *  without it; eventLogger no-ops when guestId is empty. */
   guestId: string;
+  /** PUBLIC-v7.4B.GAME.3 — optional platform result observer. Called
+   *  exactly once per TERMINAL attempt (each failed attempt, and the
+   *  single winning attempt), with the already-sealed GameResult.
+   *  Observational only: results are not persisted, and badge award
+   *  semantics are entirely independent of this callback (and of
+   *  GameResult.score). No caller passes it yet — wiring belongs to
+   *  later GAME gates. */
+  onResult?: (result: GameResult) => void;
 }
 
 export function GameOverlay({
@@ -139,6 +153,7 @@ export function GameOverlay({
   successBadgeIcon = 'town-seal',
   successBadgeTitle,
   guestId,
+  onResult,
 }: GameOverlayProps) {
   const [phase, setPhase] = useState<GamePhase>('intro');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -175,6 +190,64 @@ export function GameOverlay({
   const gameFailedLoggedRef    = useRef(false);
   const attemptsRef            = useRef(1);
   const gameStartedAtRef       = useRef(0);
+
+  // ── PUBLIC-v7.4B.GAME.3 — platform result sealing (observational) ──
+  // One GameSession per overlay session (created lazily at mount from
+  // the registry association for this config's Tale; retries share the
+  // session and vary only the per-result attempt count — matching the
+  // attemptsRef semantics above). If a config has no registry entry
+  // (defensive: future unregistered configs), sealing is skipped
+  // entirely and the overlay behaves exactly as before.
+  //
+  // Emission gates mirror the analytics gates deliberately but stay
+  // SEPARATE refs so the result pipeline can never entangle the frozen
+  // analytics contract:
+  //   resultWonEmittedRef  — once per overlay session (win is terminal)
+  //   resultLostEmittedRef — once per attempt; cleared by retryGame
+  const platformGameRef = useRef(
+    getGamesForTale(config.taleId)[0],
+  );
+  const sessionRef = useRef(
+    platformGameRef.current
+      ? createGameSession(platformGameRef.current.gameId, config.taleId)
+      : null,
+  );
+  const resultWonEmittedRef  = useRef(false);
+  const resultLostEmittedRef = useRef(false);
+
+  /** Seal + surface one terminal result. Pure sealing; the only side
+   *  effect is the optional onResult callback. Badge award, phases, and
+   *  analytics are all decided BEFORE this runs and never depend on it. */
+  const emitResult = useCallback((won: boolean) => {
+    const def = platformGameRef.current;
+    const session = sessionRef.current;
+    if (!def || !session) return;
+    if (won) {
+      if (resultWonEmittedRef.current) return;
+      resultWonEmittedRef.current = true;
+    } else {
+      if (resultLostEmittedRef.current) return;
+      resultLostEmittedRef.current = true;
+    }
+    const startedAt = gameStartedAtRef.current;
+    const durationMs = startedAt > 0 ? Math.max(0, Date.now() - startedAt) : 0;
+    const result = sealGameResult({
+      session,
+      outcome: {
+        won,
+        // Only metrics genuinely observable at this funnel today. The
+        // legacy runtimes' onWin/onLose callbacks carry no payload, so
+        // nothing richer exists to report yet (GAME.4+ migrates the
+        // runtimes to the GameOutcome contract with real metrics).
+        metrics: { attempts: attemptsRef.current },
+      },
+      scoring: def.scoring,
+      difficultyBand: DEFAULT_DIFFICULTY_BAND,
+      durationMs,
+      attempt: attemptsRef.current,
+    });
+    onResult?.(result);
+  }, [onResult]);
 
   /** Compute per-attempt durationMs from gameStartedAtRef, or undefined
    *  if we never recorded a start (defensive — shouldn't happen via the
@@ -219,6 +292,9 @@ export function GameOverlay({
       // current builds). game_completed emits AFTER the visible phase
       // transition so a slow logEvent can never delay paint.
       emitGameCompleted();
+      // GAME.3 — seal the winning attempt's platform result LAST (after
+      // badge, phase, and analytics; observational only).
+      emitResult(true);
       return;
     }
     quizShowingRef.current = true;
@@ -247,7 +323,10 @@ export function GameOverlay({
       });
       void flushEvents(guestId);
     }
-  }, [config, guestId]);
+    // GAME.3 — seal the failed attempt's platform result (its own
+    // per-attempt gate; observational only, never awards anything).
+    emitResult(false);
+  }, [config, guestId, emitResult]);
 
   const handleAnswer = useCallback((idx: number) => {
     if (selectedOption !== null) return; // one answer per attempt
@@ -267,11 +346,14 @@ export function GameOverlay({
         // branch: emitGameCompleted's ref gate ensures one emission per
         // overlay session even if both branches somehow fire.
         emitGameCompleted();
+        // GAME.3 — same forward-safety for the platform result (its own
+        // once-per-session won gate).
+        emitResult(true);
       }, 700);
     }
     // Wrong answer: stay on quiz panel, show the correct one highlighted,
     // and surface the RETRY GAME button (handled in render below).
-  }, [selectedOption, config, alreadyEarned, onBadgeAwarded, emitGameCompleted]);
+  }, [selectedOption, config, alreadyEarned, onBadgeAwarded, emitGameCompleted, emitResult]);
 
   const retryGame = useCallback(() => {
     setSelectedOption(null);
@@ -288,6 +370,9 @@ export function GameOverlay({
     attemptsRef.current        += 1;
     gameStartedAtRef.current    = Date.now();
     gameFailedLoggedRef.current = false;
+    // GAME.3 — re-arm the per-attempt result gate (mirrors the
+    // game_failed gate; the won gate stays terminal for the session).
+    resultLostEmittedRef.current = false;
   }, []);
 
   // ADMIN-v6.8D — BEGIN handler. Visible behavior is identical to the
