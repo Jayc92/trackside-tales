@@ -184,6 +184,32 @@ export function evaluateMastery(
   return 'bronze';
 }
 
+/** PUBLIC-v7.4B.GAME.8 — the ONE shared display-tier resolution rule
+ *  for every surface that presents mastery (Arcade cabinets, Passport
+ *  endorsements, future surfaces):
+ *
+ *    not completed          → null   (mastery renders only on top of
+ *                                     the surface's completion notion —
+ *                                     seeded mastery without completion
+ *                                     is never presented as earned)
+ *    completed, persisted   → the persisted tier
+ *    completed, no record   → 'bronze' (legacy compatibility floor:
+ *                                     completion IS Bronze; display
+ *                                     only — nothing is synthesized
+ *                                     into storage)
+ *
+ *  Callers pass their own `completed` (Arcade: gameBadges.has(taleId);
+ *  Passport: SCAN + CHLG both stamped). ArcadePage currently inlines
+ *  this same rule (GAME.7) — swapping it onto this helper is deferred
+ *  cleanup, since GAME.8's scope excludes ArcadePage edits. */
+export function resolveDisplayMasteryTier(
+  persistedTier: MasteryTier | undefined,
+  completed: boolean,
+): MasteryTier | null {
+  if (!completed) return null;
+  return persistedTier ?? 'bronze';
+}
+
 /** Monotonic upgrade check (§14): true only when the candidate tier
  *  strictly outranks the incumbent. null candidate (loss) and
  *  equal/lower tiers never upgrade — callers keep existing state

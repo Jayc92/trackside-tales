@@ -286,6 +286,10 @@
 .passport-record {
   position: relative;
   display: flex;
+  /* GAME.8 — wrap is inert for the original single-row children
+     (year | main | wells all fit as before); it exists solely so the
+     full-basis mastery endorsement can sit on its own ledger line. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.9rem;
   padding: 0.95rem 1rem;
@@ -367,6 +371,68 @@
   color: #14100c;
 }
 .passport-record--complete .passport-record-wells { padding-right: 0.4rem; }
+
+/* ── GAME.8 — mastery endorsement (travel-document distinction) ──────
+   Renders ONLY on COMPLETE records, under the stamp wells, as a quiet
+   inspection-seal line: MASTERY · <tier seal>. Restrained tier
+   hierarchy in the existing near-black/ivory/brass language — no
+   metallic gradients, no glow. ENGINEER'S MARK is the strongest
+   treatment (double ring + rail diamond) as the elite endorsement. */
+.passport-mastery {
+  flex-basis: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed rgba(163, 128, 63, 0.28);
+}
+.passport-mastery-lbl {
+  font-family: var(--pp-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.24em;
+  color: var(--pp-muted);
+  text-transform: uppercase;
+}
+.passport-mastery-seal {
+  padding: 0.16rem 0.5rem;
+  border: 1px solid rgba(163, 128, 63, 0.4);
+  border-radius: 2px;
+  font-family: var(--pp-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* tier hierarchy — quiet baseline → elite endorsement */
+.passport-mastery--bronze .passport-mastery-seal {
+  border-color: rgba(163, 128, 63, 0.38);
+  color: #b08d55;
+}
+.passport-mastery--silver .passport-mastery-seal {
+  border-color: rgba(201, 189, 164, 0.5);
+  color: #cfc6b0;
+}
+.passport-mastery--gold .passport-mastery-seal {
+  border-color: rgba(216, 180, 107, 0.65);
+  background: rgba(216, 180, 107, 0.07);
+  color: var(--pp-brass-hi);
+}
+.passport-mastery--engineer .passport-mastery-seal {
+  border-color: var(--pp-brass-hi);
+  box-shadow: 0 0 0 3px rgba(216, 180, 107, 0.14);
+  background: linear-gradient(180deg, rgba(216, 180, 107, 0.14), rgba(216, 180, 107, 0.05));
+  color: var(--pp-ivory);
+}
+.passport-mastery--engineer .passport-mastery-seal::before {
+  content: '◆' / '';
+  margin-right: 0.45rem;
+  font-size: 0.48rem;
+  color: var(--pp-brass-hi);
+}
+/* sealed/incomplete records never reach this (render-gated), and the
+   long ENGINEER'S MARK seal may wrap the row's flow naturally on
+   narrow screens without touching the wells above. */
 
 /* fresh-badge celebration highlight (lastEarnedGame contract) */
 .passport-record--celebrate {

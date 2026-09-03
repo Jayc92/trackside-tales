@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { LS_HOW_DISMISSED, LS_PASSPORT_PAGE } from '../app/types';
 import { TsIcon } from '../components/TsIcon';
+import { getGamesForTale } from '../games/registry';
+import { MASTERY_TIER_LABELS, resolveDisplayMasteryTier } from '../games/mastery';
 
 // ================== PASSPORT — personal travel document ==================
 // PUBLIC-v7.4B.P.28g.7 — presentation/structural refinement of the
@@ -20,6 +22,18 @@ import { TsIcon } from '../components/TsIcon';
 // (reset still clears it). The lastEarnedGame celebration contract is
 // kept — arriving with a fresh game badge highlights that Tale's
 // ledger entry, then clears the flag exactly as before.
+//
+// PUBLIC-v7.4B.GAME.8 — mastery endorsement. A COMPLETE record (both
+// stamps earned — the SCAN + CHLG hierarchy is unchanged and mastery
+// is NOT a third required stamp) may additionally carry the earned
+// Arcade mastery tier as a travel-document endorsement. Resolution is
+// the shared resolveDisplayMasteryTier rule (persisted tier, else the
+// Bronze compatibility floor from the held challenge stamp; display
+// only — nothing is written to storage). Tale↔game association comes
+// from the registry (getGamesForTale) — never hard-coded — and a Tale
+// with no registered game renders exactly as before (quiet absence,
+// no placeholder). The Passport shows only EARNED tiers; thresholds
+// and next-target coaching stay on the Arcade by design.
 
 function getPassportId(joined: string | null): string {
   try {
@@ -202,6 +216,16 @@ export function PassportPage() {
               const scan     = state.scanBadges.has(tale.id);
               const game     = state.gameBadges.has(tale.id);
               const complete = scan && game;
+              // GAME.8 — endorsement renders only on COMPLETE records
+              // (mastery sits on top of completion, mirroring the
+              // Arcade's conservative gating).
+              const gameDef = getGamesForTale(tale.id)[0];
+              const masteryTier = gameDef
+                ? resolveDisplayMasteryTier(
+                    state.gameMastery[gameDef.gameId]?.tier,
+                    complete,
+                  )
+                : null;
               const status = !unlocked
                 ? 'Sealed — scan a Trackside can to open this page.'
                 : complete
@@ -232,6 +256,14 @@ export function PassportPage() {
                     <StampWell label="SCAN" earned={scan} icon="station-seal" />
                     <StampWell label="CHLG" earned={game} icon="town-seal" />
                   </div>
+                  {masteryTier && (
+                    <span className={`passport-mastery passport-mastery--${masteryTier}`}>
+                      <span className="passport-mastery-lbl">Mastery</span>
+                      <span className="passport-mastery-seal">
+                        {MASTERY_TIER_LABELS[masteryTier]}
+                      </span>
+                    </span>
+                  )}
                   {complete && (
                     <span className="passport-record-collected" aria-label="Fully collected">
                       COLLECTED
