@@ -1913,3 +1913,23 @@
   .px-hero__content { padding-top: 3rem; }
   .px-screen .px-wrap > .px-rail-head:first-child { margin-top: 1.4rem; }
 }
+
+/* ── P.28g.13 — shared-chrome semantics ──
+   The header chip and logo lockup are real <button>s now (AppHeader).
+   :where() keeps this reset at ZERO specificity, so every existing
+   .live-indicator / .app-bar-center class rule still wins — the reset
+   only fills the UA button defaults (border, background, padding,
+   font) back to the div-equivalent values. Pixel-identical rendering,
+   verified by before/after geometry capture. */
+:where(button.live-indicator, button.app-bar-center) {
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}

@@ -6,14 +6,19 @@ import { useApp } from '../app/AppContext';
 // Structure preserved from v4.6.1.
 //
 // PUBLIC-v7.4B.P.28a:
-//   * The Now Pouring chip and the logo lockup were click-only <div>s —
-//     both are now keyboard-operable (role=button + tabIndex + Enter/
-//     Space), picking up the global :focus-visible ring from tokens.css.
 //   * alt text follows the approved brand hierarchy: the company is
 //     "Trackside Brewing" (the "Co."/"Company" wording inside the logo
 //     ARTWORK is the approved asset and is allowed to remain).
-
-import { pressable } from './interactive';
+//
+// PUBLIC-v7.4B.P.28g.13 — shared chrome cleanup:
+//   * The chip and the logo lockup are real <button>s now (they were
+//     click-only <div>s with the pressable() ARIA emulation). Behavior,
+//     routing, and appearance are unchanged — a zero-specificity
+//     :where() reset in p28e.css neutralizes UA button chrome so the
+//     class rules keep rendering pixel-identically.
+//   * Visible terminology: the neutral chip reads TAP LIST (was BEER
+//     MENU), matching the Menu page's THE TAP LIST identity. The live
+//     NOW POURING state is unchanged.
 
 export function AppHeader() {
   const { state, nav, liveTapSlugs } = useApp();
@@ -34,30 +39,30 @@ export function AppHeader() {
     <div className="app-bar">
       <div className="app-bar-inner">
 
-        {/* Left: live status / menu shortcut */}
+        {/* Left: live status / tap-list shortcut */}
         <div className="app-bar-left">
-          <div
+          <button
+            type="button"
             className={`live-indicator${hasLivePours ? '' : ' live-indicator--neutral'}`}
-            {...pressable(handleNowPouringClick)}
+            onClick={handleNowPouringClick}
             title={hasLivePours
               ? 'Beers are pouring now — view the live menu'
-              : 'View the beer menu'}
+              : 'View the tap list'}
             aria-label={hasLivePours
               ? 'Beers are pouring now — view the live menu'
-              : 'View the beer menu'}
-            style={{ cursor: 'pointer' }}
+              : 'View the tap list'}
           >
             {hasLivePours && <span className="live-indicator-dot" />}
-            <span>{hasLivePours ? 'NOW POURING' : 'BEER MENU'}</span>
-          </div>
+            <span>{hasLivePours ? 'NOW POURING' : 'TAP LIST'}</span>
+          </button>
         </div>
 
         {/* Center: Logo */}
-        <div
+        <button
+          type="button"
           className="app-bar-center"
-          {...pressable(handleLogoClick)}
+          onClick={handleLogoClick}
           aria-label="Trackside Brewing — view Tales"
-          style={{ cursor: 'pointer' }}
         >
           <img
             src="assets/brand/trackside-header-logo.png"
@@ -76,11 +81,12 @@ export function AppHeader() {
             <div className="logo-main">TRACKSIDE</div>
             <div className="logo-sub"><span>BREWING</span></div>
           </div>
-        </div>
+        </button>
 
         {/* Right: Profile */}
         <div className="app-bar-right">
           <button
+            type="button"
             className={`profile-btn${state.user ? '' : ' guest'}`}
             id="profile-btn"
             onClick={handleProfileClick}
