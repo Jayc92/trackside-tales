@@ -1,0 +1,380 @@
+/* ================== TRACKSIDE BREWING — HOME (front door) ==================
+   PUBLIC-v7.4B.P.28g.10 — the rebuilt Home. All rules are prefixed
+   `home-` and scoped under `.home-page`; no other route is affected.
+   Loaded after menu-page.css.
+
+   Direction: the same near-black / ivory / brass family, composed as
+   the CURATED ENTRY — one atmospheric lead with the concept and two
+   strong actions, then three short synthesis sections (place, loop,
+   depth). Four sections total; shorter than every editorial page.
+
+   NAMESPACE NOTE — legacy css owns `.home-hero`; this layer uses
+   `home-lead` for the opening block instead. Every other home-*
+   family used here swept clean against app/polish/passport/
+   design-system/p28e css.
+================================================================================ */
+
+.home-page {
+  --hm-ivory: #ece2cd;
+  --hm-body: #c9bda4;
+  --hm-muted: #96805c;
+  --hm-brass: #a3803f;
+  --hm-brass-hi: #d8b46b;
+  --hm-ember: #c9823f;
+  --hm-serif: 'Playfair Display', Georgia, serif;
+  --hm-archival: 'IM Fell English', Georgia, serif;
+  --hm-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --hm-mono: 'Source Code Pro', ui-monospace, monospace;
+  --hm-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--hm-sans);
+  border-top: 1px solid rgba(163, 128, 63, 0.4);
+}
+
+/* ── 1. Lead ─────────────────────────────────────────────────────────── */
+.home-lead {
+  position: relative;
+  padding: 4rem 1.35rem 3rem;
+  text-align: center;
+  overflow: hidden;
+  isolation: isolate;
+}
+.home-lead-atmo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.home-lead-atmo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+  opacity: 0.34;
+  filter: saturate(0.75) brightness(0.85);
+}
+.home-lead-atmo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(95% 75% at 50% 40%, transparent 0%, rgba(13, 11, 9, 0.55) 55%, #100d0a 100%),
+    linear-gradient(180deg, rgba(13, 11, 9, 0.6) 0%, rgba(13, 11, 9, 0.25) 40%, #100d0a 100%);
+}
+.home-eyebrow {
+  font-family: var(--hm-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--hm-ember);
+  text-transform: uppercase;
+}
+.home-title {
+  margin: 1rem 0 0;
+  font-family: var(--hm-display);
+  font-weight: 400;
+  font-size: clamp(3.4rem, 16vw, 5rem);
+  line-height: 0.92;
+  letter-spacing: 0.04em;
+  color: var(--hm-ivory);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.85);
+}
+/* parallel-rail rule with center station node — the family motif */
+.home-rule {
+  width: 170px;
+  height: 11px;
+  margin: 1.25rem auto 0;
+  border: none;
+  background:
+    radial-gradient(circle at 50% 50%, var(--hm-brass-hi) 0 2.2px, var(--hm-brass) 2.8px, transparent 3.8px) center / 11px 11px no-repeat,
+    linear-gradient(90deg, transparent, var(--hm-brass) 18%, var(--hm-brass) 82%, transparent) center calc(50% - 3px) / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, var(--hm-brass) 18%, var(--hm-brass) 82%, transparent) center calc(50% + 3px) / 100% 1px no-repeat;
+}
+.home-statement {
+  margin: 1.2rem auto 0;
+  max-width: 34ch;
+  font-family: var(--hm-archival);
+  font-size: 1.18rem;
+  line-height: 1.5;
+  color: var(--hm-body);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85);
+}
+.home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 340px;
+  margin: 1.7rem auto 0;
+}
+.home-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(163, 128, 63, 0.55);
+  border-radius: 3px;
+  background: rgba(13, 11, 9, 0.55);
+  font-family: var(--hm-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  color: var(--hm-brass-hi);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.home-action:hover, .home-action:focus-visible {
+  border-color: var(--hm-brass-hi);
+  color: var(--hm-ivory);
+}
+.home-action--primary {
+  border-color: var(--hm-brass);
+  background: linear-gradient(180deg, rgba(163, 128, 63, 0.28), rgba(163, 128, 63, 0.12)), rgba(13, 11, 9, 0.55);
+  color: var(--hm-ivory);
+}
+.home-action--primary:hover, .home-action--primary:focus-visible {
+  background: linear-gradient(180deg, rgba(163, 128, 63, 0.38), rgba(163, 128, 63, 0.16)), rgba(13, 11, 9, 0.55);
+}
+
+/* ── Section scaffolding ─────────────────────────────────────────────── */
+.home-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 1.35rem;
+}
+.home-section { padding: 2.3rem 0 0.3rem; }
+.home-section-head {
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(163, 128, 63, 0.3);
+  margin-bottom: 1.1rem;
+}
+.home-label {
+  font-family: var(--hm-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  color: var(--hm-muted);
+  text-transform: uppercase;
+}
+.home-label::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 6px;
+  margin-right: 0.6rem;
+  vertical-align: 1px;
+  background:
+    linear-gradient(90deg, var(--hm-brass), transparent) 0 0 / 100% 1px no-repeat,
+    linear-gradient(90deg, var(--hm-brass), transparent) 0 5px / 100% 1px no-repeat;
+  opacity: 0.7;
+}
+.home-headline {
+  margin: 0;
+  font-family: var(--hm-serif);
+  font-weight: 400;
+  font-size: 1.7rem;
+  line-height: 1.18;
+  color: var(--hm-ivory);
+}
+.home-headline em { font-style: italic; color: var(--hm-brass-hi); }
+.home-copy {
+  margin: 0.8rem 0 0;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--hm-body);
+  max-width: 56ch;
+}
+.home-copy--quiet { font-size: 0.9rem; color: var(--hm-muted); }
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.55rem 0.15rem;
+  border: none;
+  border-bottom: 1px solid rgba(163, 128, 63, 0.4);
+  background: none;
+  font-family: var(--hm-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.2em;
+  color: var(--hm-brass-hi);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.home-link:hover, .home-link:focus-visible {
+  color: var(--hm-ivory);
+  border-bottom-color: var(--hm-brass-hi);
+}
+
+/* ── 2. Place preview — small hanging sign + copy ────────────────────── */
+.home-place {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.home-place-sign {
+  position: relative;
+  align-self: center;
+  width: min(100%, 240px);
+  margin-top: 1.4rem;
+  padding: 1.15rem 1rem 1rem;
+  text-align: center;
+  border: 1px solid rgba(163, 128, 63, 0.55);
+  outline: 1px solid rgba(163, 128, 63, 0.25);
+  outline-offset: 4px;
+  border-radius: 3px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(201, 130, 63, 0.06), transparent 60%);
+}
+/* hanging mounts */
+.home-place-sign::before,
+.home-place-sign::after {
+  content: '';
+  position: absolute;
+  top: -1.35rem;
+  width: 1px;
+  height: 0.95rem;
+  background: linear-gradient(180deg, transparent, rgba(163, 128, 63, 0.6));
+}
+.home-place-sign::before { left: 24%; }
+.home-place-sign::after { right: 24%; }
+.home-place-sign-title {
+  display: block;
+  font-family: var(--hm-display);
+  font-size: 1.8rem;
+  line-height: 0.96;
+  letter-spacing: 0.05em;
+  color: var(--hm-ivory);
+}
+.home-place-sign-sub {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--hm-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.28em;
+  color: var(--hm-brass-hi);
+}
+.home-place-body { min-width: 0; }
+
+/* ── 3. The loop ─────────────────────────────────────────────────────── */
+.home-loop {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--hm-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  color: var(--hm-body);
+  text-transform: uppercase;
+}
+.home-loop-stop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.home-loop-stop::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--hm-brass);
+  background: #14100c;
+}
+/* connecting rail between stops */
+.home-loop-stop + .home-loop-stop::after {
+  content: '';
+  order: -1;
+  width: 18px;
+  height: 4px;
+  margin: 0 0.5rem;
+  background:
+    linear-gradient(90deg, rgba(163, 128, 63, 0.4), rgba(163, 128, 63, 0.4)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(90deg, rgba(163, 128, 63, 0.4), rgba(163, 128, 63, 0.4)) 0 3px / 100% 1px no-repeat;
+}
+.home-loop-stop--terminus { color: var(--hm-brass-hi); }
+.home-loop-stop--terminus::before {
+  border-color: var(--hm-brass-hi);
+  background: radial-gradient(circle at 40% 35%, var(--hm-brass-hi), var(--hm-brass) 75%);
+  box-shadow: 0 0 8px rgba(216, 180, 107, 0.3);
+}
+.home-subactions {
+  display: flex;
+  gap: 1.6rem;
+  flex-wrap: wrap;
+}
+
+/* ── 4. Index rows ───────────────────────────────────────────────────── */
+.home-next-link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 1rem 0.15rem;
+  border: none;
+  border-top: 1px solid rgba(163, 128, 63, 0.2);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  transition: padding-left 0.15s ease;
+}
+.home-next-link:last-child { border-bottom: 1px solid rgba(163, 128, 63, 0.2); }
+.home-next-link:hover { padding-left: 0.5rem; }
+.home-next-glyph {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--hm-brass);
+  align-self: center;
+}
+.home-next-link:hover .home-next-glyph {
+  background: radial-gradient(circle at 40% 35%, var(--hm-brass-hi), var(--hm-brass) 75%);
+}
+.home-next-title {
+  font-family: var(--hm-display);
+  font-size: 1.12rem;
+  letter-spacing: 0.06em;
+  color: var(--hm-ivory);
+  white-space: nowrap;
+}
+.home-next-desc { flex: 1; font-size: 0.82rem; line-height: 1.45; color: var(--hm-muted); }
+.home-next-arrow { color: var(--hm-brass-hi); transition: transform 0.18s ease; }
+.home-next-link:hover .home-next-arrow,
+.home-next-link:focus-visible .home-next-arrow { transform: translateX(6px); }
+@media (prefers-reduced-motion: reduce) {
+  .home-action, .home-link, .home-next-link, .home-next-arrow { transition: none; }
+}
+
+.home-foot-space { height: 2.4rem; }
+
+/* ── Responsive — desktop as one designed spread ─────────────────────── */
+@media (min-width: 640px) {
+  .home-actions { flex-direction: row; max-width: 520px; }
+  .home-action { flex: 1; }
+}
+@media (min-width: 768px) {
+  .home-lead { padding: 6rem 2rem 4rem; }
+  .home-wrap { max-width: 760px; }
+  .home-headline { font-size: 2rem; }
+  .home-place {
+    flex-direction: row;
+    align-items: center;
+    gap: 2.4rem;
+  }
+  .home-place-sign { flex: 0 0 240px; align-self: flex-start; }
+}
+@media (min-width: 1024px) {
+  .home-wrap { max-width: 960px; }
+  /* desktop lead: keep the composition centered but let type breathe */
+  .home-lead-atmo img { opacity: 0.42; }
+  .home-statement { max-width: 40ch; font-size: 1.3rem; }
+  .home-copy { max-width: 62ch; }
+}

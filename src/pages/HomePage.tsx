@@ -1,116 +1,169 @@
 import React from 'react';
 import { useApp } from '../app/AppContext';
-import {
-  IndustrialHero,
-  SectionRail,
-  PrimaryAction,
-  SecondaryAction,
-} from '../components/public/primitives';
 
-// ================== HOME — "Stories From the Track" landing ==================
-// PUBLIC-v7.4B.P.28e (checkpoint-1 revision) — each section now has a
-// distinct compositional role instead of a stack of look-alike cards:
+// ================== HOME — the front door ==================
+// PUBLIC-v7.4B.P.28g.10 — curated entry into the finished public app.
+// Home synthesizes the established surfaces (Our Story = brand, Tracks
+// = history, Alburtis Tavern = place, Tales = archive, Scan = gate,
+// Passport = collection, Menu = pour board) into four sections:
 //
-//   1. Atmospheric railroad hero (tier-1 artifact).
-//   2. PARTNER VENUE — an engraved typographic PLAQUE. No photograph:
-//      the available venue art is concept illustration, and a plaque
-//      must not present invented imagery as the real building (§10).
-//      The 1868 CNJ-station date is the venue's real founding fact.
-//   3. THE TRACKSIDE CONCEPT — quiet editorial band directly on the
-//      canvas (no card, no border).
-//   4. SCAN → UNLOCK → COLLECT — a track-line progress system: three
-//      station nodes joined by a rail, then the Passport action.
+//   1. Lead — concept identity (BEER. HISTORY. PLACE.) with the two
+//      strongest actions: THE TAP LIST and THE TALES.
+//   2. Our Home — a preview of place: ALBURTIS TAVERN, Alburtis PA.
+//      Project-established facts only — no EST dates, no provenance
+//      (the old Wooden Match plaque and its 1868/CNJ/Bethlehem chrome
+//      are gone; Wooden Match remains only inside Tale DATA).
+//   3. Trackside Tales — the product loop (find → scan → read → play
+//      → collect) and the two-stamp Passport callout.
+//   4. The Deeper Cuts — quiet editorial index into Our Story and
+//      The Tracks.
 //
-// Alburtis is not referenced (P.30 boundary). All navigation uses the
-// existing nav() contract — no routing, unlock, or storage changes.
+// All navigation uses the existing nav() contract — no routing,
+// unlock, data, or storage changes. No live-state preview is rendered
+// here: current pours need the remote beers surface, so Home links to
+// the Tap List instead of fabricating a board.
 
 export function HomePage() {
   const { nav } = useApp();
 
   return (
-    <div className="page active px-screen" id="page-menu">
+    <div className="page active px-screen home-page" id="page-menu">
 
-      <IndustrialHero
-        image="assets/tales/tales-scan-unlock.png"
-        eyebrow="Trackside Tales"
-        title={<>STORIES FROM<br />THE TRACK</>}
-        sub="History, heritage, beer, and the people who built and traveled the Lehigh Valley."
-        actions={
-          <PrimaryAction onClick={() => nav('tales')} ariaLabel="Explore the Tales">
-            EXPLORE THE TALES →
-          </PrimaryAction>
-        }
-      />
-
-      <div className="px-wrap">
-
-        {/* ── Venue plaque ── */}
-        <SectionRail label="Our Home Station" />
-        <section className="px-plaque" aria-label="Partner venue">
-          <span className="px-eyebrow">Partner Venue</span>
-          <h2 className="px-plaque__title" role="heading" aria-level={2}>
-            THE WOODEN MATCH
-          </h2>
-          <div className="px-plaque__band" aria-hidden="true" />
-          <div className="px-plaque__meta">EST. 1868 · CNJ STATION · BETHLEHEM, PA</div>
-          <p className="px-plaque__copy">
-            Our rail-side home and gathering place, built inside a preserved
-            piece of Lehigh Valley rail history — great beer, hearty fare,
-            and stories that go back generations.
+      {/* ── 1. Lead — the concept in one screen ── */}
+      <header className="home-lead">
+        <div className="home-lead-atmo" aria-hidden="true">
+          <img
+            src="assets/tales/tales-scan-unlock.png"
+            alt=""
+            loading="eager"
+            decoding="async"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        </div>
+        <div className="home-lead-inner">
+          <span className="home-eyebrow">Trackside Brewing · Alburtis Tavern</span>
+          <h1 className="home-title">BEER.<br />HISTORY.<br />PLACE.</h1>
+          <hr className="home-rule" aria-hidden="true" />
+          <p className="home-statement">
+            Local beer with Lehigh Valley rail stories inside — poured at
+            Alburtis Tavern, unlocked by a scan, kept in your Passport.
           </p>
-          <div className="px-plaque__actions">
-            <PrimaryAction onClick={() => nav('woodenmatch')} ariaLabel="Read the Wooden Match story">
-              VISIT THE STATION →
-            </PrimaryAction>
+          <div className="home-actions">
+            <button
+              type="button"
+              className="home-action home-action--primary"
+              onClick={() => nav('menu')}
+              aria-label="View the tap list"
+            >
+              VIEW THE TAP LIST
+            </button>
+            <button
+              type="button"
+              className="home-action"
+              onClick={() => nav('tales')}
+              aria-label="Explore the Tales"
+            >
+              EXPLORE THE TALES
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="home-wrap">
+
+        {/* ── 2. Our Home — preview of place ── */}
+        <section className="home-section" aria-label="Alburtis Tavern">
+          <div className="home-section-head">
+            <span className="home-label">Our Home</span>
+          </div>
+          <div className="home-place">
+            <div className="home-place-sign" aria-hidden="true">
+              <span className="home-place-sign-title">ALBURTIS<br />TAVERN</span>
+              <span className="home-place-sign-sub">ALBURTIS, PA</span>
+            </div>
+            <div className="home-place-body">
+              <h2 className="home-headline">
+                A tavern, a table, and <em>the stories of the Valley.</em>
+              </h2>
+              <p className="home-copy">
+                Alburtis Tavern is where Trackside Brewing lives — order a
+                Tale at the bar, and the story of the Lehigh Valley comes
+                to the table with it.
+              </p>
+              <button
+                type="button"
+                className="home-link"
+                onClick={() => nav('woodenmatch')}
+              >
+                VISIT OUR HOME <span aria-hidden="true">→</span>
+              </button>
+            </div>
           </div>
         </section>
 
-        {/* ── Concept editorial ── */}
-        <SectionRail label="The Trackside Concept" />
-        <section className="px-editorial" aria-label="The Trackside concept">
-          <h2 className="px-editorial__title" role="heading" aria-level={2}>
-            BEER. RAILROAD. COMMUNITY.
-          </h2>
-          <p className="px-editorial__copy">
-            Trackside Brewing was built around local history, railroad
-            heritage, and craft beer worth collecting. Every brew has a tale
-            — the beer is the ticket, the history is the destination.
+        {/* ── 3. Trackside Tales — the product loop ── */}
+        <section className="home-section" aria-label="How Trackside Tales works">
+          <div className="home-section-head">
+            <span className="home-label">Trackside Tales</span>
+          </div>
+          <h2 className="home-headline">The beer is <em>the ticket.</em></h2>
+          <p className="home-copy">
+            Every Trackside Tale can carries a real Lehigh Valley story.
+            Scan the can and the story opens; finish its challenge and the
+            second stamp is yours.
           </p>
-          <div className="px-editorial__actions">
-            <SecondaryAction onClick={() => nav('ourstory')} ariaLabel="Read our story">
-              OUR STORY →
-            </SecondaryAction>
+          {/* the loop — presentation only, matching the real product flow */}
+          <ol className="home-loop" aria-label="The Trackside loop">
+            <li className="home-loop-stop">FIND A TALE</li>
+            <li className="home-loop-stop">SCAN</li>
+            <li className="home-loop-stop">READ</li>
+            <li className="home-loop-stop">PLAY</li>
+            <li className="home-loop-stop home-loop-stop--terminus">COLLECT</li>
+          </ol>
+          <p className="home-copy home-copy--quiet">
+            Two stamps per Tale — one for the scan, one for the challenge —
+            collected in your Trackside Passport.
+          </p>
+          <div className="home-subactions">
+            <button
+              type="button"
+              className="home-link"
+              onClick={() => nav('scan')}
+            >
+              SCAN A CAN <span aria-hidden="true">→</span>
+            </button>
+            <button
+              type="button"
+              className="home-link"
+              onClick={() => nav('passport')}
+            >
+              VIEW PASSPORT <span aria-hidden="true">→</span>
+            </button>
           </div>
         </section>
 
-        {/* ── Passport progress line ── */}
-        <SectionRail label="Scan · Unlock · Collect" />
-        <section aria-label="How Trackside Tales works">
-          <div className="px-track">
-            <div className="px-step">
-              <span className="px-step__glyph" aria-hidden="true">⌗</span>
-              <span className="px-step__name">SCAN</span>
-              <span className="px-step__desc">Find Tales in the real world.</span>
-            </div>
-            <div className="px-step">
-              <span className="px-step__glyph" aria-hidden="true">✦</span>
-              <span className="px-step__name">UNLOCK</span>
-              <span className="px-step__desc">Read, play, and earn stamps.</span>
-            </div>
-            <div className="px-step">
-              <span className="px-step__glyph" aria-hidden="true">◈</span>
-              <span className="px-step__name">COLLECT</span>
-              <span className="px-step__desc">Complete Tales, earn badges.</span>
-            </div>
+        {/* ── 4. The deeper cuts — brand + history depth ── */}
+        <section className="home-section" aria-label="Brand and history">
+          <div className="home-section-head">
+            <span className="home-label">The Deeper Cuts</span>
           </div>
-          <div className="px-editorial__actions" style={{ marginTop: '1.3rem' }}>
-            <PrimaryAction onClick={() => nav('passport')} ariaLabel="View your passport">
-              VIEW YOUR PASSPORT →
-            </PrimaryAction>
+          <div className="home-next">
+            <button type="button" className="home-next-link" onClick={() => nav('ourstory')}>
+              <span className="home-next-glyph" aria-hidden="true" />
+              <span className="home-next-title">OUR STORY</span>
+              <span className="home-next-desc">Why the beer is the ticket.</span>
+              <span className="home-next-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" className="home-next-link" onClick={() => nav('tracks')}>
+              <span className="home-next-glyph" aria-hidden="true" />
+              <span className="home-next-title">THE TRACKS</span>
+              <span className="home-next-desc">The rail history behind the Tales.</span>
+              <span className="home-next-arrow" aria-hidden="true">→</span>
+            </button>
           </div>
         </section>
 
-        <div style={{ height: '1rem' }} />
+        <div className="home-foot-space" />
       </div>
     </div>
   );
