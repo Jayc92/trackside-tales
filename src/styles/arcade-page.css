@@ -233,6 +233,21 @@
   line-height: 1.5;
   color: var(--ar-muted);
 }
+/* GAME.6 — truthful best-run line on completed cabinets */
+.arcade-cab-best {
+  margin: 0.6rem 0 0;
+  font-family: var(--ar-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+.arcade-cab-best b {
+  font-weight: 400;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--ar-brass-hi);
+}
 .arcade-action {
   display: inline-flex;
   align-items: center;

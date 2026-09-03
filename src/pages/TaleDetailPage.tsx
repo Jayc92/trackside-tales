@@ -149,7 +149,7 @@ function RecordHeader({
 }
 
 export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailPageProps = {}) {
-  const { state, awardGameBadge, nav, guestId, liveTapSlugs } = useApp();
+  const { state, awardGameBadge, nav, guestId, liveTapSlugs, recordGameResult } = useApp();
   const tale = previewTale ?? state.currentTale;
   const [showGame, setShowGame] = useState(false);
 
@@ -518,6 +518,9 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
           successBadgeIcon={tale.gameBadge.icon}
           successBadgeTitle={tale.gameBadge.title}
           guestId={guestId}
+          // GAME.6 — personal-best persistence (AppContext-owned).
+          // Entirely separate from the badge callback above.
+          onResult={recordGameResult}
         />
       )}
 

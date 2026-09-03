@@ -106,8 +106,12 @@ export interface GameResult {
 }
 
 /** Compact projection of a GameResult for prior-best display, Arcade
- *  cards, and (later) ghost metadata. Intentionally minimal. */
+ *  cards, and (later) ghost metadata. Intentionally minimal.
+ *  PUBLIC-v7.4B.GAME.6 — carries resultVersion so persisted summaries
+ *  (tb_game_results_best) can be version-checked/rejected safely when
+ *  future result versions appear. */
 export interface GameResultSummary {
+  resultVersion: 1;
   gameId: GameId;
   won: boolean;
   score: number;

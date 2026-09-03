@@ -34,8 +34,20 @@ const TYPE_LABELS: Record<GameType, string> = {
 
 type CabinetState = 'sealed' | 'playable' | 'complete';
 
+/** GAME.6 — concise best-run duration: 12150 → "12.2s",
+ *  90120 → "1:30.1". Pure; never NaN/negative output. */
+function formatDurationMs(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return '—';
+  const tenths = Math.round(ms / 100); // one decisecond precision
+  const totalSeconds = tenths / 10;
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const rest = totalSeconds - minutes * 60;
+  return `${minutes}:${rest < 10 ? '0' : ''}${rest.toFixed(1)}`;
+}
+
 export function ArcadePage() {
-  const { state, tales, nav, navToTale, awardGameBadge, guestId } = useApp();
+  const { state, tales, nav, navToTale, awardGameBadge, guestId, recordGameResult } = useApp();
   const [activeGame, setActiveGame] = useState<GameDefinition | null>(null);
 
   // Catalog: registry definitions joined to their Tales. Fail closed —
@@ -99,6 +111,13 @@ export function ArcadePage() {
           <div className="arcade-cabinets">
             {catalog.map(({ def, tale }) => {
               const cab = stateFor(tale);
+              // GAME.6 — truthful best-run indicator: only a PERSISTED
+              // WON result shows a metric (duration — the one real
+              // measure today; the compatibility score is never shown
+              // as a player achievement). A legacy badge-holder with no
+              // stored result sees no PB until their next replay.
+              const best = state.gameResultsBest[def.gameId];
+              const bestRun = best?.won ? formatDurationMs(best.durationMs) : null;
               return (
                 <article
                   key={def.gameId}
@@ -130,13 +149,20 @@ export function ArcadePage() {
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      className="arcade-action arcade-action--primary"
-                      onClick={() => setActiveGame(def)}
-                    >
-                      {cab === 'complete' ? '↻ REPLAY' : '▶ PLAY'}
-                    </button>
+                    <>
+                      {cab === 'complete' && bestRun && (
+                        <p className="arcade-cab-best">
+                          BEST RUN <b>{bestRun}</b>
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        className="arcade-action arcade-action--primary"
+                        onClick={() => setActiveGame(def)}
+                      >
+                        {cab === 'complete' ? '↻ REPLAY' : '▶ PLAY'}
+                      </button>
+                    </>
                   )}
                 </article>
               );
@@ -180,6 +206,8 @@ export function ArcadePage() {
           successBadgeIcon={activeTale.gameBadge.icon}
           successBadgeTitle={activeTale.gameBadge.title}
           guestId={guestId}
+          // GAME.6 — same shared personal-best path as Tale Detail.
+          onResult={recordGameResult}
         />
       )}
     </div>

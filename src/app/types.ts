@@ -1,5 +1,10 @@
 // ================== SHARED TYPES ==================
 
+// PUBLIC-v7.4B.GAME.6 — type-only import (erased at runtime; types.ts
+// stays a runtime leaf). The registry imports nothing from this file,
+// so there is no cycle.
+import type { GameResultSummary } from '../games/registry';
+
 export interface StoryBlock {
   type: 'p' | 'quote' | 'h2' | 'h3';
   text?: string;
@@ -188,6 +193,12 @@ export interface AppState {
    *  / KEEP SCANNING / close). Persists nothing; never affects badge,
    *  scan, or unlock contracts. */
   lastUnlocked: string | null;
+  /** PUBLIC-v7.4B.GAME.6 — per-GameId personal-best result summaries
+   *  (persisted to LS_GAME_RESULTS_BEST). PARALLEL to badge completion:
+   *  keys are GameIds, while gameBadges keeps Tale ids — a stored won
+   *  result never marks a game COMPLETE by itself, and badge ownership
+   *  never synthesizes a best result. */
+  gameResultsBest: Record<string, GameResultSummary>;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)
@@ -196,6 +207,11 @@ export const BADGE_KEY_GAME = (id: string) => `game:${id}`;
 
 // localStorage keys — must not change
 export const LS_USER             = 'tb_user';
+// PUBLIC-v7.4B.GAME.6 — per-GameId personal-best result summaries.
+// Keys inside the stored record are GAMEIDs (allen-town-grid /
+// packer-rail-line / station-preservation), never Tale ids — the first
+// persisted system where GameId is a durable, migration-sensitive key.
+export const LS_GAME_RESULTS_BEST = 'tb_game_results_best';
 export const LS_UNLOCKED         = 'tb_unlocked';
 export const LS_SCAN_BADGES      = 'tb_scan_badges';
 export const LS_GAME_BADGES      = 'tb_game_badges';

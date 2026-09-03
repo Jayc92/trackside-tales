@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
-import { AppState, PageId, Tale, Beer, FoodItem } from './types';
+import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
+import {
+  GAME_REGISTRY,
+  GameId,
+  GameResult,
+  GameResultSummary,
+} from '../games/registry';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import {
@@ -11,6 +17,82 @@ import {
   fetchLiveTapSlugs,
 } from '../services/contentService';
 
+// ================== GAME.6 — personal-best persistence helpers ==================
+// PURE, exported for independent testing. AppContext owns this
+// persistence boundary (GameOverlay stays a platform shell; the
+// legacy loadState/saveState in guestPersistence is untouched).
+
+/** Project a sealed GameResult onto the compact persisted summary. */
+export function toGameResultSummary(result: GameResult): GameResultSummary {
+  return {
+    resultVersion: 1,
+    gameId: result.gameId,
+    won: result.won,
+    score: result.score,
+    difficultyBand: result.difficultyBand,
+    completedAt: result.completedAt,
+    durationMs: result.durationMs,
+  };
+}
+
+/** Deterministic best-result comparator (GAME.6 §8). Priority:
+ *  win beats loss → higher canonical score → lower durationMs →
+ *  otherwise keep the incumbent. Valid unchanged when real per-game
+ *  scoring (GAME.6B) replaces the compatibility score. */
+export function isBetterResult(
+  candidate: GameResultSummary,
+  incumbent: GameResultSummary | undefined,
+): boolean {
+  if (!incumbent) return true;
+  if (candidate.won !== incumbent.won) return candidate.won;
+  if (candidate.score !== incumbent.score) return candidate.score > incumbent.score;
+  if (candidate.durationMs !== incumbent.durationMs) {
+    return candidate.durationMs < incumbent.durationMs;
+  }
+  return false; // full tie — keep the existing best
+}
+
+/** Validate one stored summary from untrusted localStorage. */
+function isValidStoredSummary(gameId: string, raw: unknown): raw is GameResultSummary {
+  if (!(gameId in GAME_REGISTRY)) return false;               // unknown GameId
+  if (typeof raw !== 'object' || raw === null) return false;
+  const r = raw as Record<string, unknown>;
+  return (
+    r.resultVersion === 1 &&
+    r.gameId === gameId &&
+    typeof r.won === 'boolean' &&
+    typeof r.score === 'number' && Number.isFinite(r.score) &&
+    r.score >= 0 && r.score <= 10_000 &&
+    typeof r.durationMs === 'number' && Number.isFinite(r.durationMs) && r.durationMs >= 0 &&
+    typeof r.difficultyBand === 'number' && Number.isInteger(r.difficultyBand) &&
+    r.difficultyBand >= 0 && r.difficultyBand <= 4 &&
+    typeof r.completedAt === 'string'
+  );
+}
+
+/** Sanitize the whole stored record: malformed children are dropped
+ *  individually so one bad entry never poisons the others. */
+export function sanitizeStoredBestResults(raw: unknown): Record<string, GameResultSummary> {
+  const out: Record<string, GameResultSummary> = {};
+  if (typeof raw !== 'object' || raw === null) return out;
+  for (const [gameId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (isValidStoredSummary(gameId, value)) out[gameId] = value;
+  }
+  return out;
+}
+
+/** Hydrate tb_game_results_best. Untrusted input: any parse/shape
+ *  failure yields an empty record; the app never crashes on storage. */
+function loadBestResults(): Record<string, GameResultSummary> {
+  try {
+    const raw = localStorage.getItem(LS_GAME_RESULTS_BEST);
+    if (!raw) return {};
+    return sanitizeStoredBestResults(JSON.parse(raw));
+  } catch (_) {
+    return {};
+  }
+}
+
 // ================== STATE ==================
 
 const initialState: AppState = {
@@ -19,6 +101,7 @@ const initialState: AppState = {
   currentGame: null,
   lastEarnedGame: null,
   lastUnlocked: null,
+  gameResultsBest: loadBestResults(),
   ...loadState(),
 };
 
@@ -34,7 +117,8 @@ type Action =
   | { type: 'CLEAR_LAST_UNLOCKED' }
   | { type: 'SET_USER'; user: { name: string; email?: string } | null }
   | { type: 'RECORD_DATE'; id: string }
-  | { type: 'RESET_DEMO' };
+  | { type: 'RESET_DEMO' }
+  | { type: 'RECORD_GAME_RESULT'; result: GameResult };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -101,6 +185,8 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'RESET_DEMO':
+      // GAME.6 — the demo reset also clears personal bests: reset is
+      // expected to restore a clean local Trackside experience.
       return {
         ...state,
         unlocked: new Set(),
@@ -109,7 +195,24 @@ function reducer(state: AppState, action: Action): AppState {
         collectedDates: {},
         lastEarnedGame: null,
         lastUnlocked: null,
+        gameResultsBest: {},
       };
+
+    // GAME.6 — fold a sealed GameResult into the per-GameId personal
+    // bests. Idempotent: a result that does not beat the incumbent
+    // returns the SAME state object (no re-render, no persist write).
+    // No badge/XP/mastery side effects — parallel system by design.
+    case 'RECORD_GAME_RESULT': {
+      const gameId = action.result.gameId as GameId;
+      if (!(gameId in GAME_REGISTRY)) return state;
+      const candidate = toGameResultSummary(action.result);
+      const incumbent = state.gameResultsBest[gameId];
+      if (!isBetterResult(candidate, incumbent)) return state;
+      return {
+        ...state,
+        gameResultsBest: { ...state.gameResultsBest, [gameId]: candidate },
+      };
+    }
 
     default:
       return state;
@@ -127,6 +230,9 @@ interface AppContextValue {
   awardScanBadge: (id: string) => void;
   awardGameBadge: (id: string) => void;
   clearLastEarned: () => void;
+  /** GAME.6 — fold a sealed GameResult into per-GameId personal bests
+   *  (persisted). No badge/completion side effects. */
+  recordGameResult: (result: GameResult) => void;
   clearLastUnlocked: () => void;
   setUser: (user: { name: string; email?: string } | null) => void;
   recordDate: (id: string) => void;
@@ -204,6 +310,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveState(state);
   }, [state]);
 
+  // GAME.6 — persist personal bests on their own narrow boundary.
+  // The reducer returns the same record reference when a result does
+  // not improve a best, so no redundant writes occur.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_GAME_RESULTS_BEST, JSON.stringify(state.gameResultsBest));
+    } catch (_) { /* storage full or blocked */ }
+  }, [state.gameResultsBest]);
+
   const nav = useCallback((page: PageId) => {
     dispatch({ type: 'NAV', page });
     // Update URL hash for deep-linking.
@@ -247,6 +362,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setUser           = useCallback((user: { name: string } | null) => dispatch({ type: 'SET_USER', user }), []);
   const recordDate        = useCallback((id: string) => dispatch({ type: 'RECORD_DATE', id }), []);
   const resetDemo         = useCallback(() => dispatch({ type: 'RESET_DEMO' }), []);
+  const recordGameResult  = useCallback((result: GameResult) => dispatch({ type: 'RECORD_GAME_RESULT', result }), []);
 
   return (
     <AppContext.Provider value={{
@@ -262,6 +378,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setUser,
       recordDate,
       resetDemo,
+      recordGameResult,
       tales,
       regulars,
       nonAlc,
