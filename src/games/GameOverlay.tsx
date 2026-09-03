@@ -121,6 +121,135 @@ const DEFAULT_THEME: ShellTheme = {
   failEyebrow: 'THE CHALLENGE STANDS',
 };
 
+// ================== GAME.8B — modal keyboard containment ==================
+// GameOverlay always rendered dialog semantics but never contained
+// keyboard focus: background PLAY/REPLAY buttons stayed Tab-reachable
+// (the GAME.6B stale-session finding). This block makes the overlay a
+// real keyboard modal: focus enters on open, Tab/Shift+Tab cycle
+// inside, Escape maps to the SAME onClose as the always-present EXIT
+// control (every phase already permits explicit closure, and closing
+// never awards, seals, or emits anything), and focus returns to the
+// launching element on genuine unmount only — never on retry or phase
+// changes. Only Tab/Shift+Tab/Escape are intercepted; gameplay,
+// scoring, mastery, badges, sessions, and persistence are untouched.
+
+/** Visible, enabled, focusable descendants — queried at KEYDOWN time
+ *  (never snapshotted) because the overlay's controls change per phase
+ *  and per runtime mount. */
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+function getFocusableIn(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => !el.closest('[aria-hidden="true"]') && el.getClientRects().length > 0,
+  );
+}
+
+/** Move focus to the current phase's primary control
+ *  ([data-modal-focus]), else the first focusable, else the dialog
+ *  container itself (tabIndex=-1). */
+function focusModalEntry(root: HTMLElement): void {
+  const marked = root.querySelector<HTMLElement>('[data-modal-focus]');
+  const target =
+    (marked && !marked.hasAttribute('disabled') && marked.getClientRects().length > 0
+      ? marked
+      : null) ??
+    getFocusableIn(root)[0] ??
+    root;
+  try { target.focus(); } catch (_) { /* focus is best-effort */ }
+}
+
+/** One dialog-focus boundary per overlay instance: launcher capture at
+ *  first render, capture-phase Tab trap + Escape→onClose while
+ *  mounted, launcher restore on unmount. No global state, no storage,
+ *  no third-party trap. */
+function useModalDialogFocus(onClose: () => void) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // Launcher capture happens at FIRST RENDER (a pure DOM read), before
+  // any effect can move focus into the dialog — effects of children
+  // run before this component's own, so an effect-time capture would
+  // read the dialog itself, not the button that opened it.
+  const launcherRef = useRef<HTMLElement | null | undefined>(undefined);
+  if (launcherRef.current === undefined) {
+    launcherRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+
+  useEffect(() => {
+    // Initial focus for render paths with no inner phase manager (the
+    // fail-closed panel); the standard path has already focused its
+    // intro primary by the time this parent effect runs, so this is a
+    // no-op there.
+    const root = rootRef.current;
+    if (
+      root &&
+      !(document.activeElement instanceof HTMLElement && root.contains(document.activeElement))
+    ) {
+      focusModalEntry(root);
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const dialog = rootRef.current;
+      if (!dialog) return;
+      if (e.key === 'Escape') {
+        // Same contract as the always-present EXIT control: close in
+        // every phase; never awards a badge, never seals a result.
+        e.preventDefault();
+        e.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const focusables = getFocusableIn(dialog);
+      const active = document.activeElement;
+      if (focusables.length === 0) {
+        e.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const inside = active instanceof HTMLElement && dialog.contains(active);
+      if (!inside) {
+        // Focus escaped (or was lost to <body>) — pull it back in.
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+      }
+      if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && (active === first || active === dialog)) {
+        e.preventDefault();
+        last.focus();
+      }
+    };
+    // Capture phase: trapped Tabs never reach page-level handlers or
+    // background controls.
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      // Focus restoration — genuine unmount only (retries and phase
+      // changes never tear this effect down).
+      const launcher = launcherRef.current;
+      if (launcher && launcher.isConnected && !launcher.hasAttribute('disabled')) {
+        try { launcher.focus(); } catch (_) { /* ignore */ }
+      }
+    };
+  }, []);
+
+  return rootRef;
+}
+
 interface GameOverlayProps {
   /** PUBLIC-v7.4B.GAME.4 — the registry GameDefinition is now the
    *  launch authority (identity, title, type, runtime loader, scoring,
@@ -151,6 +280,10 @@ interface GameOverlayProps {
 }
 
 export function GameOverlay(props: GameOverlayProps) {
+  // GAME.8B — one keyboard-modal boundary per overlay instance,
+  // covering BOTH render paths below (the hook runs unconditionally;
+  // only the ref target differs).
+  const rootRef = useModalDialogFocus(props.onClose);
   // The legacy config remains the copy/quiz/content bridge for the
   // active runtimes (GAME.4 §10). Every registered game carries one;
   // a definition without it fails CLOSED here (readable panel, no
@@ -159,19 +292,19 @@ export function GameOverlay(props: GameOverlayProps) {
   if (!config) {
     return (
       <div id="game-overlay" className="active" role="dialog" aria-modal="true"
-        aria-label={props.definition.title}>
+        aria-label={props.definition.title} ref={rootRef} tabIndex={-1}>
         <div className="game-canvas-wrap">
           <p className="game-instructions">
             This challenge couldn't be prepared. Please try again later.
           </p>
-          <button type="button" className="game-start-btn" onClick={props.onClose}>
+          <button type="button" className="game-start-btn" onClick={props.onClose} data-modal-focus>
             CLOSE
           </button>
         </div>
       </div>
     );
   }
-  return <GameOverlayInner {...props} config={config} />;
+  return <GameOverlayInner {...props} config={config} rootRef={rootRef} />;
 }
 
 function GameOverlayInner({
@@ -184,7 +317,11 @@ function GameOverlayInner({
   successBadgeTitle,
   guestId,
   onResult,
-}: GameOverlayProps & { config: NonNullable<GameDefinition['legacyConfig']> }) {
+  rootRef,
+}: GameOverlayProps & {
+  config: NonNullable<GameDefinition['legacyConfig']>;
+  rootRef: React.RefObject<HTMLDivElement>;
+}) {
   const [phase, setPhase] = useState<GamePhase>('intro');
 
   // ── PUBLIC-v7.4B.GAME.4 — lazy runtime loading state machine ──
@@ -512,6 +649,7 @@ function GameOverlayInner({
             type="button"
             className="game-start-btn"
             onClick={handleBegin}
+            data-modal-focus
           >
             {alreadyEarned ? 'PLAY AGAIN' : 'BEGIN'}
           </button>
@@ -539,6 +677,7 @@ function GameOverlayInner({
             type="button"
             className="game-start-btn"
             onClick={exhausted ? () => window.location.reload() : loadRuntime}
+            data-modal-focus
           >
             {exhausted ? 'RELOAD PAGE' : 'TRY AGAIN'}
           </button>
@@ -613,6 +752,7 @@ function GameOverlayInner({
                 type="button"
                 className="game-quiz-retry"
                 onClick={retryGame}
+                data-modal-focus
               >
                 RETRY GAME
               </button>
@@ -661,7 +801,7 @@ function GameOverlayInner({
       <h3 className="game-success-title">{config.successTitle}</h3>
       <p className="game-success-msg">{config.successMsg}</p>
       <div className="game-success-btns">
-        <button type="button" className="game-start-btn" onClick={onClose}>
+        <button type="button" className="game-start-btn" onClick={onClose} data-modal-focus>
           CONTINUE TO TALE
         </button>
       </div>
@@ -696,7 +836,7 @@ function GameOverlayInner({
         <h3 className="game-fail-title">NOT QUITE</h3>
         <p className="game-fail-msg">{failMsg}</p>
         <div className="game-success-btns">
-          <button type="button" className="game-start-btn" onClick={retryGame}>
+          <button type="button" className="game-start-btn" onClick={retryGame} data-modal-focus>
             TRY AGAIN
           </button>
           <button type="button" className="game-success-story-btn" onClick={onClose}>
@@ -713,6 +853,28 @@ function GameOverlayInner({
   // and restored after Exit/close, so leaving the game returns the
   // reader exactly where they were. Game logic is untouched — this
   // effect only locks/unlocks the background document.
+  // GAME.8B — keep keyboard context inside the dialog across phase
+  // transitions (BEGIN unmounts, fail/success panels swap in, the
+  // lazy runtime mounts). Two postures, both firing once per
+  // transition (deps), never per render:
+  //   terminal phases (success/fail/quiz) — the panel content is
+  //     wholly replaced, so focus MOVES to the new primary CTA even
+  //     if the always-present EXIT still held a valid focus;
+  //   intro/playing/loading — gentle: only recover focus that was
+  //     LOST (unmounted control → body), never steal a control the
+  //     user deliberately reached (e.g. mid-game tabbing).
+  // Unmount restoration is the hook's job, not this effect's.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const terminal = phase === 'success' || phase === 'fail' || phase === 'quiz';
+    if (!terminal) {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && root.contains(active)) return;
+    }
+    focusModalEntry(root);
+  }, [phase, runtimeLoad, rootRef]);
+
   useEffect(() => {
     const savedScrollY = window.scrollY;
     const prevOverflow = document.body.style.overflow;
@@ -734,10 +896,16 @@ function GameOverlayInner({
       className="active"
       role="dialog"
       aria-modal="true"
-      aria-label={definition.title}
+      // GAME.8B — the dialog is named by its real visible title
+      // heading (preferred over aria-label); tabIndex=-1 lets the
+      // container itself take focus in states with no actionable
+      // control, without entering the Tab order.
+      aria-labelledby="game-overlay-title"
+      ref={rootRef}
+      tabIndex={-1}
     >
       <div className="game-header">
-        <h2 className="game-title">{definition.title}</h2>
+        <h2 className="game-title" id="game-overlay-title">{definition.title}</h2>
         <button
           type="button"
           className="game-close"
