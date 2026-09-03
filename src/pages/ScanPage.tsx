@@ -7,17 +7,20 @@ import { USE_REMOTE_QR_VALIDATION } from '../services/supabaseClient';
 import { logEvent, flushEvents } from '../services/eventLogger';
 import { BADGE_KEY_SCAN, Tale } from '../app/types';
 
-// ================== SCAN PAGE (v6.4 — Structured Design Pass) ==================
-// Visual rewrite to match the v6.0 reference. Scan / unlock / camera lifecycle
-// logic is preserved verbatim — only markup + classes were brought in line
-// with the design system.
+// ================== SCAN — the archive gate ==================
+// PUBLIC-v7.4B.P.28g.8 — presentation/structural refinement of the Scan
+// page as the entry point of the family (Tales = archive, Tale Detail =
+// opened dossier, Passport = travel document, Scan = the gate where a
+// ticket is validated). Scan / unlock / camera lifecycle logic is
+// preserved verbatim — only markup and classes changed.
 //
-// Hard constraints honored:
+// Hard constraints honored (unchanged from v6.4/P.13b):
 //   • Html5Qrcode mounting target #qr-reader unchanged.
-//   • parseQRCode + handleDemoUnlock contract (unlockTale + awardScanBadge +
-//     navToTale) unchanged.
-//   • Featured Tales rows route through the same handleDemoUnlock as a real
-//     scan, so badge keys and unlock paths are identical.
+//   • parseQRCode + handleDemoUnlock contract (unlockTale + awardScanBadge
+//     + navToTale) unchanged.
+//   • Featured Tales rows route through the same handleDemoUnlock as a
+//     real scan in demo mode, so badge keys and unlock paths are
+//     identical; in remote mode they preview (navigate only).
 //   • startScanner / stopScanner mount/unmount lifecycle preserved.
 //
 // PUBLIC-v7.4B.P.13b: server-authoritative QR validation.
@@ -31,98 +34,69 @@ import { BADGE_KEY_SCAN, Tale } from '../app/types';
 //     baked-in ids) runs only when LOCAL_DEMO_QR_ALLOWED (dev build or
 //     fully offline demo build; see qrValidation.ts). Ambiguous
 //     production configuration fails closed.
-//   • The Featured-Tales rows are tap-to-unlock only in the demo mode;
-//     in remote mode they navigate to the Tale (locked view) instead —
-//     tapping a list row is not proof of a scan.
-//   • The v6.6/v6.7 HMAC receipt capture is gone: the hardened
-//     validate-qr returns only { valid, taleSlug } and the log-events
-//     receipt pipeline was never deployed.
 //
 // ADMIN-v6.8C: fire-and-forget event logging for the true scan/unlock +
-// scan-badge path only. Game events stay deferred to v6.8D; passport /
-// story pageviews remain out of scope per the v6.8 plan.
-//   • Logging is OPT-IN per call. handleDemoUnlock takes an optional
-//     opts.logScanEvent flag that defaults false. Only the real-scan
-//     path in processCode passes { logScanEvent: true }. Featured Tale
-//     row taps unlock exactly as before but emit NO events — Featured
-//     taps are not scans and must not pollute future direct/deep-link
-//     analytics buckets.
-//   • All logEvent calls run AFTER the local unlock dispatch and the
-//     scan-badge award have already committed. Logging never blocks
-//     unlockTale, awardScanBadge, or navToTale.
-//   • With USE_REMOTE_EVENTS off, every logEvent call is a no-op and
-//     the call sites are inert. Same posture as the v6.7 receipt hook.
-//   • Receipt attachment is best-effort: validateQrRemote's promise
-//     races the unlock dispatch, so the receipt is usually absent at
-//     logEvent time on the first scan. The 250ms debounce inside
-//     eventLogger gives it a chance to land; when it doesn't, the
-//     server still accepts the row with qr_code_id=NULL.
-//   • We do NOT clear the receipt store after flush — eventLogger's
-//     fire-and-forget API doesn't surface per-event success, and the
-//     store is already single-slot with a 5-minute TTL. Deferred to
-//     ADMIN-v6.8E if it turns out to matter in practice.
+// scan-badge path only (opts.logScanEvent, defaults false). Featured
+// taps emit NO events. All logEvent calls run AFTER the local unlock
+// dispatch and scan-badge award have committed; logging never blocks
+// unlockTale, awardScanBadge, or navToTale.
 
 declare const Html5Qrcode: unknown;
 
 const QR_READER_ID = 'qr-reader';
 
-// ---- Scanner frame (camera area, reticle, plaques) -------------------------
-interface ScannerFrameProps {
+// ---- The validation window (camera area, reticle, plates) ------------------
+interface ScannerGateProps {
   scanning: boolean;
   scannerError: boolean;
 }
-function ScannerFrame({ scanning, scannerError }: ScannerFrameProps) {
+function ScannerGate({ scanning, scannerError }: ScannerGateProps) {
   const status = scannerError
     ? 'CAMERA UNAVAILABLE'
     : scanning
       ? 'LIVE · CAMERA'
       : 'CAMERA READY';
-  const dotMod = scannerError ? ' ts-scan-plaque__dot--err' : '';
   return (
-    <div className="ts-scan-frame">
-      {/* Outer brass corner ornaments */}
-      <span className="ts-scan-frame__ornament ts-scan-frame__ornament--tl" aria-hidden="true" />
-      <span className="ts-scan-frame__ornament ts-scan-frame__ornament--tr" aria-hidden="true" />
-      <span className="ts-scan-frame__ornament ts-scan-frame__ornament--bl" aria-hidden="true" />
-      <span className="ts-scan-frame__ornament ts-scan-frame__ornament--br" aria-hidden="true" />
-
-      {/* Top floating plaque — CAMERA READY */}
-      <div className="ts-scan-plaque ts-scan-plaque--top">
-        <span className={`ts-scan-plaque__dot${dotMod}`} aria-hidden="true" />
+    <div className="scan-gate">
+      {/* top status plate */}
+      <div className="scan-gate-plate">
+        <span
+          className={`scan-gate-plate-dot${scannerError ? ' scan-gate-plate-dot--err' : ''}${scanning && !scannerError ? ' scan-gate-plate-dot--live' : ''}`}
+          aria-hidden="true"
+        />
         {status}
       </div>
 
-      {/* Camera viewport — Html5Qrcode injects video into #qr-reader */}
-      <div className="ts-scan-frame__viewport">
+      {/* inspection window — Html5Qrcode injects video into #qr-reader */}
+      <div className="scan-gate-port">
         <div id={QR_READER_ID} />
 
-        {/* Idle placeholder: stylized can on warm taproom-glow background */}
+        {/* idle emblem — typographic can, no camera implied */}
         {!scanning && (
-          <div className="ts-scan-can" aria-hidden="true">
-            <div className="ts-scan-can__shape">
-              <div className="ts-scan-can__mark">
-                TRACKSIDE<br />TALES
-              </div>
+          <div className="scan-gate-emblem" aria-hidden="true">
+            <div className="scan-gate-emblem-can">
+              <span className="scan-gate-emblem-mark">TRACKSIDE<br />TALES</span>
             </div>
-            <div className="ts-scan-can__name">EST. 2026</div>
+            <span className="scan-gate-emblem-tag">THE CAN IS THE TICKET</span>
           </div>
         )}
 
-        {/* Reticle corner brackets */}
-        <div className="ts-scan-reticle" aria-hidden="true">
-          <span className="ts-scan-reticle__corner ts-scan-reticle__corner--tl" />
-          <span className="ts-scan-reticle__corner ts-scan-reticle__corner--tr" />
-          <span className="ts-scan-reticle__corner ts-scan-reticle__corner--bl" />
-          <span className="ts-scan-reticle__corner ts-scan-reticle__corner--br" />
+        {/* reticle — ticket-punch corner brackets */}
+        <div className="scan-reticle" aria-hidden="true">
+          <span className="scan-reticle-corner scan-reticle-corner--tl" />
+          <span className="scan-reticle-corner scan-reticle-corner--tr" />
+          <span className="scan-reticle-corner scan-reticle-corner--bl" />
+          <span className="scan-reticle-corner scan-reticle-corner--br" />
         </div>
 
-        {/* Animated sweep line */}
-        <div className="ts-scan-sweep" aria-hidden="true" />
+        {/* sweep line */}
+        <div className={`scan-sweep${scanning ? ' scan-sweep--live' : ''}`} aria-hidden="true" />
       </div>
 
-      {/* Bottom floating plaque — SCAN TO UNLOCK */}
-      <div className="ts-scan-plaque ts-scan-plaque--bot">
-        ⊕ SCAN TO UNLOCK
+      {/* bottom plate */}
+      <div className="scan-gate-foot">
+        <span className="scan-gate-foot-glyph" aria-hidden="true" />
+        SCAN TO UNLOCK
       </div>
     </div>
   );
@@ -141,7 +115,7 @@ function FeaturedTaleRow({ tale, index, unlocked, onSelect }: FeaturedTaleRowPro
   return (
     <button
       type="button"
-      className={`ts-scan-row${unlocked ? ' ts-scan-row--unlocked' : ''}`}
+      className={`scan-row${unlocked ? ' scan-row--unlocked' : ''}`}
       onClick={() => onSelect(tale.id)}
       aria-label={
         tale.person.name
@@ -149,36 +123,20 @@ function FeaturedTaleRow({ tale, index, unlocked, onSelect }: FeaturedTaleRowPro
           : `${actionWord} ${tale.name}`
       }
     >
-      <span className="ts-scan-row__num" aria-hidden="true">{index + 1}</span>
-      <span className="ts-scan-row__title">
-        <strong>{tale.name}</strong>{' '}
-        <span className="ts-scan-row__title-sub">— {tale.person.name}</span>
+      <span className="scan-row-num" aria-hidden="true">{index + 1}</span>
+      <span className="scan-row-name">
+        <strong>{tale.name}</strong>
+        <span className="scan-row-sub"> — {tale.person.name}</span>
       </span>
-      <span className="ts-scan-row__arrow" aria-hidden="true">→</span>
+      {unlocked && <span className="scan-row-state" aria-hidden="true">UNLOCKED</span>}
+      <span className="scan-row-arrow" aria-hidden="true">→</span>
     </button>
-  );
-}
-
-// ---- Can't-scan-right-now fallback panel -----------------------------------
-function ScanFallbackPanel() {
-  return (
-    <aside className="ts-scan-fallback" aria-label="Manual preview">
-      <div className="ts-scan-fallback__seal" aria-hidden="true">
-        <span className="ts-scan-fallback__seal-glyph">◈</span>
-        TRACKSIDE<br />PREVIEW<br />ANYTIME
-      </div>
-      <div className="ts-scan-fallback__body">
-        <div className="ts-scan-fallback__title">CAN'T SCAN RIGHT NOW?</div>
-        <div className="ts-scan-fallback__copy">Select a Tale to preview.</div>
-      </div>
-      <span className="ts-scan-fallback__watermark" aria-hidden="true">◈</span>
-    </aside>
   );
 }
 
 // ================== SCAN PAGE ROOT ==================
 export function ScanPage() {
-  const { state, tales, guestId, unlockTale, awardScanBadge, navToTale } = useApp();
+  const { state, tales, guestId, unlockTale, awardScanBadge, navToTale, nav } = useApp();
   const [scanning, setScanning]     = useState(false);
   const [scannerError, setScanErr]  = useState(false);
   const [scanTitle, setScanTitle]   = useState('POINT AT A TRACKSIDE CAN');
@@ -190,16 +148,11 @@ export function ScanPage() {
   // ADMIN-v6.8C — analytics is opt-IN per call. The default branch
   // (Featured Tale row taps, future non-scan callers) emits NO events.
   // Only the real-scan path in processCode opts in via
-  // { logScanEvent: true }. This keeps the v6.8C analytics surface
-  // strictly limited to true scan/unlock + scan-badge — Featured taps
-  // are not scans and must not pollute future direct/deep-link
-  // analytics buckets.
-  //
-  // Visible behavior is unchanged in both branches: unlock dispatch +
-  // (conditional) scan-badge award + navigation happen exactly as
-  // before, in the same order, on the same tick. Logging always runs
-  // AFTER navigation so a slow logEvent / receipt read can never delay
-  // the unlock paint.
+  // { logScanEvent: true }. Visible behavior is unchanged in both
+  // branches: unlock dispatch + (conditional) scan-badge award +
+  // navigation happen exactly as before, in the same order, on the
+  // same tick. Logging always runs AFTER navigation so a slow
+  // logEvent / receipt read can never delay the unlock paint.
   interface UnlockOpts { logScanEvent?: boolean }
   const handleDemoUnlock = useCallback((
     taleId: string,
@@ -213,16 +166,11 @@ export function ScanPage() {
     navToTale(tale);
 
     // ---- v6.8C analytics: opt-in, fire-and-forget. ----
-    // Featured taps fall through this block entirely — no logEvent,
-    // no flushEvents, no receipt read. logEvent is itself a no-op when
-    // USE_REMOTE_EVENTS is off, so even on the scan path these calls
-    // are completely inert in default builds.
+    // Featured taps fall through this block entirely. logEvent is a
+    // no-op when USE_REMOTE_EVENTS is off, so even on the scan path
+    // these calls are completely inert in default builds.
     if (!opts.logScanEvent) return;
 
-    // P.13b: no receipt attachment — the hardened validate-qr contract
-    // carries no receipt, and the log-events pipeline that consumed
-    // one was never deployed. logEvent remains a no-op unless
-    // USE_REMOTE_EVENTS is enabled.
     logEvent({
       type:     'tale_unlocked',
       taleSlug: taleId,
@@ -232,8 +180,7 @@ export function ScanPage() {
     // Award badge_awarded only when the scan badge actually granted
     // for the first time on this device. Mirrors the awardScanBadge
     // gate above so we don't double-count on re-scans of an already
-    // unlocked tale. badgeKey uses the same BADGE_KEY_SCAN(id) shape
-    // the rest of the app holds in localStorage / state.
+    // unlocked tale.
     if (!wasUnlocked) {
       logEvent({
         type:     'badge_awarded',
@@ -243,10 +190,8 @@ export function ScanPage() {
       });
     }
 
-    // Nudge the queue toward the network. flushEvents itself is a
-    // no-op when the flag is off / no guestId / nothing queued, and
-    // it never throws. The await-less invocation keeps unlock paint
-    // priority intact.
+    // Nudge the queue toward the network. flushEvents is a no-op when
+    // the flag is off / no guestId / nothing queued, and never throws.
     void flushEvents(guestId);
   }, [tales, state.unlocked, unlockTale, awardScanBadge, navToTale, guestId]);
 
@@ -276,17 +221,15 @@ export function ScanPage() {
         const result = await validateQrRemote(trimmed);
         if (result.status === 'valid') {
           // P.15a: the validator returns the canonical PRODUCTION
-          // slug; curated Tales use renamed app ids (packer-pilsner →
-          // packer-pils, wooden-match-amber → wooden-match). Translate
-          // once and use the app id for lookup, unlock persistence,
-          // and navigation; generic slugs pass through unchanged.
+          // slug; curated Tales use renamed app ids. Translate once
+          // and use the app id for lookup, unlock persistence, and
+          // navigation; generic slugs pass through unchanged.
           const appTaleId = resolveScannedTaleAppId(result.taleSlug);
           const tale = tales.find((t) => t.id === appTaleId);
           if (!tale) {
-            // Server-valid, but the Tale isn't in the loaded content
-            // (e.g. remote Tales fetch failed this session). Fail
-            // closed rather than persist an unlock for an id the app
-            // can't render.
+            // Server-valid, but the Tale isn't in the loaded content.
+            // Fail closed rather than persist an unlock for an id the
+            // app can't render.
             setScanTitle('TALE NOT AVAILABLE');
             setScanSub('This code is valid, but its Tale could not be loaded right now. Please try again.');
             return;
@@ -378,78 +321,102 @@ export function ScanPage() {
   }, [state.page]);
 
   return (
-    <div className="page active px-screen ts-scan-screen" id="page-scan">
+    <div className="page active px-screen scan-page" id="page-scan">
 
-      {/* ============== 1. SCANNER FRAME ============== */}
-      <ScannerFrame scanning={scanning} scannerError={scannerError} />
+      {/* ── Head — the archive gate ── */}
+      <header className="scan-head">
+        <span className="scan-eyebrow">Trackside Tales · Archive Gate</span>
+        <h1 className="scan-heading">SCAN A<br />TRACKSIDE TALE</h1>
+        <hr className="scan-rule" aria-hidden="true" />
+      </header>
 
-      {/* ============== 2. INSTRUCTION BLOCK ============== */}
-      <div className="ts-scan-instructions">
-        <h2 className="ts-scan-instructions__title">
-          {scanTitle}
-        </h2>
-        <p className="ts-scan-instructions__copy">
-          <span className="ts-scan-instructions__star" aria-hidden="true">✦</span>
-          {scanSub}
-          <span className="ts-scan-instructions__star" aria-hidden="true">✦</span>
-        </p>
-      </div>
+      <div className="scan-wrap">
 
-      {/* ============== 3. FEATURED TALES ============== */}
-      {/* P.13b: tap-to-UNLOCK is a demo affordance and exists only in
-         the bounded demo mode (LOCAL_DEMO_QR_ALLOWED). In production
-         (remote-authoritative) mode, tapping a row navigates to the
-         Tale instead — its locked page renders unless a real scan has
-         unlocked it. A list tap is not proof of a scan. */}
-      <div
-        className="ts-scan-featured"
-        aria-label={LOCAL_DEMO_QR_ALLOWED
-          ? 'Featured Tales — tap to unlock'
-          : 'Featured Tales — tap to preview'}
-      >
-        <div className="ts-scan-featured__header">
-          <span className="ts-scan-featured__rule" aria-hidden="true" />
-          <span className="ts-scan-featured__label">
-            {LOCAL_DEMO_QR_ALLOWED
-              ? 'FEATURED TALES · TAP TO UNLOCK'
-              : 'FEATURED TALES · TAP TO PREVIEW'}
-          </span>
-          <span className="ts-scan-featured__rule" aria-hidden="true" />
+        {/* ── The validation window ── */}
+        <ScannerGate scanning={scanning} scannerError={scannerError} />
+
+        {/* ── Live readout — same state-driven messages as before ── */}
+        <div className="scan-readout" role="status">
+          <h2 className="scan-readout-title">{scanTitle}</h2>
+          <p className="scan-readout-sub">{scanSub}</p>
         </div>
-        <div className="ts-scan-featured__rows">
-          {tales.map((tale, idx) => (
-            <FeaturedTaleRow
-              key={tale.id}
-              tale={tale}
-              index={idx}
-              unlocked={state.unlocked.has(tale.id)}
-              onSelect={LOCAL_DEMO_QR_ALLOWED ? handleDemoUnlock : previewTale}
-            />
-          ))}
+
+        {/* ── The loop, presentation-only ── */}
+        <div className="scan-flow" aria-hidden="true">
+          SCAN <span>→</span> STORY <span>→</span> CHALLENGE <span>→</span> PASSPORT
         </div>
-      </div>
 
-      {/* ============== 4. CAN'T SCAN PANEL ============== */}
-      <ScanFallbackPanel />
-
-      {/* ============== 5. CAMERA ERROR (conditional) ============== */}
-      {scannerError && (
-        <div className="ts-scan-error" role="alert">
-          <div className="ts-scan-error__title">CAMERA UNAVAILABLE</div>
-          <div className="ts-scan-error__copy">
-            Camera access is unavailable. Choose a Featured Tale above to continue,
-            or grant camera access and retry.
+        {/* ── Camera error (conditional) ── */}
+        {scannerError && (
+          <div className="scan-error" role="alert">
+            <div className="scan-error-title">CAMERA UNAVAILABLE</div>
+            <div className="scan-error-copy">
+              Camera access is unavailable. Choose a Featured Tale above to continue,
+              or grant camera access and retry.
+            </div>
+            <button
+              type="button"
+              className="scan-error-retry"
+              onClick={() => { setScanErr(false); startScanner(); }}
+            >
+              TRY CAMERA AGAIN
+            </button>
           </div>
-          <button
-            type="button"
-            className="ts-scan-error__retry"
-            onClick={() => { setScanErr(false); startScanner(); }}
-          >
-            TRY CAMERA AGAIN
-          </button>
-        </div>
-      )}
+        )}
 
+        {/* ── Featured Tales ── */}
+        {/* P.13b: tap-to-UNLOCK is a demo affordance and exists only in
+           the bounded demo mode (LOCAL_DEMO_QR_ALLOWED). In production
+           (remote-authoritative) mode, tapping a row navigates to the
+           Tale instead — its locked page renders unless a real scan has
+           unlocked it. A list tap is not proof of a scan. */}
+        <section
+          className="scan-featured"
+          aria-label={LOCAL_DEMO_QR_ALLOWED
+            ? 'Featured Tales — tap to unlock'
+            : 'Featured Tales — tap to preview'}
+        >
+          <div className="scan-featured-head">
+            <span className="scan-heading-label">
+              {LOCAL_DEMO_QR_ALLOWED
+                ? 'Featured Tales · Tap to Unlock'
+                : 'Featured Tales · Tap to Preview'}
+            </span>
+            <span className="scan-featured-note" aria-hidden="true">
+              CAN'T SCAN RIGHT NOW?
+            </span>
+          </div>
+          <div className="scan-featured-rows">
+            {tales.map((tale, idx) => (
+              <FeaturedTaleRow
+                key={tale.id}
+                tale={tale}
+                index={idx}
+                unlocked={state.unlocked.has(tale.id)}
+                onSelect={LOCAL_DEMO_QR_ALLOWED ? handleDemoUnlock : previewTale}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Quiet index back into the collection ── */}
+        <section className="scan-next">
+          <button type="button" className="scan-next-link" onClick={() => nav('tales')}>
+            <span className="scan-next-glyph" aria-hidden="true" />
+            <span className="scan-next-title">THE TALE ARCHIVE</span>
+            <span className="scan-next-desc">Every Tale, collected and sealed.</span>
+            <span className="scan-next-arrow" aria-hidden="true">→</span>
+          </button>
+          <button type="button" className="scan-next-link" onClick={() => nav('passport')}>
+            <span className="scan-next-glyph" aria-hidden="true" />
+            <span className="scan-next-title">VIEW PASSPORT</span>
+            <span className="scan-next-desc">Your stamps so far.</span>
+            <span className="scan-next-arrow" aria-hidden="true">→</span>
+          </button>
+        </section>
+
+        <div className="scan-foot-space" />
+      </div>
     </div>
   );
 }
