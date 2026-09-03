@@ -20,6 +20,7 @@ import './styles/tales-page.css';    // P.28g.5 — polished Tales archive hub (
 import './styles/tale-detail-page.css'; // P.28g.6 — refined Tale dossier (tale-detail-*)
 import './styles/passport-page.css';    // P.28g.7 — refined Passport document (passport-*)
 import './styles/scan-page.css';        // P.28g.8 — refined Scan archive gate (scan-*)
+import './styles/menu-page.css';        // P.28g.9 — rebuilt Menu pour board (menu-*)
 
 // ================== MOUNT ==================
 console.log('[trackside] App version: 4.6.1 — Vite migration');
