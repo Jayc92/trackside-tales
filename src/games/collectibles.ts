@@ -131,6 +131,40 @@ export interface CollectibleOwnershipRecord {
   source: CollectibleAcquisitionSource;
 }
 
+// ── Presentation helpers (PUBLIC-v7.4B.GAME.9B) ─────────────────────────
+// Pure lookups shared by every surface that presents artifacts (Arcade,
+// Passport, future gallery) so no page hard-codes ids or duplicates the
+// game↔collectible mapping. Presentation reads OWNERSHIP TRUTH from
+// state.collectibles only — mastery/badges/PBs may gate WHERE an
+// artifact renders, never WHETHER it is owned.
+
+/** The one global (non-game-specific) artifact's id, exported so
+ *  surfaces reference the canonical constant instead of retyping it. */
+export const FIRST_TICKET_ID: CollectibleId = 'first-ticket';
+
+/** Subtle textual rarity labels (§8 — no colored rarity system). */
+export const COLLECTIBLE_RARITY_LABELS: Record<CollectibleRarity, string> = {
+  common: 'COMMON',
+  uncommon: 'UNCOMMON',
+  rare: 'RARE',
+  legendary: 'LEGENDARY',
+};
+
+export function getCollectibleDefinition(id: CollectibleId): CollectibleDefinition {
+  return COLLECTIBLE_REGISTRY[id];
+}
+
+/** The Engineer artifact mapped to one game (from the definitions'
+ *  source model — the single mapping authority), or undefined for a
+ *  game with no mastery artifact. */
+export function getEngineerCollectibleForGame(
+  gameId: GameId,
+): CollectibleDefinition | undefined {
+  return COLLECTIBLE_ORDER
+    .map((id) => COLLECTIBLE_REGISTRY[id])
+    .find((def) => def.source.kind === 'mastery' && def.source.gameId === gameId);
+}
+
 // ── Pure grant evaluation ───────────────────────────────────────────────
 /**
  * Which collectibles does this terminal result newly earn?

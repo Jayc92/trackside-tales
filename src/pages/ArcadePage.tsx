@@ -4,6 +4,12 @@ import { Tale } from '../app/types';
 import { GameOverlay } from '../games/GameOverlay';
 import { GameDefinition, getAllGameDefinitions } from '../games/registry';
 import { MASTERY_TIER_LABELS, MasteryTier } from '../games/mastery';
+import {
+  COLLECTIBLE_RARITY_LABELS,
+  FIRST_TICKET_ID,
+  getCollectibleDefinition,
+  getEngineerCollectibleForGame,
+} from '../games/collectibles';
 import { GameType } from '../games/gameConfigs';
 
 // ================== TRACKSIDE ARCADE — the games of the archive ==================
@@ -102,6 +108,12 @@ export function ArcadePage() {
     ? tales.find((t) => t.id === activeGame.taleId)
     : undefined;
 
+  // GAME.9B — global FIRST TICKET presentation: ownership truth comes
+  // ONLY from state.collectibles (never inferred from badges/mastery).
+  const firstTicket = state.collectibles[FIRST_TICKET_ID]
+    ? getCollectibleDefinition(FIRST_TICKET_ID)
+    : null;
+
   return (
     <div className="page active px-screen arcade-page" id="page-arcade">
 
@@ -123,6 +135,23 @@ export function ArcadePage() {
           <span className="arcade-summary-tick" aria-hidden="true" />
           <span className="arcade-summary-item"><b>{counts.sealed}</b> SEALED</span>
         </div>
+        {/* GAME.9B — the one GLOBAL artifact (not game-specific, so it
+            lives on the marquee, never on an arbitrary card). Rendered
+            only from real ownership truth (state.collectibles) — quiet
+            absence when unowned, no locked placeholder. */}
+        {firstTicket && (
+          <div
+            className="arcade-artifact-strip"
+            aria-label={`Archive artifact: ${firstTicket.name}, ${COLLECTIBLE_RARITY_LABELS[firstTicket.rarity]}`}
+          >
+            <span className="arcade-artifact-eyebrow">Archive Artifact</span>
+            <span className="arcade-artifact-name">{firstTicket.name}</span>
+            <span className="arcade-artifact-rarity">
+              {COLLECTIBLE_RARITY_LABELS[firstTicket.rarity]}
+            </span>
+            <span className="arcade-artifact-desc">{firstTicket.shortDescription}</span>
+          </div>
+        )}
       </header>
 
       <div className="arcade-wrap">
@@ -155,6 +184,20 @@ export function ArcadePage() {
               const masteryTier: MasteryTier | null =
                 cab === 'complete'
                   ? state.gameMastery[def.gameId]?.tier ?? 'bronze'
+                  : null;
+              // GAME.9B — the mapped Engineer artifact renders on its
+              // own COMPLETE card only, and ONLY from real ownership
+              // (state.collectibles) — a player may hold Engineer
+              // MASTERY without owning the artifact yet (G9A real-
+              // result acquisition), and an owned artifact stays
+              // durable even if mastery data were absent. Never
+              // inferred, never cross-game.
+              const engineerArtifact = getEngineerCollectibleForGame(def.gameId);
+              const ownedArtifact =
+                cab === 'complete' &&
+                engineerArtifact &&
+                state.collectibles[engineerArtifact.collectibleId]
+                  ? engineerArtifact
                   : null;
               return (
                 <article
@@ -208,6 +251,18 @@ export function ArcadePage() {
                             {masteryNextLine(def, masteryTier)}
                           </span>
                         </div>
+                      )}
+                      {ownedArtifact && (
+                        <p
+                          className="arcade-cab-artifact"
+                          aria-label={`Archive artifact: ${ownedArtifact.name}, ${COLLECTIBLE_RARITY_LABELS[ownedArtifact.rarity]}`}
+                        >
+                          <span className="arcade-cab-artifact-lbl">Collectible</span>
+                          <span className="arcade-cab-artifact-name">{ownedArtifact.name}</span>
+                          <span className="arcade-cab-artifact-rarity">
+                            {COLLECTIBLE_RARITY_LABELS[ownedArtifact.rarity]}
+                          </span>
+                        </p>
                       )}
                       <button
                         type="button"

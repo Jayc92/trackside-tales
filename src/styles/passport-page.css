@@ -434,6 +434,72 @@
    long ENGINEER'S MARK seal may wrap the row's flow naturally on
    narrow screens without touching the wells above. */
 
+/* ── GAME.9B — collectible artifacts ──────────────────────────────────
+   Owned archive artifacts only. Secondary to the mastery endorsement:
+   quiet stamped text lines in the document language. */
+
+/* the global FIRST TICKET strip above the summary */
+.passport-ticket-strip {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  margin: 0 0 0.9rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px dashed rgba(163, 128, 63, 0.4);
+  border-radius: 3px;
+  background: rgba(20, 16, 12, 0.45);
+}
+.passport-ticket-eyebrow {
+  font-family: var(--pp-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.24em;
+  color: var(--pp-ember);
+  text-transform: uppercase;
+}
+.passport-ticket-name {
+  font-family: var(--pp-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--pp-brass-hi);
+  text-transform: uppercase;
+}
+.passport-ticket-rarity,
+.passport-artifact-rarity {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid rgba(150, 128, 92, 0.4);
+  border-radius: 2px;
+  font-family: var(--pp-mono);
+  font-size: 0.48rem;
+  letter-spacing: 0.2em;
+  color: var(--pp-muted);
+  text-transform: uppercase;
+}
+
+/* the per-record Engineer artifact endorsement (below mastery) */
+.passport-artifact {
+  flex-basis: 100%;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.55rem;
+  margin-top: 0.45rem;
+}
+.passport-artifact-lbl {
+  font-family: var(--pp-mono);
+  font-size: 0.48rem;
+  letter-spacing: 0.24em;
+  color: var(--pp-muted);
+  text-transform: uppercase;
+}
+.passport-artifact-name {
+  font-family: var(--pp-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  color: var(--pp-brass-hi);
+  text-transform: uppercase;
+}
+
 /* fresh-badge celebration highlight (lastEarnedGame contract) */
 .passport-record--celebrate {
   animation: passport-celebrate 2.4s ease-out 1;

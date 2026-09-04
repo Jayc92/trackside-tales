@@ -322,6 +322,85 @@
 .arcade-mastery--engineer .arcade-mastery-next {
   color: var(--ar-brass-hi);
 }
+
+/* ── GAME.9B — collectible artifacts ──────────────────────────────────
+   Presentation of OWNED archive artifacts only (ownership truth =
+   state.collectibles). Deliberately SECONDARY to title/best/mastery:
+   small stamped labels in the same brass/ivory archive language — no
+   badge art, no rarity color system (rarity is a quiet text tag). */
+
+/* the global FIRST TICKET strip on the marquee */
+.arcade-artifact-strip {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.6rem;
+  max-width: 46ch;
+  margin: 0.85rem auto 0;
+  padding: 0.5rem 0.85rem;
+  border: 1px dashed rgba(163, 128, 63, 0.4);
+  border-radius: 3px;
+  background: rgba(13, 11, 9, 0.45);
+}
+.arcade-artifact-eyebrow {
+  font-family: var(--ar-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.24em;
+  color: var(--ar-ember);
+  text-transform: uppercase;
+}
+.arcade-artifact-name {
+  font-family: var(--ar-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: var(--ar-brass-hi);
+  text-transform: uppercase;
+}
+.arcade-artifact-rarity,
+.arcade-cab-artifact-rarity { /* shared quiet rarity tag shape */
+  padding: 0.1rem 0.4rem;
+  border: 1px solid rgba(150, 128, 92, 0.4);
+  border-radius: 2px;
+  font-family: var(--ar-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.2em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+.arcade-artifact-desc {
+  flex-basis: 100%;
+  font-family: var(--ar-serif);
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ar-body);
+}
+
+/* the per-cabinet Engineer artifact line (below mastery) */
+.arcade-cab-artifact {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  margin: 0.55rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(163, 128, 63, 0.22);
+}
+.arcade-cab-artifact-lbl {
+  font-family: var(--ar-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.24em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+.arcade-cab-artifact-name {
+  font-family: var(--ar-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  color: var(--ar-brass-hi);
+  text-transform: uppercase;
+}
 .arcade-action {
   display: inline-flex;
   align-items: center;

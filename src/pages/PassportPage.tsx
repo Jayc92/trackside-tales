@@ -4,6 +4,12 @@ import { LS_HOW_DISMISSED, LS_PASSPORT_PAGE } from '../app/types';
 import { TsIcon } from '../components/TsIcon';
 import { getGamesForTale } from '../games/registry';
 import { MASTERY_TIER_LABELS, resolveDisplayMasteryTier } from '../games/mastery';
+import {
+  COLLECTIBLE_RARITY_LABELS,
+  FIRST_TICKET_ID,
+  getCollectibleDefinition,
+  getEngineerCollectibleForGame,
+} from '../games/collectibles';
 
 // ================== PASSPORT — personal travel document ==================
 // PUBLIC-v7.4B.P.28g.7 — presentation/structural refinement of the
@@ -82,6 +88,11 @@ export function PassportPage() {
   const nickname = state.user?.name || 'Trackside Guest';
   const initial  = nickname.charAt(0).toUpperCase();
   const passId   = getPassportId(state.user ? state.user.name : null);
+
+  // GAME.9B — global artifact presentation (ownership truth only).
+  const firstTicket = state.collectibles[FIRST_TICKET_ID]
+    ? getCollectibleDefinition(FIRST_TICKET_ID)
+    : null;
 
   const talesUnlocked = state.unlocked.size;
   const stampsEarned  = state.scanBadges.size;
@@ -175,6 +186,23 @@ export function PassportPage() {
 
       <div className="passport-wrap">
 
+        {/* GAME.9B — global FIRST TICKET artifact strip. Ownership
+            truth only (state.collectibles); global because the ticket
+            is not game-specific. Quiet absence when unowned. Not a
+            stamp, not part of COMPLETE or rewards math. */}
+        {firstTicket && (
+          <div
+            className="passport-ticket-strip"
+            aria-label={`Archive artifact: ${firstTicket.name}, ${COLLECTIBLE_RARITY_LABELS[firstTicket.rarity]}`}
+          >
+            <span className="passport-ticket-eyebrow">Archive Artifact</span>
+            <span className="passport-ticket-name">{firstTicket.name}</span>
+            <span className="passport-ticket-rarity">
+              {COLLECTIBLE_RARITY_LABELS[firstTicket.rarity]}
+            </span>
+          </div>
+        )}
+
         {/* ── Collection summary — derived from current state only ── */}
         <div className="passport-summary" role="status">
           <span className="passport-summary-item">
@@ -226,6 +254,19 @@ export function PassportPage() {
                     complete,
                   )
                 : null;
+              // GAME.9B — mapped Engineer artifact endorsement: shown
+              // on COMPLETE records only, from ownership truth only
+              // (mastery ≠ ownership; an Engineer without the artifact
+              // shows mastery alone, and an owned artifact survives
+              // even without current mastery data). Gameless Tales
+              // stay quiet — no placeholder.
+              const engineerArtifact = gameDef
+                ? getEngineerCollectibleForGame(gameDef.gameId)
+                : undefined;
+              const ownedArtifact =
+                complete && engineerArtifact && state.collectibles[engineerArtifact.collectibleId]
+                  ? engineerArtifact
+                  : null;
               const status = !unlocked
                 ? 'Sealed — scan a Trackside can to open this page.'
                 : complete
@@ -261,6 +302,18 @@ export function PassportPage() {
                       <span className="passport-mastery-lbl">Mastery</span>
                       <span className="passport-mastery-seal">
                         {MASTERY_TIER_LABELS[masteryTier]}
+                      </span>
+                    </span>
+                  )}
+                  {ownedArtifact && (
+                    <span
+                      className="passport-artifact"
+                      aria-label={`Archive artifact: ${ownedArtifact.name}, ${COLLECTIBLE_RARITY_LABELS[ownedArtifact.rarity]}`}
+                    >
+                      <span className="passport-artifact-lbl">Archive Artifact</span>
+                      <span className="passport-artifact-name">{ownedArtifact.name}</span>
+                      <span className="passport-artifact-rarity">
+                        {COLLECTIBLE_RARITY_LABELS[ownedArtifact.rarity]}
                       </span>
                     </span>
                   )}
