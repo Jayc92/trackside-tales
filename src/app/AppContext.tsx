@@ -188,6 +188,10 @@ function isValidAcquisitionSource(raw: unknown): boolean {
       s.tier === 'engineer'
     );
   }
+  // GAME.9E — platform-wide provenance kinds (compact payloads).
+  if (s.kind === 'platform-completion') return true;
+  if (s.kind === 'platform-mastery') return s.minimumTier === 'gold';
+  if (s.kind === 'platform-engineer') return true;
   return false;
 }
 
@@ -387,12 +391,19 @@ function reducer(state: AppState, action: Action): AppState {
       const existingMastery = state.gameMastery[gameId];
       const masteryUpgraded = isTierUpgrade(earnedTier, existingMastery?.tier);
 
-      // 3 — collectibles (GAME.9A): evaluated against the CURRENT
-      // mastery truth AFTER this result (the upgraded tier when this
-      // run upgraded, else the held tier — so a legacy Engineer who
-      // replays with a valid win still earns the artifact). Grants
-      // only ever originate here, from a real result event — never
-      // from hydration.
+      // 3 — collectibles (GAME.9A/9E): evaluated against POST-RESULT
+      // truth. The mastery map below already carries this result's
+      // upgrade; the badge set (state.gameBadges) is already
+      // post-result because the production win path dispatches
+      // AWARD_GAME_BADGE before RECORD_GAME_RESULT within the same
+      // event batch, and React reduces queued actions in order — so
+      // the final missing badge/mastery CAN complete a cross-game
+      // artifact on this very run. Grants only ever originate here,
+      // from a real won result event — never from hydration.
+      const nextGameMastery =
+        masteryUpgraded && earnedTier !== null
+          ? { ...state.gameMastery, [gameId]: createMasteryRecord(definition, earnedTier) }
+          : state.gameMastery;
       const resultingMasteryTier =
         masteryUpgraded && earnedTier !== null
           ? earnedTier
@@ -400,6 +411,8 @@ function reducer(state: AppState, action: Action): AppState {
       const grants = evaluateCollectibleGrants({
         result: action.result,
         resultingMasteryTier,
+        resultingGameBadges: state.gameBadges,
+        resultingGameMastery: nextGameMastery,
         ownedCollectibles: state.collectibles,
       });
 
@@ -409,12 +422,10 @@ function reducer(state: AppState, action: Action): AppState {
         gameResultsBest: pbImproved
           ? { ...state.gameResultsBest, [gameId]: candidate }
           : state.gameResultsBest,
-        gameMastery: masteryUpgraded && earnedTier !== null
-          ? { ...state.gameMastery, [gameId]: createMasteryRecord(definition, earnedTier) }
-          : state.gameMastery,
-        // One shared acquiredAt per result event (a double grant from
-        // one run carries the same timestamp); applyCollectibleGrants
-        // returns the same reference when nothing is new.
+        gameMastery: nextGameMastery,
+        // One shared acquiredAt per result event (a multi-grant run
+        // carries the same timestamp); applyCollectibleGrants returns
+        // the same reference when nothing is new.
         collectibles: applyCollectibleGrants(
           state.collectibles, grants, action.result, new Date().toISOString(),
         ),

@@ -476,6 +476,20 @@
   text-transform: uppercase;
 }
 
+/* GAME.9E — each owned global artifact is one row of the strip. */
+.passport-ticket-row {
+  flex-basis: 100%;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.55rem;
+}
+.passport-ticket-row + .passport-ticket-row {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed rgba(163, 128, 63, 0.2);
+}
+
 /* the per-record Engineer artifact endorsement (below mastery) */
 .passport-artifact {
   flex-basis: 100%;

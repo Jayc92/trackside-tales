@@ -6,9 +6,8 @@ import { GameDefinition, getAllGameDefinitions } from '../games/registry';
 import { MASTERY_TIER_LABELS, MasteryTier } from '../games/mastery';
 import {
   COLLECTIBLE_RARITY_LABELS,
-  FIRST_TICKET_ID,
-  getCollectibleDefinition,
   getEngineerCollectibleForGame,
+  getGlobalCollectibles,
 } from '../games/collectibles';
 import { GameType } from '../games/gameConfigs';
 
@@ -108,11 +107,13 @@ export function ArcadePage() {
     ? tales.find((t) => t.id === activeGame.taleId)
     : undefined;
 
-  // GAME.9B — global FIRST TICKET presentation: ownership truth comes
-  // ONLY from state.collectibles (never inferred from badges/mastery).
-  const firstTicket = state.collectibles[FIRST_TICKET_ID]
-    ? getCollectibleDefinition(FIRST_TICKET_ID)
-    : null;
+  // GAME.9B/9E — global artifact presentation (FIRST TICKET plus the
+  // cross-game artifacts): ownership truth comes ONLY from
+  // state.collectibles (never inferred from badges/mastery). Owned
+  // globals render as rows of one strip in stable order; unowned ones
+  // are quiet absences — no locked slots, no counts.
+  const globalArtifacts = getGlobalCollectibles()
+    .filter((def) => state.collectibles[def.collectibleId]);
 
   return (
     <div className="page active px-screen arcade-page" id="page-arcade">
@@ -135,21 +136,29 @@ export function ArcadePage() {
           <span className="arcade-summary-tick" aria-hidden="true" />
           <span className="arcade-summary-item"><b>{counts.sealed}</b> SEALED</span>
         </div>
-        {/* GAME.9B — the one GLOBAL artifact (not game-specific, so it
-            lives on the marquee, never on an arbitrary card). Rendered
-            only from real ownership truth (state.collectibles) — quiet
-            absence when unowned, no locked placeholder. */}
-        {firstTicket && (
-          <div
-            className="arcade-artifact-strip"
-            aria-label={`Archive artifact: ${firstTicket.name}, ${COLLECTIBLE_RARITY_LABELS[firstTicket.rarity]}`}
-          >
-            <span className="arcade-artifact-eyebrow">Archive Artifact</span>
-            <span className="arcade-artifact-name">{firstTicket.name}</span>
-            <span className="arcade-artifact-rarity">
-              {COLLECTIBLE_RARITY_LABELS[firstTicket.rarity]}
+        {/* GAME.9B/9E — the GLOBAL artifacts (not game-specific, so
+            they live on the marquee, never on an arbitrary card).
+            Rendered only from real ownership truth
+            (state.collectibles) — quiet absence when unowned, no
+            locked placeholders. */}
+        {globalArtifacts.length > 0 && (
+          <div className="arcade-artifact-strip">
+            <span className="arcade-artifact-eyebrow">
+              {globalArtifacts.length > 1 ? 'Archive Artifacts' : 'Archive Artifact'}
             </span>
-            <span className="arcade-artifact-desc">{firstTicket.shortDescription}</span>
+            {globalArtifacts.map((def) => (
+              <span
+                key={def.collectibleId}
+                className="arcade-artifact-row"
+                aria-label={`Archive artifact: ${def.name}, ${COLLECTIBLE_RARITY_LABELS[def.rarity]}`}
+              >
+                <span className="arcade-artifact-name">{def.name}</span>
+                <span className="arcade-artifact-rarity">
+                  {COLLECTIBLE_RARITY_LABELS[def.rarity]}
+                </span>
+                <span className="arcade-artifact-desc">{def.shortDescription}</span>
+              </span>
+            ))}
           </div>
         )}
       </header>

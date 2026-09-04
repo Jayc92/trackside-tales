@@ -6,9 +6,8 @@ import { getGamesForTale } from '../games/registry';
 import { MASTERY_TIER_LABELS, resolveDisplayMasteryTier } from '../games/mastery';
 import {
   COLLECTIBLE_RARITY_LABELS,
-  FIRST_TICKET_ID,
-  getCollectibleDefinition,
   getEngineerCollectibleForGame,
+  getGlobalCollectibles,
 } from '../games/collectibles';
 
 // ================== PASSPORT — personal travel document ==================
@@ -89,10 +88,10 @@ export function PassportPage() {
   const initial  = nickname.charAt(0).toUpperCase();
   const passId   = getPassportId(state.user ? state.user.name : null);
 
-  // GAME.9B — global artifact presentation (ownership truth only).
-  const firstTicket = state.collectibles[FIRST_TICKET_ID]
-    ? getCollectibleDefinition(FIRST_TICKET_ID)
-    : null;
+  // GAME.9B/9E — global artifact presentation (ownership truth only):
+  // FIRST TICKET plus the cross-game artifacts, as rows of one strip.
+  const globalArtifacts = getGlobalCollectibles()
+    .filter((def) => state.collectibles[def.collectibleId]);
 
   const talesUnlocked = state.unlocked.size;
   const stampsEarned  = state.scanBadges.size;
@@ -186,20 +185,28 @@ export function PassportPage() {
 
       <div className="passport-wrap">
 
-        {/* GAME.9B — global FIRST TICKET artifact strip. Ownership
-            truth only (state.collectibles); global because the ticket
-            is not game-specific. Quiet absence when unowned. Not a
-            stamp, not part of COMPLETE or rewards math. */}
-        {firstTicket && (
-          <div
-            className="passport-ticket-strip"
-            aria-label={`Archive artifact: ${firstTicket.name}, ${COLLECTIBLE_RARITY_LABELS[firstTicket.rarity]}`}
-          >
-            <span className="passport-ticket-eyebrow">Archive Artifact</span>
-            <span className="passport-ticket-name">{firstTicket.name}</span>
-            <span className="passport-ticket-rarity">
-              {COLLECTIBLE_RARITY_LABELS[firstTicket.rarity]}
+        {/* GAME.9B/9E — global artifact strip (FIRST TICKET + cross-
+            game artifacts). Ownership truth only (state.collectibles);
+            global because none of these are game-specific. Quiet
+            absence when unowned. Not stamps, not part of COMPLETE or
+            rewards math. */}
+        {globalArtifacts.length > 0 && (
+          <div className="passport-ticket-strip">
+            <span className="passport-ticket-eyebrow">
+              {globalArtifacts.length > 1 ? 'Archive Artifacts' : 'Archive Artifact'}
             </span>
+            {globalArtifacts.map((def) => (
+              <span
+                key={def.collectibleId}
+                className="passport-ticket-row"
+                aria-label={`Archive artifact: ${def.name}, ${COLLECTIBLE_RARITY_LABELS[def.rarity]}`}
+              >
+                <span className="passport-ticket-name">{def.name}</span>
+                <span className="passport-ticket-rarity">
+                  {COLLECTIBLE_RARITY_LABELS[def.rarity]}
+                </span>
+              </span>
+            ))}
           </div>
         )}
 
