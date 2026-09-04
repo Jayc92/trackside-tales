@@ -105,8 +105,8 @@ export const GAME_EVENT_REGISTRY: Readonly<Record<string, GameEventDefinition>> 
   'inaugural-run': {
     eventId: 'inaugural-run',
     name: 'THE INAUGURAL RUN',
-    startsAt: '2026-09-14T00:00:00.000Z',
-    endsAt: '2026-09-28T00:00:00.000Z',
+    startsAt: '2026-09-04T22:00:00.000Z',
+    endsAt: '2026-09-18T22:00:00.000Z',
     gameIds: [
       'allen-town-grid',
       'packer-rail-line',
