@@ -30,12 +30,14 @@ import { GAME_REGISTRY } from './registry';
 
 // ── Stable event identity ───────────────────────────────────────────────
 // EventId is durable and migration-sensitive, independent of GameId,
-// TaleId, and CollectibleId. GAME.10A defines ONE architecture-
-// validation id so the type is inhabited and test fixtures are typed;
-// it is NEVER registered in the production registry below and never
-// appears in player-facing UI (this gate ships zero UI). Real seasonal
-// ids arrive with their own gates.
-export type EventId = 'framework-test-event';
+// TaleId, and CollectibleId. 'framework-test-event' is the GAME.10A
+// architecture-validation id: it is NEVER registered in the production
+// registry below and never appears in player-facing UI (test fixtures
+// only). Real event ids are added one per approved registration gate.
+export type EventId =
+  | 'framework-test-event'
+  // PUBLIC-v7.4B.GAME.10D — the first real Trackside event.
+  | 'inaugural-run';
 
 // ── Definition (data-oriented; no UI/reward/backend concerns) ───────────
 export interface GameEventDefinition {
@@ -86,12 +88,33 @@ export function isValidEventDefinition(def: GameEventDefinition): boolean {
   );
 }
 
-// ── The registry (G10A §10 approach A: EMPTY in production) ────────────
-// Zero production events exist. Test fixtures construct definitions
-// directly and inject them into the pure helpers — nothing here.
-// Registering a real event is a deliberate future gate, not a data
-// tweak.
-export const GAME_EVENT_REGISTRY: Readonly<Record<string, GameEventDefinition>> = {};
+// ── The registry ────────────────────────────────────────────────────────
+// Every entry here is a REAL production event, registered one per
+// approved gate (never a data tweak): each carries operator-approved
+// identity, name, explicit-UTC window, targets, and version. Test
+// fixtures still never live here — probes inject definitions through
+// the test-only seam below. Rollback for any event is removal of its
+// entry (+ union member): the board renders nothing again, base games
+// are untouched, and stored local progress for the removed id is
+// simply ignored at hydration as unknown.
+export const GAME_EVENT_REGISTRY: Readonly<Record<string, GameEventDefinition>> = {
+  // PUBLIC-v7.4B.GAME.10D — THE INAUGURAL RUN: the first real event.
+  // One successful result in each targeted game while active completes
+  // it. Completion is status only — no reward, no collectible, no
+  // physical item, no venue or location dependency.
+  'inaugural-run': {
+    eventId: 'inaugural-run',
+    name: 'THE INAUGURAL RUN',
+    startsAt: '2026-09-14T00:00:00.000Z',
+    endsAt: '2026-09-28T00:00:00.000Z',
+    gameIds: [
+      'allen-town-grid',
+      'packer-rail-line',
+      'station-preservation',
+    ],
+    version: 1,
+  },
+};
 
 // GAME.10B §7 — TEST-ONLY definition seam. The production registry
 // above stays EMPTY and getAllGameEvents() reads it by default; the
