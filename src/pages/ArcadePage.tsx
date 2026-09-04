@@ -174,8 +174,10 @@ export function ArcadePage() {
 
       <div className="arcade-wrap">
 
-        {/* GAME.10B — event notices (renders nothing with zero events) */}
-        <EventBoard models={eventModels} />
+        {/* GAME.10B — event notices (renders nothing with zero events).
+            GAME.11 — ownership truth feeds the optional textual reward
+            line; the board itself still never grants anything. */}
+        <EventBoard models={eventModels} ownedCollectibles={state.collectibles} />
 
         {/* ── The cabinets ── */}
         <section className="arcade-section" aria-label="Game catalog">

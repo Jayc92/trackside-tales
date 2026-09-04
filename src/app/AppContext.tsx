@@ -198,6 +198,17 @@ function isValidAcquisitionSource(raw: unknown): boolean {
   if (s.kind === 'platform-completion') return true;
   if (s.kind === 'platform-mastery') return s.minimumTier === 'gold';
   if (s.kind === 'platform-engineer') return true;
+  // GAME.11 — event provenance validates STRUCTURALLY only: eventId is
+  // historical provenance and is deliberately NOT checked against the
+  // live event registry, so earned ownership survives a future event
+  // de-registration/rollback (durability, like every other artifact).
+  if (s.kind === 'event-completion') {
+    return (
+      typeof s.eventId === 'string' && s.eventId.length > 0 &&
+      typeof s.eventVersion === 'number' &&
+      Number.isInteger(s.eventVersion) && s.eventVersion >= 1
+    );
+  }
   return false;
 }
 
@@ -462,15 +473,33 @@ function reducer(state: AppState, action: Action): AppState {
       const existingMastery = state.gameMastery[gameId];
       const masteryUpgraded = isTierUpgrade(earnedTier, existingMastery?.tier);
 
-      // 3 — collectibles (GAME.9A/9E): evaluated against POST-RESULT
+      // 3 — event participation (GAME.10A; computed BEFORE collectibles
+      // since GAME.11): the same result seam additively folds the
+      // result into any ACTIVE registered events (window evaluated at
+      // result.completedAt). Moving the fold above collectible
+      // evaluation lets the evaluator read POST-RESULT event truth, so
+      // the terminal win that completes an event grants its completion
+      // artifact in this same reducer transaction. Non-qualifying
+      // results keep the same reference (no-op).
+      const nextGameEvents = applyResultToGameEvents({
+        result: action.result,
+        eventDefinitions: getAllGameEvents(),
+        currentProgress: state.gameEvents,
+      });
+
+      // 4 — collectibles (GAME.9A/9E/11): evaluated against POST-RESULT
       // truth. The mastery map below already carries this result's
       // upgrade; the badge set (state.gameBadges) is already
       // post-result because the production win path dispatches
       // AWARD_GAME_BADGE before RECORD_GAME_RESULT within the same
       // event batch, and React reduces queued actions in order — so
       // the final missing badge/mastery CAN complete a cross-game
-      // artifact on this very run. Grants only ever originate here,
-      // from a real won result event — never from hydration.
+      // artifact on this very run; and resultingGameEvents is the
+      // post-fold map above, so the run that completes an event — or a
+      // valid in-window target win on a legacy already-complete
+      // profile — CAN earn the event-completion artifact. Grants only
+      // ever originate here, from a real won result event — never from
+      // hydration.
       const nextGameMastery =
         masteryUpgraded && earnedTier !== null
           ? { ...state.gameMastery, [gameId]: createMasteryRecord(definition, earnedTier) }
@@ -485,18 +514,7 @@ function reducer(state: AppState, action: Action): AppState {
         resultingGameBadges: state.gameBadges,
         resultingGameMastery: nextGameMastery,
         ownedCollectibles: state.collectibles,
-      });
-
-      // 4 — event participation (GAME.10A): the same result seam
-      // additively folds the result into any ACTIVE registered events
-      // (window evaluated at result.completedAt). The production
-      // registry ships EMPTY, so this is a guaranteed same-reference
-      // no-op today — recordGameResult behaves identically to
-      // pre-10A until a real event gate registers a definition.
-      const nextGameEvents = applyResultToGameEvents({
-        result: action.result,
-        eventDefinitions: getAllGameEvents(),
-        currentProgress: state.gameEvents,
+        resultingGameEvents: nextGameEvents,
       });
 
       if (

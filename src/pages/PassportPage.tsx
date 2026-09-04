@@ -342,7 +342,7 @@ export function PassportPage() {
         </section>
 
         {/* GAME.10B — event records (renders nothing with zero events) */}
-        <EventBoard models={eventModels} />
+        <EventBoard models={eventModels} ownedCollectibles={state.collectibles} />
 
         {/* ── Taproom rewards — existing preview program, unexpanded ── */}
         <section className="passport-block">

@@ -6,6 +6,13 @@ import {
   isEventComplete,
 } from '../games/events';
 import { GameId, getGameDefinition } from '../games/registry';
+// GAME.11 — reward-line composition only (EventBoard → collectibles →
+// events is one-way; no cycle). This component still never grants,
+// stores, or mutates anything.
+import {
+  CollectibleOwnershipRecord,
+  getEventCompletionCollectible,
+} from '../games/collectibles';
 
 // ================== EVENT BOARD — special timetable notices ==================
 // PUBLIC-v7.4B.GAME.10B — the ONE presentation surface for seasonal /
@@ -53,7 +60,35 @@ function progressLine(model: EventPresentationModel): string | null {
   return `${done} OF ${total} ${noun} ${verb}`;
 }
 
-export function EventBoard({ models }: { models: EventPresentationModel[] }) {
+/** GAME.11 §18 — the OPTIONAL textual reward line (v1: ACTIVE-only
+ *  copy). Pure composition from the model + ownership truth passed in
+ *  as props. Renders nothing when the event has no completion
+ *  artifact, when the artifact is already owned (the global artifact
+ *  strips carry the earned state), or when the window is not ACTIVE —
+ *  an UPCOMING or ENDED board never dangles a promise that cannot be
+ *  earned right now. Text only: no button, no CTA, no claim action;
+ *  issuance lives exclusively in the result reducer. */
+export function composeEventRewardLine(
+  model: EventPresentationModel,
+  ownedCollectibles: Record<string, CollectibleOwnershipRecord>,
+): string | null {
+  const reward = getEventCompletionCollectible(model.definition.eventId);
+  if (!reward || reward.collectibleId in ownedCollectibles) return null;
+  if (model.status !== 'active') return null;
+  return isEventComplete(model)
+    ? `REPLAY ANY CHALLENGE TO COLLECT THE ${reward.name}`
+    : `COMPLETE ALL ${model.definition.gameIds.length} CHALLENGES TO EARN THE ${reward.name}`;
+}
+
+export function EventBoard({
+  models,
+  ownedCollectibles,
+}: {
+  models: EventPresentationModel[];
+  /** GAME.11 — ownership truth (state.collectibles) for the optional
+   *  reward line. Omitted ⇒ no reward copy renders (pre-11 behavior). */
+  ownedCollectibles?: Record<string, CollectibleOwnershipRecord>;
+}) {
   if (models.length === 0) return null;
   return (
     <section className="event-board" aria-labelledby="event-board-heading">
@@ -65,6 +100,9 @@ export function EventBoard({ models }: { models: EventPresentationModel[] }) {
       <ul className="event-board-list">
         {models.map((model) => {
           const progress = progressLine(model);
+          const reward = ownedCollectibles
+            ? composeEventRewardLine(model, ownedCollectibles)
+            : null;
           return (
             <li
               key={model.definition.eventId}
@@ -87,6 +125,9 @@ export function EventBoard({ models }: { models: EventPresentationModel[] }) {
                 </p>
                 {progress && (
                   <p className="event-notice-progress">{progress}</p>
+                )}
+                {reward && (
+                  <p className="event-notice-reward">{reward}</p>
                 )}
               </article>
             </li>

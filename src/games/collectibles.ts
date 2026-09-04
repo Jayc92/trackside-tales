@@ -29,6 +29,10 @@ import type { GameDefinition, GameId, GameResult } from './registry';
 import { GAME_REGISTRY, getAllGameDefinitions } from './registry';
 import type { GameMasteryRecord, MasteryTier } from './mastery';
 import { MASTERY_TIER_RANK } from './mastery';
+// GAME.11 — event truth for event-completion artifacts. One-way import
+// (events.ts never imports this module), so no cycle exists.
+import type { EventId, GameEventDefinition, GameEventProgress } from './events';
+import { getAllGameEvents, getGameEventStatus } from './events';
 
 // ── Stable collectible identity ─────────────────────────────────────────
 // CollectibleId is durable and migration-sensitive (like GameId):
@@ -42,7 +46,9 @@ export type CollectibleId =
   // PUBLIC-v7.4B.GAME.9E — the three cross-game scarce artifacts.
   | 'full-line'
   | 'master-of-the-line'
-  | 'yardmasters-seal';
+  | 'yardmasters-seal'
+  // PUBLIC-v7.4B.GAME.11 — the first event-completion artifact.
+  | 'inaugural-run-pass';
 
 // ── Rarity taxonomy ─────────────────────────────────────────────────────
 // Restrained, archive-toned. 'legendary' is typed for the future but no
@@ -64,7 +70,14 @@ export type CollectibleSource =
   // Deterministic achievement rules only — no randomness, no drops.
   | { kind: 'all-game-completion' }
   | { kind: 'all-game-mastery'; minimumTier: 'gold' }
-  | { kind: 'all-game-engineer' };
+  | { kind: 'all-game-engineer' }
+  // GAME.11 — earned by completing a registered seasonal event: the
+  // POST-RESULT version-current participation record for `eventId` is
+  // COMPLETE and the granting result is itself a valid in-window win
+  // for one of the event's target games (see the evaluator). Event
+  // IDENTITY only lives here — the version qualifying at grant time is
+  // stamped into acquisition provenance, never into the definition.
+  | { kind: 'event-completion'; eventId: EventId };
 
 // ── Definition (data-oriented; no UI concerns) ──────────────────────────
 export interface CollectibleDefinition {
@@ -138,6 +151,20 @@ export const COLLECTIBLE_REGISTRY: Record<CollectibleId, CollectibleDefinition> 
     rarity: 'legendary',
     source: { kind: 'all-game-engineer' },
   },
+  // ── GAME.11 — the first event-completion artifact ────────────────────
+  // Earnable only while THE INAUGURAL RUN is ACTIVE (the completed
+  // event record AND an in-window winning result are both required), so
+  // the pass is event-exclusive by RULE — never by artificial supply:
+  // no counts, no editions, no numbering, nothing physical, and no
+  // global-scarcity claim (ownership is browser-local).
+  'inaugural-run-pass': {
+    collectibleId: 'inaugural-run-pass',
+    name: 'INAUGURAL RUN PASS',
+    shortDescription:
+      'Issued for completing every challenge on the first Special Timetable.',
+    rarity: 'rare',
+    source: { kind: 'event-completion', eventId: 'inaugural-run' },
+  },
 };
 
 /** Stable evaluation/listing order (declaration order). */
@@ -152,6 +179,9 @@ const COLLECTIBLE_ORDER: readonly CollectibleId[] = [
   'full-line',
   'master-of-the-line',
   'yardmasters-seal',
+  // GAME.11 — the event artifact grants LAST: base per-result artifacts,
+  // then cross-game artifacts, then event completion.
+  'inaugural-run-pass',
 ];
 
 // ── Ownership record (persisted to tb_collectibles) ─────────────────────
@@ -174,7 +204,13 @@ export type CollectibleAcquisitionSource =
   // or histories are stored here.
   | { kind: 'platform-completion' }
   | { kind: 'platform-mastery'; minimumTier: 'gold' }
-  | { kind: 'platform-engineer' };
+  | { kind: 'platform-engineer' }
+  // GAME.11 — event provenance. eventId here is HISTORICAL provenance
+  // (a plain recorded identity, typed string), deliberately NOT a
+  // live-registry foreign key: earned ownership must survive a future
+  // event de-registration/rollback. eventVersion records which event
+  // ruleset the artifact was earned under.
+  | { kind: 'event-completion'; eventId: string; eventVersion: number };
 
 export interface CollectibleOwnershipRecord {
   collectibleId: CollectibleId;
@@ -228,6 +264,23 @@ export function getGlobalCollectibles(): CollectibleDefinition[] {
   return COLLECTIBLE_ORDER
     .map((id) => COLLECTIBLE_REGISTRY[id])
     .filter((def) => def.source.kind !== 'mastery');
+}
+
+/** GAME.11 — the event-completion artifact mapped to one event (from
+ *  the definitions' source model — the single mapping authority), or
+ *  undefined for an event with no completion artifact. Presentation
+ *  surfaces use this to compose the textual reward line; it never
+ *  grants anything. */
+export function getEventCompletionCollectible(
+  eventId: string,
+): CollectibleDefinition | undefined {
+  return COLLECTIBLE_ORDER
+    .map((id) => COLLECTIBLE_REGISTRY[id])
+    .find(
+      (def) =>
+        def.source.kind === 'event-completion' &&
+        def.source.eventId === eventId,
+    );
 }
 
 // ── Pure grant evaluation ───────────────────────────────────────────────
@@ -295,6 +348,18 @@ export function evaluateCollectibleGrants(args: {
    *  registry; injectable so tests can prove prospective expansion
    *  (G9E §21) without mutating source. */
   registeredGames?: readonly GameDefinition[];
+  /** GAME.11 — POST-RESULT event truth: state.gameEvents with THIS
+   *  result already folded in (the reducer computes nextGameEvents
+   *  BEFORE calling this evaluator). Completion may have happened on
+   *  this very result or on an earlier one (legacy reconciliation) —
+   *  both qualify by design; ownership keeps the grant exactly-once.
+   *  Optional so pre-GAME.11 pure callers stay valid (no event truth ⇒
+   *  no event grants). */
+  resultingGameEvents?: Record<string, GameEventProgress>;
+  /** The current registered event universe. Defaults to the production
+   *  registry; injectable for pure tests (same pattern as
+   *  registeredGames). */
+  eventDefinitions?: readonly GameEventDefinition[];
 }): CollectibleId[] {
   const {
     result,
@@ -305,6 +370,8 @@ export function evaluateCollectibleGrants(args: {
   } = args;
   if (!result.won) return [];
   const registeredGames = args.registeredGames ?? getAllGameDefinitions();
+  const resultingGameEvents = args.resultingGameEvents ?? {};
+  const eventDefinitions = args.eventDefinitions ?? getAllGameEvents();
 
   const currentScoringVersion =
     result.gameId in GAME_REGISTRY
@@ -348,6 +415,34 @@ export function evaluateCollectibleGrants(args: {
       case 'all-game-engineer':
         if (everyGameAtLeast('engineer')) grants.push(id);
         break;
+      case 'event-completion': {
+        // GAME.11 §12 — a WON (guarded above) result for one of the
+        // event's TARGET games, inside the ACTIVE window (evaluated at
+        // result.completedAt — the sealed time authority, never
+        // Date.now()), while the POST-FOLD version-current event record
+        // is COMPLETE. Previous-progress incompleteness is deliberately
+        // NOT required: a legacy profile that completed the event
+        // before this artifact existed reconciles through its next
+        // valid in-window target win (the no-hydration-issuance
+        // precedent stays intact). The unowned check above is what
+        // makes the grant exactly-once.
+        const rewardEventId = def.source.eventId;
+        const eventDef = eventDefinitions.find(
+          (e) => e.eventId === rewardEventId,
+        );
+        if (eventDef === undefined) break; // unknown event → never grants
+        const progress = resultingGameEvents[eventDef.eventId];
+        if (
+          eventDef.gameIds.includes(result.gameId) &&
+          getGameEventStatus(eventDef, result.completedAt) === 'active' &&
+          progress !== undefined &&
+          progress.eventVersion === eventDef.version &&
+          progress.completedAt !== undefined
+        ) {
+          grants.push(id);
+        }
+        break;
+      }
     }
   }
   return grants;
@@ -360,6 +455,11 @@ export function createOwnershipRecord(
   collectibleId: CollectibleId,
   result: GameResult,
   acquiredAt: string,
+  /** GAME.11 — the event universe used to stamp the version CURRENT at
+   *  grant time into event provenance. Defaults to the production
+   *  registry (the same source the evaluator just proved the grant
+   *  against, in the same tick); injectable for pure tests. */
+  eventDefinitions: readonly GameEventDefinition[] = getAllGameEvents(),
 ): CollectibleOwnershipRecord {
   const def = COLLECTIBLE_REGISTRY[collectibleId];
   let source: CollectibleAcquisitionSource;
@@ -377,6 +477,22 @@ export function createOwnershipRecord(
     case 'all-game-engineer':
       source = { kind: 'platform-engineer' };
       break;
+    // GAME.11 — event provenance stamps the version current at grant
+    // time (never hard-coded). The ?? 1 arm is defensively unreachable:
+    // the evaluator only grants for a registered event, and this runs
+    // in the same reducer tick against the same definition source.
+    case 'event-completion': {
+      const rewardEventId = def.source.eventId;
+      const eventVersion =
+        eventDefinitions.find((e) => e.eventId === rewardEventId)
+          ?.version ?? 1;
+      source = {
+        kind: 'event-completion',
+        eventId: rewardEventId,
+        eventVersion,
+      };
+      break;
+    }
     default:
       source = {
         kind: 'game-completion',

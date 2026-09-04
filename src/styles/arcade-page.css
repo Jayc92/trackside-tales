@@ -614,3 +614,16 @@
   text-transform: uppercase;
 }
 .event-notice--expired .event-notice-progress { color: #96805c; }
+/* GAME.11 — the optional textual reward line (ACTIVE windows only).
+   Ember invitation tone inside the same dispatch language; plain text,
+   never a control. */
+.event-notice-reward {
+  margin: 0.5rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgba(163, 128, 63, 0.22);
+  font-family: var(--ar-mono, 'Source Code Pro', ui-monospace, monospace);
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+  color: #d98a4a;
+  text-transform: uppercase;
+}
