@@ -10,6 +10,8 @@ import {
   getGlobalCollectibles,
 } from '../games/collectibles';
 import { GameType } from '../games/gameConfigs';
+import { EventBoard } from '../components/EventBoard';
+import { getEventPresentationModels } from '../games/events';
 
 // ================== TRACKSIDE ARCADE — the games of the archive ==================
 // PUBLIC-v7.4B.GAME.5 — the first player-facing platform surface on the
@@ -115,6 +117,13 @@ export function ArcadePage() {
   const globalArtifacts = getGlobalCollectibles()
     .filter((def) => state.collectibles[def.collectibleId]);
 
+  // GAME.10B — special-timetable notices. Models come entirely from
+  // the shared events helpers (registered definitions + this profile's
+  // version-current participation, status at render time). The
+  // production registry is EMPTY, so this is [] and the board renders
+  // NOTHING — zero event DOM in production.
+  const eventModels = getEventPresentationModels(state.gameEvents, new Date());
+
   return (
     <div className="page active px-screen arcade-page" id="page-arcade">
 
@@ -164,6 +173,9 @@ export function ArcadePage() {
       </header>
 
       <div className="arcade-wrap">
+
+        {/* GAME.10B — event notices (renders nothing with zero events) */}
+        <EventBoard models={eventModels} />
 
         {/* ── The cabinets ── */}
         <section className="arcade-section" aria-label="Game catalog">

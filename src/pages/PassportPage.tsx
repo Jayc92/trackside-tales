@@ -3,6 +3,8 @@ import { useApp } from '../app/AppContext';
 import { LS_HOW_DISMISSED, LS_PASSPORT_PAGE } from '../app/types';
 import { TsIcon } from '../components/TsIcon';
 import { getGamesForTale } from '../games/registry';
+import { EventBoard } from '../components/EventBoard';
+import { getEventPresentationModels } from '../games/events';
 import { MASTERY_TIER_LABELS, resolveDisplayMasteryTier } from '../games/mastery';
 import {
   COLLECTIBLE_RARITY_LABELS,
@@ -92,6 +94,10 @@ export function PassportPage() {
   // FIRST TICKET plus the cross-game artifacts, as rows of one strip.
   const globalArtifacts = getGlobalCollectibles()
     .filter((def) => state.collectibles[def.collectibleId]);
+
+  // GAME.10B — special-timetable records (same shared models as the
+  // Arcade board; [] in production ⇒ zero DOM).
+  const eventModels = getEventPresentationModels(state.gameEvents, new Date());
 
   const talesUnlocked = state.unlocked.size;
   const stampsEarned  = state.scanBadges.size;
@@ -334,6 +340,9 @@ export function PassportPage() {
             })}
           </div>
         </section>
+
+        {/* GAME.10B — event records (renders nothing with zero events) */}
+        <EventBoard models={eventModels} />
 
         {/* ── Taproom rewards — existing preview program, unexpanded ── */}
         <section className="passport-block">

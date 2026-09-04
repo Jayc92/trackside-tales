@@ -93,9 +93,31 @@ export function isValidEventDefinition(def: GameEventDefinition): boolean {
 // tweak.
 export const GAME_EVENT_REGISTRY: Readonly<Record<string, GameEventDefinition>> = {};
 
+// GAME.10B §7 — TEST-ONLY definition seam. The production registry
+// above stays EMPTY and getAllGameEvents() reads it by default; the
+// setter below lets local probes inject fixture definitions into the
+// SAME source the reducer and the presentation layer read, so the
+// full live loop (real result → GAME.10A participation → UI) can be
+// proven without registering anything in production. Production code
+// NEVER calls the setter, no query-param/URL backdoor exists, and a
+// page reload resets it (module re-evaluation). Ships as a few inert
+// bytes.
+let eventDefinitionSource: () => GameEventDefinition[] = () =>
+  Object.values(GAME_EVENT_REGISTRY);
+
+/** TEST-ONLY (never called by production code): override or reset the
+ *  event-definition source for local probe validation. */
+export function __setGameEventDefinitionsForTesting(
+  definitions?: readonly GameEventDefinition[],
+): void {
+  eventDefinitionSource = definitions
+    ? () => [...definitions]
+    : () => Object.values(GAME_EVENT_REGISTRY);
+}
+
 /** Every registered event definition (production: empty array). */
 export function getAllGameEvents(): GameEventDefinition[] {
-  return Object.values(GAME_EVENT_REGISTRY);
+  return eventDefinitionSource();
 }
 
 // ── Status (pure, injected now — never Date.now() in here) ─────────────
@@ -205,4 +227,77 @@ export function applyResultToGameEvents(args: {
     next[def.eventId] = record;
   }
   return next ?? currentProgress;
+}
+
+// ================== GAME.10B — presentation helpers (pure) ==================
+// Read-only projection of definitions + participation truth into what
+// the EventBoard component renders. Pages never reimplement status or
+// completion logic.
+
+export interface EventPresentationModel {
+  definition: GameEventDefinition;
+  status: GameEventStatus;
+  /** CURRENT-version progress only — a stored record from another
+   *  event version is omitted here (the event presents as
+   *  zero-progress under the current rules; no player-facing
+   *  stale-version messaging in GAME.10B). */
+  progress?: GameEventProgress;
+}
+
+/** Deterministic board order (G10B §15): ACTIVE → UPCOMING → ENDED;
+ *  within a status, startsAt ascending; eventId as the final
+ *  tie-break. */
+const EVENT_STATUS_ORDER: Record<GameEventStatus, number> = {
+  active: 0,
+  upcoming: 1,
+  expired: 2,
+};
+
+export function getEventPresentationModels(
+  progress: Record<string, GameEventProgress>,
+  now: Date | string,
+  definitions: readonly GameEventDefinition[] = getAllGameEvents(),
+): EventPresentationModel[] {
+  return definitions
+    .map((definition) => {
+      const stored = progress[definition.eventId];
+      return {
+        definition,
+        status: getGameEventStatus(definition, now),
+        ...(stored && stored.eventVersion === definition.version
+          ? { progress: stored }
+          : {}),
+      };
+    })
+    .sort(
+      (a, b) =>
+        EVENT_STATUS_ORDER[a.status] - EVENT_STATUS_ORDER[b.status] ||
+        Date.parse(a.definition.startsAt) - Date.parse(b.definition.startsAt) ||
+        a.definition.eventId.localeCompare(b.definition.eventId),
+    );
+}
+
+/** All required games credited under the current version? */
+export function isEventComplete(model: EventPresentationModel): boolean {
+  const done = model.progress?.completedGameIds ?? [];
+  return model.definition.gameIds.every((id) => done.includes(id));
+}
+
+/** Compact, calm, locale-safe date range — "OCT 1 – OCT 7" style.
+ *  endsAt is EXCLUSIVE, so the displayed final day is the last
+ *  INCLUSIVE UTC day (endsAt minus 1ms). No raw ISO, no ticking
+ *  countdown (G10B §10). */
+const EVENT_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+export function formatEventDateRange(definition: GameEventDefinition): string {
+  const start = Date.parse(definition.startsAt);
+  const end = Date.parse(definition.endsAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return '';
+  const first = EVENT_DATE_FORMAT.format(new Date(start)).toUpperCase();
+  const last = EVENT_DATE_FORMAT.format(new Date(end - 1)).toUpperCase();
+  return first === last ? first : `${first} – ${last}`;
 }
