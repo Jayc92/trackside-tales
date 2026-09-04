@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
-import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY } from './types';
+import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
 import {
   GAME_REGISTRY,
@@ -14,6 +14,13 @@ import {
   evaluateMastery,
   isTierUpgrade,
 } from '../games/mastery';
+import {
+  COLLECTIBLE_REGISTRY,
+  CollectibleId,
+  CollectibleOwnershipRecord,
+  createOwnershipRecord,
+  evaluateCollectibleGrants,
+} from '../games/collectibles';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import {
@@ -163,6 +170,86 @@ function loadMastery(): Record<string, GameMasteryRecord> {
   }
 }
 
+// ================== GAME.9A — collectible persistence helpers ==================
+
+/** Validate one stored acquisition source (truthful provenance only). */
+function isValidAcquisitionSource(raw: unknown): boolean {
+  if (typeof raw !== 'object' || raw === null) return false;
+  const s = raw as Record<string, unknown>;
+  if (s.kind === 'game-completion') {
+    return (
+      typeof s.gameId === 'string' && s.gameId in GAME_REGISTRY &&
+      (s.taleId === undefined || typeof s.taleId === 'string')
+    );
+  }
+  if (s.kind === 'mastery') {
+    return (
+      typeof s.gameId === 'string' && s.gameId in GAME_REGISTRY &&
+      s.tier === 'engineer'
+    );
+  }
+  return false;
+}
+
+/** Validate one stored ownership record from untrusted localStorage.
+ *  Ownership is DURABLE (like mastery, unlike PBs): definitions may
+ *  change copy/rarity later without invalidating earned ownership, so
+ *  no version gate exists here — only structural truth. Unknown future
+ *  CollectibleIds fail closed and are ignored by this client.
+ *  IMPORTANT (§15): hydration only ACCEPTS records — it never grants;
+ *  every grant originates from a real result event in the reducer. */
+function isValidStoredCollectible(id: string, raw: unknown): raw is CollectibleOwnershipRecord {
+  if (!(id in COLLECTIBLE_REGISTRY)) return false;            // unknown CollectibleId
+  if (typeof raw !== 'object' || raw === null) return false;
+  const r = raw as Record<string, unknown>;
+  return (
+    r.collectibleId === id &&
+    typeof r.acquiredAt === 'string' &&
+    isValidAcquisitionSource(r.source)
+  );
+}
+
+/** Sanitize the whole stored record; malformed children are dropped
+ *  individually (same isolation posture as the PB/mastery stores). */
+export function sanitizeStoredCollectibles(raw: unknown): Record<string, CollectibleOwnershipRecord> {
+  const out: Record<string, CollectibleOwnershipRecord> = {};
+  if (typeof raw !== 'object' || raw === null) return out;
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (isValidStoredCollectible(id, value)) out[id] = value;
+  }
+  return out;
+}
+
+/** Hydrate tb_collectibles — same fail-safe posture as the others. */
+function loadCollectibles(): Record<string, CollectibleOwnershipRecord> {
+  try {
+    const raw = localStorage.getItem(LS_COLLECTIBLES);
+    if (!raw) return {};
+    return sanitizeStoredCollectibles(JSON.parse(raw));
+  } catch (_) {
+    return {};
+  }
+}
+
+/** GAME.9A §13 — the narrow internal grant helper: fold newly earned
+ *  collectibles into the ownership map. PURE (exported for tests).
+ *  One shared acquiredAt per result event; owned ids are never
+ *  re-granted (duplicate no-op guaranteed upstream by the evaluator,
+ *  and defensively re-checked here so acquiredAt/provenance can never
+ *  be rewritten). Returns the SAME reference when nothing grants. */
+export function applyCollectibleGrants(
+  current: Record<string, CollectibleOwnershipRecord>,
+  grants: CollectibleId[],
+  result: GameResult,
+  acquiredAt: string,
+): Record<string, CollectibleOwnershipRecord> {
+  const fresh = grants.filter((id) => !(id in current));
+  if (fresh.length === 0) return current;
+  const next = { ...current };
+  for (const id of fresh) next[id] = createOwnershipRecord(id, result, acquiredAt);
+  return next;
+}
+
 // ================== STATE ==================
 
 const initialState: AppState = {
@@ -173,6 +260,7 @@ const initialState: AppState = {
   lastUnlocked: null,
   gameResultsBest: loadBestResults(),
   gameMastery: loadMastery(),
+  collectibles: loadCollectibles(),
   ...loadState(),
 };
 
@@ -257,8 +345,9 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'RESET_DEMO':
       // GAME.6 — the demo reset also clears personal bests; GAME.7 —
-      // and earned mastery: reset restores a clean local Trackside
-      // experience. No other reset semantics broadened.
+      // earned mastery; GAME.9A — collectible ownership: reset restores
+      // a clean local Trackside experience. No other reset semantics
+      // broadened.
       return {
         ...state,
         unlocked: new Set(),
@@ -269,15 +358,19 @@ function reducer(state: AppState, action: Action): AppState {
         lastUnlocked: null,
         gameResultsBest: {},
         gameMastery: {},
+        collectibles: {},
       };
 
     // GAME.6 — fold a sealed GameResult into the per-GameId personal
     // bests. GAME.7 — the SAME single result seam now also evaluates
     // mastery; PB and mastery update INDEPENDENTLY (a result can
-    // improve either, both, or neither). Idempotent: when nothing
-    // improves, the SAME state object returns (no re-render, and each
-    // persist effect is reference-gated so no storage writes occur).
-    // No badge side effects — completion stays a parallel system.
+    // improve either, both, or neither). GAME.9A — and collectible
+    // grants, derived from result + resulting-mastery truth (a single
+    // first-ever Engineer run may validly grant TWO artifacts in one
+    // transition). Idempotent: when nothing improves or grants, the
+    // SAME state object returns (no re-render, and each persist effect
+    // is reference-gated so no storage writes occur). No badge side
+    // effects — completion stays a parallel system.
     case 'RECORD_GAME_RESULT': {
       const gameId = action.result.gameId as GameId;
       if (!(gameId in GAME_REGISTRY)) return state;
@@ -294,7 +387,23 @@ function reducer(state: AppState, action: Action): AppState {
       const existingMastery = state.gameMastery[gameId];
       const masteryUpgraded = isTierUpgrade(earnedTier, existingMastery?.tier);
 
-      if (!pbImproved && !masteryUpgraded) return state;
+      // 3 — collectibles (GAME.9A): evaluated against the CURRENT
+      // mastery truth AFTER this result (the upgraded tier when this
+      // run upgraded, else the held tier — so a legacy Engineer who
+      // replays with a valid win still earns the artifact). Grants
+      // only ever originate here, from a real result event — never
+      // from hydration.
+      const resultingMasteryTier =
+        masteryUpgraded && earnedTier !== null
+          ? earnedTier
+          : existingMastery?.tier ?? null;
+      const grants = evaluateCollectibleGrants({
+        result: action.result,
+        resultingMasteryTier,
+        ownedCollectibles: state.collectibles,
+      });
+
+      if (!pbImproved && !masteryUpgraded && grants.length === 0) return state;
       return {
         ...state,
         gameResultsBest: pbImproved
@@ -303,6 +412,12 @@ function reducer(state: AppState, action: Action): AppState {
         gameMastery: masteryUpgraded && earnedTier !== null
           ? { ...state.gameMastery, [gameId]: createMasteryRecord(definition, earnedTier) }
           : state.gameMastery,
+        // One shared acquiredAt per result event (a double grant from
+        // one run carries the same timestamp); applyCollectibleGrants
+        // returns the same reference when nothing is new.
+        collectibles: applyCollectibleGrants(
+          state.collectibles, grants, action.result, new Date().toISOString(),
+        ),
       };
     }
 
@@ -418,6 +533,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(LS_GAME_MASTERY, JSON.stringify(state.gameMastery));
     } catch (_) { /* storage full or blocked */ }
   }, [state.gameMastery]);
+
+  // GAME.9A — persist collectible ownership on the same narrow pattern.
+  // Duplicate grants keep the record identity, so no redundant writes.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_COLLECTIBLES, JSON.stringify(state.collectibles));
+    } catch (_) { /* storage full or blocked */ }
+  }, [state.collectibles]);
 
   const nav = useCallback((page: PageId) => {
     dispatch({ type: 'NAV', page });

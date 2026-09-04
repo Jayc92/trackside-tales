@@ -5,6 +5,7 @@
 // so there is no cycle.
 import type { GameResultSummary } from '../games/registry';
 import type { GameMasteryRecord } from '../games/mastery';
+import type { CollectibleOwnershipRecord } from '../games/collectibles';
 
 export interface StoryBlock {
   type: 'p' | 'quote' | 'h2' | 'h3';
@@ -207,6 +208,13 @@ export interface AppState {
    *  (gameResultsBest — which may be version-invalidated; earned
    *  mastery survives version changes by grandfathering). */
   gameMastery: Record<string, GameMasteryRecord>;
+  /** PUBLIC-v7.4B.GAME.9A — per-CollectibleId ownership records
+   *  (persisted to LS_COLLECTIBLES). Binary ownership (owned / not
+   *  owned, no quantities), duplicate-safe, durable until RESET_DEMO.
+   *  SEPARATE from completion/PB/mastery — collectibles are additive
+   *  artifacts derived from result/mastery truth and never grant any
+   *  of the other three. */
+  collectibles: Record<string, CollectibleOwnershipRecord>;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)
@@ -223,6 +231,10 @@ export const LS_GAME_RESULTS_BEST = 'tb_game_results_best';
 // PUBLIC-v7.4B.GAME.7 — per-GameId durable mastery achievements
 // (bronze/silver/gold/engineer). GameId-keyed like the PB store.
 export const LS_GAME_MASTERY      = 'tb_game_mastery';
+// PUBLIC-v7.4B.GAME.9A — per-CollectibleId ownership records.
+// CollectibleId-keyed (a fourth durable key family, independent of
+// GameIds/Tale ids).
+export const LS_COLLECTIBLES      = 'tb_collectibles';
 export const LS_UNLOCKED         = 'tb_unlocked';
 export const LS_SCAN_BADGES      = 'tb_scan_badges';
 export const LS_GAME_BADGES      = 'tb_game_badges';
