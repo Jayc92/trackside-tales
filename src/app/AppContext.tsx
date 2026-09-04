@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
-import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES } from './types';
+import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES, LS_GAME_EVENTS } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
 import {
   GAME_REGISTRY,
@@ -21,6 +21,12 @@ import {
   createOwnershipRecord,
   evaluateCollectibleGrants,
 } from '../games/collectibles';
+import {
+  GameEventDefinition,
+  GameEventProgress,
+  applyResultToGameEvents,
+  getAllGameEvents,
+} from '../games/events';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import {
@@ -235,6 +241,69 @@ function loadCollectibles(): Record<string, CollectibleOwnershipRecord> {
   }
 }
 
+// ================== GAME.10A — event participation helpers ==================
+
+/** Validate one stored event-progress child from untrusted storage.
+ *
+ *  VERSION-SENSITIVE (GAME.10A §15, the deliberate difference from
+ *  durable collectible ownership): a record whose eventVersion is not
+ *  the CURRENT definition's version is ignored — event rules may
+ *  change materially between runs. Only the child is skipped; nothing
+ *  is deleted globally. Unknown EventIds (including every id while
+ *  the production registry is empty) fail closed. Hydration only
+ *  ACCEPTS records — participation credit only ever originates from a
+ *  real result event in the reducer. */
+function isValidStoredEventProgress(
+  eventId: string,
+  raw: unknown,
+  definitions: readonly GameEventDefinition[],
+): raw is GameEventProgress {
+  const def = definitions.find((d) => d.eventId === eventId);
+  if (!def) return false;                                     // unknown EventId
+  if (typeof raw !== 'object' || raw === null) return false;
+  const r = raw as Record<string, unknown>;
+  if (r.eventId !== eventId) return false;
+  if (r.eventVersion !== def.version) return false;           // stale/future version
+  if (r.firstPlayedAt !== undefined && typeof r.firstPlayedAt !== 'string') return false;
+  if (!Array.isArray(r.completedGameIds)) return false;
+  const ids = r.completedGameIds;
+  if (!ids.every((g) => typeof g === 'string' && def.gameIds.includes(g as GameId))) return false;
+  if (new Set(ids).size !== ids.length) return false;         // duplicates
+  if (r.completedAt !== undefined) {
+    if (typeof r.completedAt !== 'string') return false;
+    // completedAt is only truthful when every required game is credited
+    if (!def.gameIds.every((g) => ids.includes(g))) return false;
+  }
+  return true;
+}
+
+/** Sanitize the whole stored record; malformed children are dropped
+ *  individually. `definitions` is injectable for tests and defaults to
+ *  the production registry (currently empty ⇒ everything is ignored,
+ *  which is correct: no events exist). */
+export function sanitizeStoredGameEvents(
+  raw: unknown,
+  definitions: readonly GameEventDefinition[] = getAllGameEvents(),
+): Record<string, GameEventProgress> {
+  const out: Record<string, GameEventProgress> = {};
+  if (typeof raw !== 'object' || raw === null) return out;
+  for (const [eventId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (isValidStoredEventProgress(eventId, value, definitions)) out[eventId] = value;
+  }
+  return out;
+}
+
+/** Hydrate tb_game_events — same fail-safe posture as the others. */
+function loadGameEvents(): Record<string, GameEventProgress> {
+  try {
+    const raw = localStorage.getItem(LS_GAME_EVENTS);
+    if (!raw) return {};
+    return sanitizeStoredGameEvents(JSON.parse(raw));
+  } catch (_) {
+    return {};
+  }
+}
+
 /** GAME.9A §13 — the narrow internal grant helper: fold newly earned
  *  collectibles into the ownership map. PURE (exported for tests).
  *  One shared acquiredAt per result event; owned ids are never
@@ -265,6 +334,7 @@ const initialState: AppState = {
   gameResultsBest: loadBestResults(),
   gameMastery: loadMastery(),
   collectibles: loadCollectibles(),
+  gameEvents: loadGameEvents(),
   ...loadState(),
 };
 
@@ -349,9 +419,9 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'RESET_DEMO':
       // GAME.6 — the demo reset also clears personal bests; GAME.7 —
-      // earned mastery; GAME.9A — collectible ownership: reset restores
-      // a clean local Trackside experience. No other reset semantics
-      // broadened.
+      // earned mastery; GAME.9A — collectible ownership; GAME.10A —
+      // event participation: reset restores a clean local Trackside
+      // experience. No other reset semantics broadened.
       return {
         ...state,
         unlocked: new Set(),
@@ -363,6 +433,7 @@ function reducer(state: AppState, action: Action): AppState {
         gameResultsBest: {},
         gameMastery: {},
         collectibles: {},
+        gameEvents: {},
       };
 
     // GAME.6 — fold a sealed GameResult into the per-GameId personal
@@ -416,7 +487,22 @@ function reducer(state: AppState, action: Action): AppState {
         ownedCollectibles: state.collectibles,
       });
 
-      if (!pbImproved && !masteryUpgraded && grants.length === 0) return state;
+      // 4 — event participation (GAME.10A): the same result seam
+      // additively folds the result into any ACTIVE registered events
+      // (window evaluated at result.completedAt). The production
+      // registry ships EMPTY, so this is a guaranteed same-reference
+      // no-op today — recordGameResult behaves identically to
+      // pre-10A until a real event gate registers a definition.
+      const nextGameEvents = applyResultToGameEvents({
+        result: action.result,
+        eventDefinitions: getAllGameEvents(),
+        currentProgress: state.gameEvents,
+      });
+
+      if (
+        !pbImproved && !masteryUpgraded && grants.length === 0 &&
+        nextGameEvents === state.gameEvents
+      ) return state;
       return {
         ...state,
         gameResultsBest: pbImproved
@@ -429,6 +515,7 @@ function reducer(state: AppState, action: Action): AppState {
         collectibles: applyCollectibleGrants(
           state.collectibles, grants, action.result, new Date().toISOString(),
         ),
+        gameEvents: nextGameEvents,
       };
     }
 
@@ -552,6 +639,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(LS_COLLECTIBLES, JSON.stringify(state.collectibles));
     } catch (_) { /* storage full or blocked */ }
   }, [state.collectibles]);
+
+  // GAME.10A — persist event participation on the same narrow pattern.
+  // The empty production registry keeps this a boot-write-only key
+  // (every result is a same-reference no-op until an event exists).
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_GAME_EVENTS, JSON.stringify(state.gameEvents));
+    } catch (_) { /* storage full or blocked */ }
+  }, [state.gameEvents]);
 
   const nav = useCallback((page: PageId) => {
     dispatch({ type: 'NAV', page });

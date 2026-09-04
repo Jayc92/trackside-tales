@@ -6,6 +6,7 @@
 import type { GameResultSummary } from '../games/registry';
 import type { GameMasteryRecord } from '../games/mastery';
 import type { CollectibleOwnershipRecord } from '../games/collectibles';
+import type { GameEventProgress } from '../games/events';
 
 export interface StoryBlock {
   type: 'p' | 'quote' | 'h2' | 'h3';
@@ -215,6 +216,12 @@ export interface AppState {
    *  artifacts derived from result/mastery truth and never grant any
    *  of the other three. */
   collectibles: Record<string, CollectibleOwnershipRecord>;
+  /** PUBLIC-v7.4B.GAME.10A — per-EventId seasonal/event participation
+   *  (persisted to LS_GAME_EVENTS). VERSION-SENSITIVE (unlike durable
+   *  collectible ownership): stored progress for a changed event
+   *  version is ignored at hydration. Production ships ZERO events, so
+   *  this stays empty until a real event gate registers one. */
+  gameEvents: Record<string, GameEventProgress>;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)
@@ -235,6 +242,9 @@ export const LS_GAME_MASTERY      = 'tb_game_mastery';
 // CollectibleId-keyed (a fourth durable key family, independent of
 // GameIds/Tale ids).
 export const LS_COLLECTIBLES      = 'tb_collectibles';
+// PUBLIC-v7.4B.GAME.10A — per-EventId event participation.
+// EventId-keyed (a fifth durable key family).
+export const LS_GAME_EVENTS       = 'tb_game_events';
 export const LS_UNLOCKED         = 'tb_unlocked';
 export const LS_SCAN_BADGES      = 'tb_scan_badges';
 export const LS_GAME_BADGES      = 'tb_game_badges';
