@@ -628,6 +628,43 @@
   text-transform: uppercase;
 }
 
+/* ── GAME.14 — LINE STATUS rail ───────────────────────────────────────
+   PAGE-AGNOSTIC family: one hairline dispatch strip above the SERVICE
+   RECORD, present only while a Special Timetable is ACTIVE or
+   UPCOMING. Text only — no controls, no motion, no imagery; wraps
+   cleanly at 390px. */
+.line-status {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.8rem;
+  margin: 1.3rem 0 0;
+  padding: 0.55rem 0.15rem;
+  border-top: 1px solid rgba(163, 128, 63, 0.35);
+  border-bottom: 1px solid rgba(163, 128, 63, 0.35);
+}
+.line-status-eyebrow {
+  font-family: var(--ar-mono, 'Source Code Pro', ui-monospace, monospace);
+  font-size: 0.54rem;
+  letter-spacing: 0.28em;
+  color: #c9823f;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.line-status-line {
+  margin: 0;
+  font-family: var(--ar-mono, 'Source Code Pro', ui-monospace, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  line-height: 1.6;
+  color: #d8b46b;
+  text-transform: uppercase;
+}
+.line-status-sep {
+  margin: 0 0.5rem;
+  color: rgba(163, 128, 63, 0.8);
+}
+
 /* ── GAME.12 — SERVICE RECORD (XP + rank) ─────────────────────────────
    PAGE-AGNOSTIC family (like the event-board family above): the full
    plaque on the Arcade, the --compact endorsement row on the Passport.

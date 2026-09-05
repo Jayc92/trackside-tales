@@ -17,6 +17,7 @@ import {
   QuestObjective,
   getQuestPresentationModels,
 } from '../games/quests';
+import { getArcadeWorldState } from '../games/worldState';
 
 // ================== TRACKSIDE ARCADE — the games of the archive ==================
 // PUBLIC-v7.4B.GAME.5 — the first player-facing platform surface on the
@@ -122,12 +123,24 @@ export function ArcadePage() {
   const globalArtifacts = getGlobalCollectibles()
     .filter((def) => state.collectibles[def.collectibleId]);
 
+  // GAME.14 — ONE render instant shared by every time-derived surface
+  // on this page, so the rail and the board can never disagree across
+  // a boundary microsecond.
+  const renderNow = new Date();
+
   // GAME.10B — special-timetable notices. Models come entirely from
   // the shared events helpers (registered definitions + this profile's
   // version-current participation, status at render time). The
   // production registry is EMPTY, so this is [] and the board renders
   // NOTHING — zero event DOM in production.
-  const eventModels = getEventPresentationModels(state.gameEvents, new Date());
+  const eventModels = getEventPresentationModels(state.gameEvents, renderNow);
+
+  // GAME.14 — the LINE STATUS world state: a pure, read-only derivation
+  // (no storage, no reducer surface). headline === null ⇒ zero rail DOM.
+  const worldState = getArcadeWorldState({
+    now: renderNow,
+    gameEvents: state.gameEvents,
+  });
 
   // GAME.12 — the SERVICE RECORD: rank/progress DERIVED from the XP
   // ledger every render (never stored). Presentation-only — nothing on
@@ -202,6 +215,24 @@ export function ArcadePage() {
       </header>
 
       <div className="arcade-wrap">
+
+        {/* GAME.14 — LINE STATUS rail: one compact textual row, present
+            only while a Special Timetable is ACTIVE or UPCOMING (zero
+            DOM otherwise). Read-only; section order below never moves. */}
+        {worldState.headline && (
+          <section className="line-status" aria-label="Line status">
+            <span className="line-status-eyebrow">{worldState.headline.eyebrow}</span>
+            <p className="line-status-line">
+              {worldState.headline.line}
+              {worldState.headline.playerNote && (
+                <>
+                  <span className="line-status-sep" aria-hidden="true">·</span>
+                  {worldState.headline.playerNote}
+                </>
+              )}
+            </p>
+          </section>
+        )}
 
         {/* GAME.12 — SERVICE RECORD: the player's rank plaque. Compact,
             above the timetable, cabinets stay primary. Textual rank +
