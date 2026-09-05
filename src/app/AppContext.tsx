@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
 import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES, LS_GAME_EVENTS, LS_ARCADE_PROGRESSION, LS_ARCADE_QUESTS } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
+// GAME.18C2 — ghost-child validation at the PB persistence boundary
+// (the ONLY authority location that may inspect result traces).
+import { GhostTrace, isValidGhostTrace } from '../games/ghostTrace';
 import {
   GAME_REGISTRY,
   GameId,
@@ -60,6 +63,25 @@ import {
 // persistence boundary (GameOverlay stays a platform shell; the
 // legacy loadState/saveState in guestPersistence is untouched).
 
+/** GAME.18C2 — whether an embedded/candidate ghost describes EXACTLY
+ *  the same run as its parent record: structural validity plus the
+ *  identity quadruple (game, scoring version, band, and the exact
+ *  duration — the trace envelope and the PB are one run). Used by both
+ *  the PB-candidate projection and hydration; a failing child is
+ *  always dropped alone, never the parent. */
+function ghostMatchesParent(
+  ghost: unknown,
+  parent: { gameId: string; scoringVersion: number; difficultyBand: number; durationMs: number },
+): ghost is GhostTrace {
+  return (
+    isValidGhostTrace(ghost) &&
+    ghost.gameId === parent.gameId &&
+    ghost.scoringVersion === parent.scoringVersion &&
+    ghost.difficultyBand === parent.difficultyBand &&
+    ghost.durationMs === parent.durationMs
+  );
+}
+
 /** Project a sealed GameResult onto the compact persisted summary. */
 export function toGameResultSummary(result: GameResult): GameResultSummary {
   return {
@@ -73,6 +95,14 @@ export function toGameResultSummary(result: GameResult): GameResultSummary {
     difficultyBand: result.difficultyBand,
     completedAt: result.completedAt,
     durationMs: result.durationMs,
+    // GAME.18C2 — attach the run's personal ghost ONLY when the
+    // transient trace is valid and identity-exact for this result; a
+    // malformed/mismatched trace is silently omitted and can never
+    // affect the candidate PB itself. Whether this candidate (and its
+    // ghost) replaces the incumbent stays entirely with isBetterResult.
+    ...(result.trace !== undefined && ghostMatchesParent(result.trace, result)
+      ? { ghost: result.trace }
+      : {}),
   };
 }
 
@@ -122,12 +152,24 @@ function isValidStoredSummary(gameId: string, raw: unknown): raw is GameResultSu
 }
 
 /** Sanitize the whole stored record: malformed children are dropped
- *  individually so one bad entry never poisons the others. */
+ *  individually so one bad entry never poisons the others.
+ *  GAME.18C2 — ghost child validation is SUBORDINATE: a summary whose
+ *  parent fields are valid always survives; an absent ghost is valid
+ *  (every legacy record), a valid identity-exact ghost is retained,
+ *  and an invalid/mismatched ghost is STRIPPED alone — an invalid
+ *  subordinate ghost must never destroy a valid PB. */
 export function sanitizeStoredBestResults(raw: unknown): Record<string, GameResultSummary> {
   const out: Record<string, GameResultSummary> = {};
   if (typeof raw !== 'object' || raw === null) return out;
   for (const [gameId, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (isValidStoredSummary(gameId, value)) out[gameId] = value;
+    if (!isValidStoredSummary(gameId, value)) continue;
+    const withGhost = value as GameResultSummary & { ghost?: unknown };
+    if (withGhost.ghost === undefined || ghostMatchesParent(withGhost.ghost, withGhost)) {
+      out[gameId] = value;
+    } else {
+      const { ghost: _invalidGhost, ...parent } = withGhost;
+      out[gameId] = parent as GameResultSummary;
+    }
   }
   return out;
 }

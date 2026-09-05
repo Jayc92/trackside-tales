@@ -18,6 +18,7 @@ import {
   ScoringSpec,
   clampScore,
 } from './registry';
+import type { GhostTrace } from './ghostTrace';
 
 /** GAME.3 fixed difficulty. GAME.10 (dynamic difficulty, G4) may later
  *  supply a computed band per session — sealing is already
@@ -74,6 +75,12 @@ export interface SealGameResultArgs {
   attempt: number;
   /** Injectable for deterministic tests; defaults to now. */
   completedAt?: string;
+  /** PUBLIC-v7.4B.GAME.18C2 — optional finalized personal-ghost trace
+   *  for this attempt (Packer pilot). Attached verbatim when present;
+   *  sealing performs no ghost validation or authority decisions —
+   *  those live with the trace finalizer (GameOverlay) and the PB
+   *  persistence boundary (AppContext). */
+  trace?: GhostTrace;
 }
 
 /**
@@ -103,5 +110,6 @@ export function sealGameResult(args: SealGameResultArgs): GameResult {
     scoringVersion: scoring.scoringVersion,
     difficultyBand,
     metrics: { ...outcome.metrics },
+    ...(args.trace !== undefined ? { trace: args.trace } : {}),
   };
 }

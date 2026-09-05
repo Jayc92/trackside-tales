@@ -30,6 +30,9 @@
 //     implementations. Cleanup needs separate authorization.
 
 import type { ComponentType } from 'react';
+// GAME.18C2 — type-only, erased at compile: ghostTrace itself imports
+// only types back from this module, so no runtime cycle exists.
+import type { GhostTrace } from './ghostTrace';
 import {
   GameConfig,
   GameType,
@@ -119,6 +122,14 @@ export interface GameResult {
   difficultyBand: DifficultyBand;
   /** Numeric-only, game-namespaced metrics. */
   metrics: Record<string, number>;
+  /** PUBLIC-v7.4B.GAME.18C2 — optional TRANSIENT personal-ghost trace
+   *  of this attempt (Packer pilot). NOT raw history: raw GameResults
+   *  are never persisted, so this exists only on the in-flight result.
+   *  Scoring/mastery/events/XP/quests/collectibles must ignore it —
+   *  only PB summary construction may inspect it. Additive optional
+   *  field; resultVersion deliberately NOT bumped (producers without
+   *  it remain valid, no durable raw-result consumer exists). */
+  trace?: GhostTrace;
 }
 
 /** Compact projection of a GameResult for prior-best display, Arcade
@@ -140,6 +151,13 @@ export interface GameResultSummary {
   difficultyBand: DifficultyBand;
   completedAt: string;
   durationMs: number;
+  /** PUBLIC-v7.4B.GAME.18C2 — the canonical personal ghost: the ONLY
+   *  durable ghost location, embedded so its lifetime is exactly the
+   *  PB's (replaced only when isBetterResult replaces the PB; cleared
+   *  by RESET with the PB; no separate store, no history). Subordinate
+   *  metadata: hydration strips an invalid/mismatched child and keeps
+   *  the valid parent. Legacy summaries without it stay valid. */
+  ghost?: GhostTrace;
 }
 
 // ── Outcome (raw runtime output) ────────────────────────────────────────
@@ -238,6 +256,14 @@ export interface LegacyGameRuntimeProps {
   onWin: (metrics?: Record<string, number>) => void;
   onLose: (metrics?: Record<string, number>) => void;
   quizShowing: boolean;
+  /** PUBLIC-v7.4B.GAME.18C2 — optional semantic-progress observer:
+   *  called with the new completed-progress count K exactly when a
+   *  legitimate objective is accepted (never on attempts, mistakes,
+   *  quiz state, or rerenders). Runtimes know ONLY "progress advanced";
+   *  timing, ghosts, PBs, and persistence are the shell's business.
+   *  Absent callback = exact existing behavior. Packer is the only
+   *  emitter in the GAME.18C2 pilot. */
+  onCheckpoint?: (completedCount: number) => void;
 }
 
 export type LegacyGameRuntimeComponent = ComponentType<LegacyGameRuntimeProps>;

@@ -146,10 +146,16 @@ interface PackerRouteGameProps {
   onWin: (metrics?: Record<string, number>) => void;
   onLose: (metrics?: Record<string, number>) => void;
   quizShowing: boolean;
+  /** GAME.18C2 — semantic-progress observer: fired with the new laid
+   *  count K only when a junction is ACCEPTED (correct + in order),
+   *  never on wrong/out-of-order attempts, quiz state, or rerenders.
+   *  Observational only — this runtime knows nothing about timing,
+   *  ghosts, PBs, or storage, and behaves identically when absent. */
+  onCheckpoint?: (completedCount: number) => void;
 }
 
 
-export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRouteGameProps) {
+export function PackerRouteGame({ config, onWin, onLose, quizShowing, onCheckpoint }: PackerRouteGameProps) {
   // ── State ──────────────────────────────────────────────────────────
   const [placements, setPlacements] = useState<Record<string, string>>({});
   const [movesLeft, setMovesLeft]   = useState(STARTING_MOVES);
@@ -348,6 +354,12 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
       setPlacements(next);
       setArmedElementId(null);
 
+      // GAME.18C2 — semantic checkpoint: progress genuinely advanced to
+      // Object.keys(next).length. Every input path (tap, drag) funnels
+      // through this single acceptance point; the rejection branches
+      // above returned before reaching it.
+      onCheckpoint?.(Object.keys(next).length);
+
       if (Object.keys(next).length >= ZONES.length) {
         completedRef.current = true;
         window.setTimeout(triggerWin, 400);
@@ -355,7 +367,7 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing }: PackerRo
         triggerApprove(elementId);
       }
     },
-    [placements, unlocked, triggerWin, triggerLose, triggerReconsider, triggerApprove],
+    [placements, unlocked, triggerWin, triggerLose, triggerReconsider, triggerApprove, onCheckpoint],
   );
 
 

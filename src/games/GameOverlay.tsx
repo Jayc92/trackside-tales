@@ -13,6 +13,12 @@ import {
   sealGameResult,
 } from './resultPipeline';
 import type { GameOverlayTimetableContext } from './worldState';
+import {
+  GhostTraceDraft,
+  createGhostTraceDraft,
+  finalizeGhostTrace,
+  recordGhostCheckpoint,
+} from './ghostTrace';
 
 // ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
 // First playable vertical slice. Renders against the golden CSS schema in
@@ -427,6 +433,28 @@ function GameOverlayInner({
   // never leak into the next attempt's sealed result.
   const runtimeMetricsRef = useRef<Record<string, number> | null>(null);
 
+  // GAME.18C2 — the CURRENT attempt's transient personal-ghost draft.
+  // Created at BEGIN and reset by retryGame (the same lifecycle points
+  // as gameStartedAtRef), so a failed attempt's checkpoints can never
+  // contaminate the winning attempt's trace. Ref-based: capture causes
+  // no renders and NO storage writes — persistence happens only if the
+  // sealed result later becomes the canonical PB (AppContext).
+  const ghostDraftRef = useRef<GhostTraceDraft | null>(null);
+
+  /** GAME.18C2 — semantic checkpoint from the runtime (Packer pilot):
+   *  stamp the elapsed time on the SAME Date.now clock basis that
+   *  produces GameResult.durationMs (gameStartedAtRef), and let the
+   *  pure builder enforce every trace rule (order, monotonic time,
+   *  bounds). Zero behavior before BEGIN or without a draft. */
+  const handleRuntimeCheckpoint = useCallback((completedCount: number) => {
+    const startedAt = gameStartedAtRef.current;
+    const draft = ghostDraftRef.current;
+    if (!startedAt || !draft) return;
+    ghostDraftRef.current = recordGhostCheckpoint(
+      draft, completedCount, Math.max(0, Date.now() - startedAt),
+    );
+  }, []);
+
   /** Seal + surface one terminal result. Pure sealing; the only side
    *  effect is the optional onResult callback. Badge award, phases, and
    *  analytics are all decided BEFORE this runs and never depend on it. */
@@ -443,6 +471,23 @@ function GameOverlayInner({
     }
     const startedAt = gameStartedAtRef.current;
     const durationMs = startedAt > 0 ? Math.max(0, Date.now() - startedAt) : 0;
+    // GAME.18C2 — finalize the attempt's transient ghost draft with the
+    // SAME durationMs the result seals (computed once, used by both —
+    // the trace envelope and the PB must describe one exact run).
+    // finalizeGhostTrace fails closed (null) for anything but a
+    // complete valid trace — losses, non-emitting games (empty draft),
+    // and any timing anomaly simply seal a result with no trace; a
+    // ghost can never affect the legitimate result itself.
+    const draft = ghostDraftRef.current;
+    const trace =
+      won && draft
+        ? finalizeGhostTrace({
+            draft,
+            durationMs,
+            scoringVersion: def.scoring.scoringVersion,
+            difficultyBand: DEFAULT_DIFFICULTY_BAND,
+          }) ?? undefined
+        : undefined;
     const result = sealGameResult({
       session,
       outcome: {
@@ -461,6 +506,7 @@ function GameOverlayInner({
       difficultyBand: DEFAULT_DIFFICULTY_BAND,
       durationMs,
       attempt: attemptsRef.current,
+      ...(trace !== undefined ? { trace } : {}),
     });
     onResult?.(result);
   }, [definition, onResult]);
@@ -597,7 +643,10 @@ function GameOverlayInner({
     // GAME.6B — drop the failed attempt's runtime metrics; the retried
     // attempt reports its own.
     runtimeMetricsRef.current = null;
-  }, []);
+    // GAME.18C2 — drop the failed attempt's ghost draft on the same
+    // lifecycle point; the winning retry's trace starts empty.
+    ghostDraftRef.current = createGhostTraceDraft(definition.gameId);
+  }, [definition]);
 
   // ADMIN-v6.8D — BEGIN handler. Visible behavior is identical to the
   // previous inline arrow (setPhase 'playing'). The only addition is
@@ -607,6 +656,9 @@ function GameOverlayInner({
   // directly without logging a new start.
   const handleBegin = useCallback(() => {
     gameStartedAtRef.current = Date.now();
+    // GAME.18C2 — a fresh transient ghost draft per playable attempt,
+    // on the same lifecycle point as the attempt clock.
+    ghostDraftRef.current = createGhostTraceDraft(definition.gameId);
     setPhase('playing');
     if (!gameStartedLoggedRef.current) {
       gameStartedLoggedRef.current = true;
@@ -617,7 +669,7 @@ function GameOverlayInner({
       });
       void flushEvents(guestId);
     }
-  }, [config, guestId]);
+  }, [config, guestId, definition]);
 
   // ── Phase renderers ──────────────────────────────────────────────────────
   // UI-v6.7A — cinematic intro card. The old intro was a bare paragraph +
@@ -728,6 +780,11 @@ function GameOverlayInner({
           onWin={handleGameWin}
           onLose={handleGameLose}
           quizShowing={quizShowingRef.current}
+          // GAME.18C2 — optional semantic-progress observer (shared
+          // LegacyGameRuntimeProps contract). Packer is the only
+          // emitter in this pilot; Allen/Wooden don't declare or read
+          // it, so this single generic mount point stays branch-free.
+          onCheckpoint={handleRuntimeCheckpoint}
         />
       </div>
     );
