@@ -233,6 +233,44 @@
   line-height: 1.5;
   color: var(--ar-muted);
 }
+/* ── GAME.15 — timetable context strip ────────────────────────────────
+   Derived, temporary cabinet context for the selected ACTIVE event.
+   Text carries the state (never color-only); zero controls; disappears
+   automatically with the event (no stored cabinet state exists). */
+.arcade-cab-timetable {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.55rem;
+  margin: 0.6rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(163, 128, 63, 0.25);
+}
+.arcade-cab-timetable-tag {
+  padding: 0.14rem 0.45rem;
+  border: 1px solid rgba(217, 138, 74, 0.5);
+  border-radius: 2px;
+  font-family: var(--ar-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.2em;
+  color: #d98a4a;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.arcade-cab-timetable-detail {
+  font-family: var(--ar-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  color: var(--ar-muted);
+  text-transform: uppercase;
+}
+.arcade-cab-timetable--recorded .arcade-cab-timetable-tag {
+  border-color: rgba(216, 180, 107, 0.55);
+  color: var(--ar-brass-hi);
+}
+.arcade-cab-timetable--recorded .arcade-cab-timetable-detail {
+  color: var(--ar-ivory);
+}
 /* GAME.6 — truthful personal-best line on completed cabinets.
    GAME.6B — now a compact two-metric row: BEST SCORE · BEST RUN. */
 .arcade-cab-best {

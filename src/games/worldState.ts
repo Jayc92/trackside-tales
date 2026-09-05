@@ -21,6 +21,7 @@
 // the LINE STATUS rail needs — event definitions, this player's event
 // progress, and an injected `now`.
 
+import type { GameId } from './registry';
 import type { GameEventProgress } from './events';
 import {
   GameEventDefinition,
@@ -53,11 +54,22 @@ export interface ArcadeWorldState {
       eventId: string;
       name: string;
       status: 'active' | 'upcoming';
+      /** GAME.15 — the selected event's target games, straight from
+       *  its definition (never a hard-coded list). The one authority
+       *  cabinet reactions may use for targeting. */
+      gameIds: readonly GameId[];
     };
   };
   player: {
     /** Present only when a primary ACTIVE event was selected. */
     eventComplete?: boolean;
+    /** GAME.15 — the selected event's VERSION-CURRENT credited
+     *  GameIds ([] for baseline/UPCOMING, and [] when stored progress
+     *  is version-stale — stale credit never leaks into the current
+     *  timetable treatment). The one authority cabinet reactions may
+     *  use for credit; badges/PB/mastery/quests/collectibles never
+     *  imply it. */
+    eventCreditedGameIds: readonly GameId[];
   };
 }
 
@@ -105,7 +117,12 @@ export function getArcadeWorldState(args: {
     models.find((m) => m.status === 'upcoming');
 
   if (primary === undefined) {
-    return { mode: 'baseline', headline: null, platform: {}, player: {} };
+    return {
+      mode: 'baseline',
+      headline: null,
+      platform: {},
+      player: { eventCreditedGameIds: [] },
+    };
   }
 
   const name = primary.definition.name;
@@ -125,9 +142,19 @@ export function getArcadeWorldState(args: {
         ...(eventComplete ? { playerNote: 'YOUR RUN IS COMPLETE' } : {}),
       },
       platform: {
-        event: { eventId: primary.definition.eventId, name, status: 'active' },
+        event: {
+          eventId: primary.definition.eventId,
+          name,
+          status: 'active',
+          gameIds: primary.definition.gameIds,
+        },
       },
-      player: { eventComplete },
+      player: {
+        eventComplete,
+        // primary.progress is attached only when version-current, so
+        // stale stored credit composes to [] here by construction.
+        eventCreditedGameIds: primary.progress?.completedGameIds ?? [],
+      },
     };
   }
 
@@ -140,8 +167,56 @@ export function getArcadeWorldState(args: {
       line: `SPECIAL TIMETABLE POSTED — ${name} · BEGINS ${days.begins}`,
     },
     platform: {
-      event: { eventId: primary.definition.eventId, name, status: 'upcoming' },
+      event: {
+        eventId: primary.definition.eventId,
+        name,
+        status: 'upcoming',
+        gameIds: primary.definition.gameIds,
+      },
     },
-    player: {},
+    player: { eventCreditedGameIds: [] },
+  };
+}
+
+// ── GAME.15 — cabinet world reactions ───────────────────────────────────
+/** A temporary presentation treatment on one cabinet, derived solely
+ *  from the SELECTED event above — never a game-truth change and never
+ *  a second event-selection path. Copy composes at render from
+ *  eventName + status; nothing here stores final strings. */
+export interface CabinetWorldReaction {
+  eventName: string;
+  status: 'pending' | 'recorded';
+}
+
+/**
+ * The cabinet's reaction to the current world state, or null (= zero
+ * DOM) when ANY of these hold (G15B §10):
+ *   - baseline mode / no selected event
+ *   - the selected event is UPCOMING (the rail's POSTED line owns
+ *     pre-start awareness; cabinets never imply early participation)
+ *   - the WHOLE selected event is complete (the rail's YOUR RUN IS
+ *     COMPLETE owns that statement once — three redundant RECORDED
+ *     strips would be noise)
+ *   - this gameId is not targeted by the selected event
+ *
+ * status: 'recorded' iff this gameId is in the selected event's
+ * version-current credited ids — an in-window won result recorded by
+ * the event framework. Mastery, badges, PBs, quests, and collectibles
+ * never imply it. Pure; the clock enters only through the composer.
+ */
+export function getCabinetWorldReaction(
+  gameId: GameId,
+  worldState: ArcadeWorldState,
+): CabinetWorldReaction | null {
+  const event = worldState.platform.event;
+  if (worldState.mode !== 'timetable' || event === undefined) return null;
+  if (event.status !== 'active') return null;
+  if (worldState.player.eventComplete === true) return null;
+  if (!event.gameIds.includes(gameId)) return null;
+  return {
+    eventName: event.name,
+    status: worldState.player.eventCreditedGameIds.includes(gameId)
+      ? 'recorded'
+      : 'pending',
   };
 }

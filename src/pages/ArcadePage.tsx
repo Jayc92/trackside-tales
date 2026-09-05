@@ -17,7 +17,7 @@ import {
   QuestObjective,
   getQuestPresentationModels,
 } from '../games/quests';
-import { getArcadeWorldState } from '../games/worldState';
+import { getArcadeWorldState, getCabinetWorldReaction } from '../games/worldState';
 
 // ================== TRACKSIDE ARCADE — the games of the archive ==================
 // PUBLIC-v7.4B.GAME.5 — the first player-facing platform surface on the
@@ -402,6 +402,30 @@ export function ArcadePage() {
                   <p className="arcade-cab-tale">
                     From the Tale: <em>{tale.title.replace('\n', ' ')}</em>
                   </p>
+                  {/* GAME.15 — timetable context strip: derived solely
+                      from the SAME selected event as LINE STATUS; text
+                      only, never a control, and null ⇒ zero DOM
+                      (untargeted / upcoming / whole-run complete /
+                      baseline). Communicates contribution and recorded
+                      credit only — game mechanics are unchanged. */}
+                  {(() => {
+                    const reaction = getCabinetWorldReaction(def.gameId, worldState);
+                    if (!reaction) return null;
+                    return (
+                      <div
+                        className={`arcade-cab-timetable${reaction.status === 'recorded' ? ' arcade-cab-timetable--recorded' : ''}`}
+                      >
+                        <span className="arcade-cab-timetable-tag">
+                          Special Timetable
+                        </span>
+                        <span className="arcade-cab-timetable-detail">
+                          {reaction.status === 'recorded'
+                            ? 'RUN RECORDED'
+                            : `COUNTS TOWARD ${reaction.eventName}`}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   {cab === 'sealed' ? (
                     <>
                       <p className="arcade-cab-note">
