@@ -210,10 +210,18 @@ interface WoodenStationGameProps {
   onWin: (metrics?: Record<string, number>) => void;
   onLose: (metrics?: Record<string, number>) => void;
   quizShowing: boolean;
+  /** GAME.18E1 — semantic-progress observer: fired with the new
+   *  restored-room count K only when a preservation decision is
+   *  CORRECT and a previously dark room becomes restored — never on
+   *  wrong answers, burned matches, hints, or rerenders. Count-based
+   *  on purpose — room order is free, so the ghost trace never records
+   *  room identity. Observational only; identical behavior when
+   *  absent. */
+  onCheckpoint?: (completedCount: number) => void;
 }
 
 
-export function WoodenStationGame({ config, onWin, onLose, quizShowing }: WoodenStationGameProps) {
+export function WoodenStationGame({ config, onWin, onLose, quizShowing, onCheckpoint }: WoodenStationGameProps) {
   // ── State ──────────────────────────────────────────────────────────
   const [restored, setRestored] = useState<Set<string>>(new Set());
   const [matchesLeft, setMatchesLeft] = useState(STARTING_MATCHES);
@@ -360,6 +368,12 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing }: Wooden
           }
           return next;
         });
+        // GAME.18E1 — semantic checkpoint: a previously dark room is
+        // now restored. Emitted OUTSIDE the state updater (updaters
+        // must stay pure); the quiz only opens for unrestored rooms,
+        // so the closure guard + the trace builder's duplicate rule
+        // both hold.
+        if (!restored.has(roomId)) onCheckpoint?.(restored.size + 1);
         setActiveQuizRoomId(null);
         setQuizSelected(null);
         setQuizResult(null);
@@ -377,7 +391,7 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing }: Wooden
         setQuizResult(null);
       }, 1100);
     }
-  }, [quizSelected, activeQuiz, triggerPreserved, triggerFaltered, triggerWin, triggerLose]);
+  }, [quizSelected, activeQuiz, restored, triggerPreserved, triggerFaltered, triggerWin, triggerLose, onCheckpoint]);
 
 
   // ── HINT: highlight the next un-restored room briefly ─────────

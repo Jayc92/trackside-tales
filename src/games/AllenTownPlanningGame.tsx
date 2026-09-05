@@ -303,10 +303,17 @@ interface AllenTownPlanningGameProps {
   onWin: (metrics?: Record<string, number>) => void;
   onLose: (metrics?: Record<string, number>) => void;
   quizShowing: boolean;
+  /** GAME.18E1 — semantic-progress observer: fired with the new placed
+   *  count K only when a placement is ACCEPTED (correct element on its
+   *  zone), never on wrong placements, mistakes, quiz/unlock steps, or
+   *  rerenders. Count-based on purpose — placement order is free, so
+   *  the ghost trace never records zone identity. Observational only;
+   *  identical behavior when absent. */
+  onCheckpoint?: (completedCount: number) => void;
 }
 
 
-export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: AllenTownPlanningGameProps) {
+export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing, onCheckpoint }: AllenTownPlanningGameProps) {
   // ── State (unchanged logic from v5.1.10) ───────────────────────────
   const [placements, setPlacements] = useState<Record<string, string>>({});
   const [movesLeft, setMovesLeft]   = useState(STARTING_MOVES);
@@ -468,6 +475,11 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
       const next = { ...placements, [zoneId]: elementId };
       setPlacements(next);
       setArmedElementId(null);
+      // GAME.18E1 — semantic checkpoint: progress genuinely advanced to
+      // Object.keys(next).length. Both input paths (tap, drag) funnel
+      // through this single acceptance branch; the rejection branch
+      // below never reaches it, and the guards above block duplicates.
+      onCheckpoint?.(Object.keys(next).length);
       // v5.1.12: positive "ALLEN APPROVES" parchment with the element's
       // own reasoning. Suppressed on the FINAL placement so it doesn't
       // overlap the success-medallion transition.
@@ -493,7 +505,7 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing }: Al
       });
       setArmedElementId(null);
     }
-  }, [placements, unlocked, triggerWin, triggerLose, triggerReconsider, triggerApprove]);
+  }, [placements, unlocked, triggerWin, triggerLose, triggerReconsider, triggerApprove, onCheckpoint]);
 
 
   // ── Tap interactions ─────────────────────────────────────────────

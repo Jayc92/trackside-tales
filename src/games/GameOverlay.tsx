@@ -23,12 +23,7 @@ import {
   recordGhostCheckpoint,
 } from './ghostTrace';
 
-// ── GAME.18D1 — RACE BEST (Packer pilot) ────────────────────────────────
-/** The one game whose canonical PB ghost may be raced in this pilot.
- *  Structural validity alone never lights the UI for another game —
- *  presentation gating is deliberately narrower than trace validity. */
-const RACE_BEST_PILOT_GAME_ID = 'packer-rail-line';
-
+// ── GAME.18D1/18E1 — RACE BEST ──────────────────────────────────────────
 /** Pure pace copy. One deterministic rounding rule: tenths of a second
  *  via Math.round(|delta| / 100) — so ±50ms is the first tick that
  *  reads 0.1s and anything rounding to zero tenths reads EVEN (a
@@ -474,16 +469,18 @@ function GameOverlayInner({
   // sealed result later becomes the canonical PB (AppContext).
   const ghostDraftRef = useRef<GhostTraceDraft | null>(null);
 
-  // ── GAME.18D1 — RACE BEST session state (Packer pilot) ──────────────
+  // ── GAME.18D1/18E1 — RACE BEST session state ─────────────────────────
   // Eligibility is recomputed per render from the page-supplied PB
-  // ghost: pilot game only, then exact compatibility against the
-  // CURRENT authoritative contracts (the definition's own scoring
-  // version and the platform's current band constant — never
-  // hardcoded duplicates, never challengePolicy). Anything invalid,
-  // mismatched, or non-Packer simply produces no option: fail closed,
+  // ghost via exact compatibility against the CURRENT authoritative
+  // contracts (the definition's own scoring version and the platform's
+  // current band constant — never hardcoded duplicates, never
+  // challengePolicy). GAME.18E1 removed the Packer pilot gate: the
+  // ghost checkpoint contract itself is the registry of ghost-capable
+  // games (isGhostCompatible validates structurally, and an
+  // uncontracted/unknown game can never have a valid ghost — fail
+  // closed). Anything invalid or mismatched simply produces no option:
   // no error surface, normal run untouched.
   const raceEligibleGhost =
-    definition.gameId === RACE_BEST_PILOT_GAME_ID &&
     pbGhost != null &&
     isGhostCompatible({
       ghost: pbGhost,
