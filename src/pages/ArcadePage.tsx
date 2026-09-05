@@ -577,6 +577,10 @@ export function ArcadePage() {
                 }
               : null
           }
+          // GAME.18D1 — the stored canonical PB ghost, passed raw with
+          // zero page-side logic (the overlay owns pilot gating +
+          // compatibility, keeping Arcade/Tale identical).
+          pbGhost={state.gameResultsBest[activeGame.gameId]?.ghost ?? null}
         />
       )}
     </div>

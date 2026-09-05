@@ -14,11 +14,34 @@ import {
 } from './resultPipeline';
 import type { GameOverlayTimetableContext } from './worldState';
 import {
+  GhostTrace,
   GhostTraceDraft,
   createGhostTraceDraft,
   finalizeGhostTrace,
+  getGhostDeltaMs,
+  isGhostCompatible,
   recordGhostCheckpoint,
 } from './ghostTrace';
+
+// ── GAME.18D1 — RACE BEST (Packer pilot) ────────────────────────────────
+/** The one game whose canonical PB ghost may be raced in this pilot.
+ *  Structural validity alone never lights the UI for another game —
+ *  presentation gating is deliberately narrower than trace validity. */
+const RACE_BEST_PILOT_GAME_ID = 'packer-rail-line';
+
+/** Pure pace copy. One deterministic rounding rule: tenths of a second
+ *  via Math.round(|delta| / 100) — so ±50ms is the first tick that
+ *  reads 0.1s and anything rounding to zero tenths reads EVEN (a
+ *  truthful "no meaningful gap" statement; never "0.0s AHEAD").
+ *  Negative = ahead of the best run, positive = behind it. */
+export function formatGhostPace(deltaMs: number): string {
+  const tenths = Math.round(Math.abs(deltaMs) / 100);
+  if (tenths === 0) return 'EVEN WITH BEST RUN';
+  const seconds = (tenths / 10).toFixed(1);
+  return deltaMs < 0
+    ? `${seconds}s AHEAD OF BEST RUN`
+    : `${seconds}s BEHIND BEST RUN`;
+}
 
 // ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
 // First playable vertical slice. Renders against the golden CSS schema in
@@ -291,6 +314,15 @@ interface GameOverlayProps {
    *  The overlay derives NOTHING itself (no AppContext, no registry,
    *  no clock); it renders exactly what the launch surface derived. */
   timetableContext?: GameOverlayTimetableContext | null;
+  /** PUBLIC-v7.4B.GAME.18D1 — the launching page's stored canonical PB
+   *  ghost for this game (state.gameResultsBest[gameId]?.ghost), passed
+   *  raw with ZERO page-side logic so Arcade and Tale Detail stay
+   *  identical by construction. The overlay owns all gating: the
+   *  Packer-only pilot gate plus exact isGhostCompatible validation.
+   *  Absent/null ⇒ no RACE BEST option and byte-identical behavior.
+   *  Presentation only — a tampered ghost can at worst mislabel the
+   *  pace line; it carries no authority anywhere. */
+  pbGhost?: GhostTrace | null;
 }
 
 export function GameOverlay(props: GameOverlayProps) {
@@ -332,6 +364,7 @@ function GameOverlayInner({
   guestId,
   onResult,
   timetableContext,
+  pbGhost,
   rootRef,
 }: GameOverlayProps & {
   config: NonNullable<GameDefinition['legacyConfig']>;
@@ -441,18 +474,58 @@ function GameOverlayInner({
   // sealed result later becomes the canonical PB (AppContext).
   const ghostDraftRef = useRef<GhostTraceDraft | null>(null);
 
+  // ── GAME.18D1 — RACE BEST session state (Packer pilot) ──────────────
+  // Eligibility is recomputed per render from the page-supplied PB
+  // ghost: pilot game only, then exact compatibility against the
+  // CURRENT authoritative contracts (the definition's own scoring
+  // version and the platform's current band constant — never
+  // hardcoded duplicates, never challengePolicy). Anything invalid,
+  // mismatched, or non-Packer simply produces no option: fail closed,
+  // no error surface, normal run untouched.
+  const raceEligibleGhost =
+    definition.gameId === RACE_BEST_PILOT_GAME_ID &&
+    pbGhost != null &&
+    isGhostCompatible({
+      ghost: pbGhost,
+      gameId: definition.gameId,
+      scoringVersion: definition.scoring.scoringVersion,
+      difficultyBand: DEFAULT_DIFFICULTY_BAND,
+    })
+      ? pbGhost
+      : null;
+  // OFF by default every session; never persisted (component state
+  // dies with the overlay, and each launch mounts fresh).
+  const [raceBestSelected, setRaceBestSelected] = useState(false);
+  // The FROZEN opponent for the running session: validated once more
+  // and captured at BEGIN, kept across retries (a loss cannot replace
+  // the PB, and the opponent must remain the launch-time best even if
+  // this very run later becomes the new PB). Cleared only by unmount.
+  const raceGhostRef = useRef<GhostTrace | null>(null);
+  // Latest checkpoint pace delta (ms) — the ONLY race render state:
+  // updated at most five times per attempt, on checkpoint events, with
+  // no timers and no per-frame work. null = no line (pre-checkpoint-1,
+  // race off, or invalid delta).
+  const [racePaceMs, setRacePaceMs] = useState<number | null>(null);
+
   /** GAME.18C2 — semantic checkpoint from the runtime (Packer pilot):
    *  stamp the elapsed time on the SAME Date.now clock basis that
    *  produces GameResult.durationMs (gameStartedAtRef), and let the
    *  pure builder enforce every trace rule (order, monotonic time,
-   *  bounds). Zero behavior before BEGIN or without a draft. */
+   *  bounds). Zero behavior before BEGIN or without a draft.
+   *  GAME.18D1 — the same event (and the same elapsed reading) also
+   *  drives the RACE BEST pace display against the frozen opponent;
+   *  an invalid delta simply leaves the line unchanged/hidden. */
   const handleRuntimeCheckpoint = useCallback((completedCount: number) => {
     const startedAt = gameStartedAtRef.current;
     const draft = ghostDraftRef.current;
     if (!startedAt || !draft) return;
-    ghostDraftRef.current = recordGhostCheckpoint(
-      draft, completedCount, Math.max(0, Date.now() - startedAt),
-    );
+    const elapsedMs = Math.max(0, Date.now() - startedAt);
+    ghostDraftRef.current = recordGhostCheckpoint(draft, completedCount, elapsedMs);
+    const opponent = raceGhostRef.current;
+    if (opponent) {
+      const delta = getGhostDeltaMs(opponent, completedCount, elapsedMs);
+      if (delta !== null) setRacePaceMs(delta);
+    }
   }, []);
 
   /** Seal + surface one terminal result. Pure sealing; the only side
@@ -646,6 +719,10 @@ function GameOverlayInner({
     // GAME.18C2 — drop the failed attempt's ghost draft on the same
     // lifecycle point; the winning retry's trace starts empty.
     ghostDraftRef.current = createGhostTraceDraft(definition.gameId);
+    // GAME.18D1 — a retry keeps RACE BEST on against the SAME frozen
+    // opponent (a loss cannot have replaced the PB); only the current
+    // run's pace display resets with the attempt clock.
+    setRacePaceMs(null);
   }, [definition]);
 
   // ADMIN-v6.8D — BEGIN handler. Visible behavior is identical to the
@@ -659,6 +736,13 @@ function GameOverlayInner({
     // GAME.18C2 — a fresh transient ghost draft per playable attempt,
     // on the same lifecycle point as the attempt clock.
     ghostDraftRef.current = createGhostTraceDraft(definition.gameId);
+    // GAME.18D1 — freeze the RACE BEST opponent for this session at
+    // BEGIN (belt-and-braces: the eligibility validation runs against
+    // the same in-memory ghost the option was offered for; anything
+    // invalid freezes nothing and the run proceeds normally). The
+    // frozen snapshot is never re-read from mutable PB state mid-run.
+    raceGhostRef.current = raceBestSelected ? raceEligibleGhost : null;
+    setRacePaceMs(null);
     setPhase('playing');
     if (!gameStartedLoggedRef.current) {
       gameStartedLoggedRef.current = true;
@@ -669,7 +753,7 @@ function GameOverlayInner({
       });
       void flushEvents(guestId);
     }
-  }, [config, guestId, definition]);
+  }, [config, guestId, definition, raceBestSelected, raceEligibleGhost]);
 
   // ── Phase renderers ──────────────────────────────────────────────────────
   // UI-v6.7A — cinematic intro card. The old intro was a bare paragraph +
@@ -719,6 +803,25 @@ function GameOverlayInner({
                 PART OF {timetableContext.eventName}
               </span>
             </div>
+          )}
+          {/* GAME.18D1 — RACE BEST (Packer pilot): a single semantic
+              toggle button, rendered only when a valid compatible
+              canonical PB ghost exists. OFF by default every session,
+              never persisted, and purely presentational — selecting it
+              changes nothing about the run itself. Absent entirely
+              (never a disabled placeholder) when ineligible. */}
+          {raceEligibleGhost && (
+            <button
+              type="button"
+              className={`game-race-option${raceBestSelected ? ' game-race-option--on' : ''}`}
+              aria-pressed={raceBestSelected}
+              onClick={() => setRaceBestSelected((on) => !on)}
+            >
+              <span className="game-race-option-label">RACE BEST</span>
+              <span className="game-race-option-detail">
+                COMPARE THIS RUN TO YOUR PERSONAL BEST
+              </span>
+            </button>
           )}
           <p className="game-instructions">{config.instructions}</p>
           <button
@@ -775,6 +878,23 @@ function GameOverlayInner({
     }
     return (
       <div className="game-canvas-wrap game-canvas-planning">
+        {/* GAME.18D1 — RACE BEST pace line: overlay-owned so Arcade and
+            Tale launches are identical; text only, no focus target, no
+            aria-live (five quiet updates per run at most). Hidden until
+            the first checkpoint — no projected pace, no interpolation. */}
+        {racePaceMs !== null && (
+          <p
+            className={`game-race-pace${
+              racePaceMs < 0
+                ? ' game-race-pace--ahead'
+                : racePaceMs > 0
+                  ? ' game-race-pace--behind'
+                  : ' game-race-pace--even'
+            }`}
+          >
+            {formatGhostPace(racePaceMs)}
+          </p>
+        )}
         <RuntimeComp
           config={config}
           onWin={handleGameWin}

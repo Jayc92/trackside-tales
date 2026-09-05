@@ -572,6 +572,10 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
                 }
               : null
           }
+          // GAME.18D1 — identical raw PB-ghost wiring to the Arcade
+          // mount; the overlay owns all gating (route parity by
+          // construction).
+          pbGhost={state.gameResultsBest[gameDefinition.gameId]?.ghost ?? null}
         />
       )}
 

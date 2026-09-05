@@ -967,3 +967,72 @@
   margin: 0 0.45rem;
   color: rgba(216, 180, 107, 0.6);
 }
+
+/* ── GAME.18D1 — RACE BEST (Packer pilot) ────────────────────────────
+   Overlay-owned (renders under BOTH ArcadePage and TaleDetailPage, so
+   literal palette values as with the GAME.16 family). One semantic
+   toggle button on the intro card + one text-only pace line during
+   play. Ahead = brass prestige, behind = muted neutral (never alarm
+   red), even = neutral. No animation, no motion dependency. */
+.game-race-option {
+  display: block;
+  /* Bottom clearance for the instructions panel's floating OBJECTIVE
+     tab (same collision class the GAME.16 strip fixed). */
+  margin: 0.9rem auto 1.2rem;
+  padding: 0.5rem 0.9rem;
+  max-width: 24rem;
+  background: transparent;
+  border: 1px solid rgba(163, 128, 63, 0.45);
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: center;
+}
+.game-race-option:focus-visible {
+  outline: 2px solid #d8b46b;
+  outline-offset: 2px;
+}
+.game-race-option-label {
+  display: block;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  color: #c9bda4;
+  text-transform: uppercase;
+}
+.game-race-option-detail {
+  display: block;
+  margin-top: 0.25rem;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  color: #96805c;
+  text-transform: uppercase;
+}
+.game-race-option--on {
+  border-color: rgba(216, 180, 107, 0.75);
+  background: rgba(216, 180, 107, 0.08);
+}
+.game-race-option--on .game-race-option-label {
+  color: #d8b46b;
+}
+.game-race-option--on .game-race-option-label::before {
+  content: '● ';
+}
+
+.game-race-pace {
+  margin: 0 0 0.5rem;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.game-race-pace--ahead {
+  color: #d8b46b;
+}
+.game-race-pace--behind {
+  color: #96805c;
+}
+.game-race-pace--even {
+  color: #c9bda4;
+}
