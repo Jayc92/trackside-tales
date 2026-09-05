@@ -36,6 +36,10 @@ import type { GameMasteryRecord, MasteryTier } from './mastery';
 import { MASTERY_TIER_RANK } from './mastery';
 import type { GameEventDefinition, GameEventProgress } from './events';
 import { getAllGameEvents } from './events';
+// GAME.13 — quest truth for quest-completion XP. One-way import
+// (quests.ts never imports this module), so no cycle exists.
+import type { QuestCompletionRecord, QuestDefinition } from './quests';
+import { getAllQuests } from './quests';
 
 // ── Award identity ──────────────────────────────────────────────────────
 // The awardId is the idempotency boundary: one id, at most one ledger
@@ -59,6 +63,11 @@ export function eventParticipationAwardId(eventId: string, eventVersion: number)
 }
 export function eventCompletionAwardId(eventId: string, eventVersion: number): XpAwardId {
   return `event:completion:${eventId}:v${eventVersion}`;
+}
+// GAME.13 — quest completion (version in the id: provenance records the
+// version actually completed).
+export function questCompletionAwardId(questId: string, questVersion: number): XpAwardId {
+  return `quest:completion:${questId}:v${questVersion}`;
 }
 
 // ── Approved v1 XP economy (G12B §1) ────────────────────────────────────
@@ -94,7 +103,12 @@ export type XpAwardSource =
   | { kind: 'mastery-tier'; gameId: string; tier: MasteryXpTier }
   | { kind: 'platform-completion' }
   | { kind: 'event-participation'; eventId: string; eventVersion: number }
-  | { kind: 'event-completion'; eventId: string; eventVersion: number };
+  | { kind: 'event-completion'; eventId: string; eventVersion: number }
+  // GAME.13 — quest completion. Ids are historical provenance (plain
+  // strings, never live-registry foreign keys); the xp VALUE comes from
+  // the completion record's frozen xpReward, so a retired quest's XP
+  // stays reconstructable without the live registry.
+  | { kind: 'quest-completion'; questId: string; questVersion: number };
 
 export interface XpAwardRecord {
   awardId: XpAwardId;
@@ -232,6 +246,16 @@ export function evaluateXpAwards(args: {
   ownedAwards: Record<string, XpAwardRecord>;
   registeredGames?: readonly GameDefinition[];
   eventDefinitions?: readonly GameEventDefinition[];
+  /** GAME.13 — quest completion transition: the completion ledger
+   *  before and after this result's quest fold. Quest XP grants ONLY
+   *  when a completion is NEW in this result (the quest fold is the
+   *  definition/availability/relevance authority); stored completion
+   *  state alone never awards at runtime — legacy quest XP comes from
+   *  the one-time initializers. Optional so pre-GAME.13 callers stay
+   *  valid. */
+  previousQuestCompletions?: Record<string, QuestCompletionRecord>;
+  resultingQuestCompletions?: Record<string, QuestCompletionRecord>;
+  questDefinitions?: readonly QuestDefinition[];
 }): XpAwardRecord[] {
   const {
     result,
@@ -245,6 +269,9 @@ export function evaluateXpAwards(args: {
   if (!(result.gameId in GAME_REGISTRY)) return [];
   const registeredGames = args.registeredGames ?? getAllGameDefinitions();
   const eventDefinitions = args.eventDefinitions ?? getAllGameEvents();
+  const previousQuestCompletions = args.previousQuestCompletions ?? {};
+  const resultingQuestCompletions = args.resultingQuestCompletions ?? {};
+  const questDefinitions = args.questDefinitions ?? getAllQuests();
   const earnedAt = result.completedAt; // one shared timestamp per result
   const awards: XpAwardRecord[] = [];
   const grant = (awardId: XpAwardId, xp: number, source: XpAwardSource) => {
@@ -303,6 +330,24 @@ export function evaluateXpAwards(args: {
       );
     }
   }
+
+  // 8 — quest completions (GAME.13): appended AFTER every existing
+  // family so the established outward order is preserved. A grant
+  // requires the completion to be NEW in this result (transition),
+  // version-current against a registered definition, and unowned; the
+  // xp value is the completion's FROZEN xpReward, never re-read from
+  // the definition.
+  for (const def of questDefinitions) {
+    const prev = previousQuestCompletions[def.questId];
+    const next = resultingQuestCompletions[def.questId];
+    if (next === undefined || next === prev) continue; // not new here
+    if (next.questVersion !== def.version) continue;
+    grant(questCompletionAwardId(def.questId, next.questVersion), next.xpReward, {
+      kind: 'quest-completion',
+      questId: def.questId,
+      questVersion: next.questVersion,
+    });
+  }
   return awards;
 }
 
@@ -318,6 +363,27 @@ export function applyXpAwards(
   const awards = { ...progression.awards };
   for (const a of fresh) awards[a.awardId] = a;
   return { progressionVersion: progression.progressionVersion, awards };
+}
+
+/** GAME.13 — the canonical XP award for one durable quest completion.
+ *  The xp value is the completion's FROZEN xpReward (never the live
+ *  registry), so a retired quest's XP remains reconstructable forever.
+ *  Used by the quest initializer's merge path and by progression-store
+ *  recovery below. */
+export function questCompletionXpAward(
+  completion: QuestCompletionRecord,
+): XpAwardRecord {
+  return {
+    awardId: questCompletionAwardId(completion.questId, completion.questVersion),
+    xp: completion.xpReward,
+    earnedAt: completion.completedAt,
+    origin: 'backfill',
+    source: {
+      kind: 'quest-completion',
+      questId: completion.questId,
+      questVersion: completion.questVersion,
+    },
+  };
 }
 
 // ── One-time backfill derivation (G12B §§25–31) ─────────────────────────
@@ -353,8 +419,17 @@ export function deriveBackfillAwards(args: {
   backfillTimestamp: string;
   registeredGames?: readonly GameDefinition[];
   eventDefinitions?: readonly GameEventDefinition[];
+  /** GAME.13 §24 — CROSS-STORE RECOVERY: when THIS progression store
+   *  is being initialized/recovered, canonical quest-completion XP is
+   *  re-derived from valid durable quest completion records (their
+   *  frozen xpReward — the live quest registry is deliberately NOT
+   *  consulted, so retired quests stay recoverable). This path runs
+   *  ONLY inside progression-ledger initialization; a valid versioned
+   *  store never synthesizes quest XP from completion state. */
+  questCompletions?: Record<string, QuestCompletionRecord>;
 }): XpAwardRecord[] {
   const { gameBadges, gameMastery, gameEvents, backfillTimestamp } = args;
+  const questCompletions = args.questCompletions ?? {};
   const registeredGames = args.registeredGames ?? getAllGameDefinitions();
   const eventDefinitions = args.eventDefinitions ?? getAllGameEvents();
   const awards: XpAwardRecord[] = [];
@@ -421,6 +496,11 @@ export function deriveBackfillAwards(args: {
       );
     }
   }
+  // GAME.13 — quest XP reconstruction from durable completions (frozen
+  // xpReward; registry-independent). See the questCompletions doc above.
+  for (const completion of Object.values(questCompletions)) {
+    awards.push(questCompletionXpAward(completion));
+  }
   return awards;
 }
 
@@ -449,6 +529,15 @@ function isValidStoredXpSource(raw: unknown): boolean {
       typeof s.eventId === 'string' && s.eventId.length > 0 &&
       typeof s.eventVersion === 'number' &&
       Number.isInteger(s.eventVersion) && s.eventVersion >= 1
+    );
+  }
+  // GAME.13 — quest provenance: structural only (plain-string questId,
+  // never a live-registry foreign key).
+  if (s.kind === 'quest-completion') {
+    return (
+      typeof s.questId === 'string' && s.questId.length > 0 &&
+      typeof s.questVersion === 'number' &&
+      Number.isInteger(s.questVersion) && s.questVersion >= 1
     );
   }
   return true; // unknown future/historical kind — preserve the XP

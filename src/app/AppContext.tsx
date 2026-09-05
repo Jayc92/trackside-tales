@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
-import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES, LS_GAME_EVENTS, LS_ARCADE_PROGRESSION } from './types';
+import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES, LS_GAME_EVENTS, LS_ARCADE_PROGRESSION, LS_ARCADE_QUESTS } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
 import {
   GAME_REGISTRY,
@@ -33,8 +33,18 @@ import {
   createEmptyProgression,
   deriveBackfillAwards,
   evaluateXpAwards,
+  questCompletionXpAward,
   sanitizeStoredProgression,
 } from '../games/progression';
+import {
+  QuestCompletionRecord,
+  QuestStore,
+  applyQuestCompletions,
+  applyResultToQuests,
+  createEmptyQuestStore,
+  deriveRetroactiveQuestCompletions,
+  sanitizeStoredQuests,
+} from '../games/quests';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import {
@@ -356,36 +366,109 @@ export function applyCollectibleGrants(
  *  store — hydrates without issuing anything. A store that fails to
  *  parse loses its marker and is deterministically re-derived from the
  *  same durable truths (identity-keyed, so nothing can double). */
+/** GAME.13 — hydrate tb_arcade_quests, or run the one-time retroactive
+ *  initializer when no versioned store exists. Reports which
+ *  completions were NEWLY derived this boot so the composition step can
+ *  merge exactly their XP into an already-valid progression store
+ *  (CASE B) — a valid quest store always reports none. */
+function loadQuests(durable: {
+  gameBadges: ReadonlySet<string>;
+  gameMastery: Record<string, GameMasteryRecord>;
+}): { store: QuestStore; newlyBackfilled: QuestCompletionRecord[] } {
+  try {
+    const raw = localStorage.getItem(LS_ARCADE_QUESTS);
+    if (raw) {
+      const stored = sanitizeStoredQuests(JSON.parse(raw));
+      if (stored) return { store: stored, newlyBackfilled: [] };
+    }
+  } catch (_) { /* fall through to one-time derivation */ }
+  const derived = deriveRetroactiveQuestCompletions({
+    gameBadges: durable.gameBadges,
+    gameMastery: durable.gameMastery,
+    backfillTimestamp: new Date().toISOString(),
+  });
+  return {
+    store: applyQuestCompletions(createEmptyQuestStore(), derived),
+    newlyBackfilled: derived,
+  };
+}
+
+/** Hydrate tb_arcade_progression, or run the APPROVED one-time
+ *  backfill (G12B §§25–31) when no versioned store exists yet.
+ *
+ *  The backfill is NOT hydration issuance of an accomplishment
+ *  artifact: it is the one-time initialization of a newly introduced
+ *  DERIVED ledger over durable truths that already exist (and mastery
+ *  upgrades are monotone/unrepeatable, so replay reconciliation could
+ *  never recover them). The version marker makes it run at most once:
+ *  every later boot — including the post-RESET empty-but-versioned
+ *  store — hydrates without issuing anything. A store that fails to
+ *  parse loses its marker and is deterministically re-derived from the
+ *  same durable truths (identity-keyed, so nothing can double).
+ *
+ *  GAME.13 §24 — CROSS-STORE RECOVERY: the initialization path also
+ *  reconstructs quest-completion XP from valid durable
+ *  QuestCompletionRecords (their frozen xpReward), so a lost/corrupt
+ *  progression store never permanently orphans earned quest XP. The
+ *  valid-store path NEVER synthesizes quest XP (`initialized` tells
+ *  the composition step which path ran). */
 function loadProgression(durable: {
   gameBadges: ReadonlySet<string>;
   gameMastery: Record<string, GameMasteryRecord>;
   gameEvents: Record<string, GameEventProgress>;
-}): ArcadeProgression {
+  questCompletions: Record<string, QuestCompletionRecord>;
+}): { progression: ArcadeProgression; initialized: boolean } {
   try {
     const raw = localStorage.getItem(LS_ARCADE_PROGRESSION);
     if (raw) {
       const stored = sanitizeStoredProgression(JSON.parse(raw));
-      if (stored) return stored;
+      if (stored) return { progression: stored, initialized: false };
     }
   } catch (_) { /* fall through to one-time derivation */ }
-  return applyXpAwards(
-    createEmptyProgression(),
-    deriveBackfillAwards({
-      gameBadges: durable.gameBadges,
-      gameMastery: durable.gameMastery,
-      gameEvents: durable.gameEvents,
-      backfillTimestamp: new Date().toISOString(),
-    }),
-  );
+  return {
+    progression: applyXpAwards(
+      createEmptyProgression(),
+      deriveBackfillAwards({
+        gameBadges: durable.gameBadges,
+        gameMastery: durable.gameMastery,
+        gameEvents: durable.gameEvents,
+        questCompletions: durable.questCompletions,
+        backfillTimestamp: new Date().toISOString(),
+      }),
+    ),
+    initialized: true,
+  };
 }
 
 // ================== STATE ==================
 
-// GAME.12 — the persisted families hydrate FIRST so the one-time XP
-// backfill can read the same durable truths this boot will use.
+// GAME.12/13 — the persisted families hydrate FIRST so the one-time
+// initializers can read the same durable truths this boot will use.
+// Deterministic order (G13B §27): truths → quest store (initializing
+// retroactive completions if needed) → progression store (initializing
+// with GAME.12 truths + quest completions if needed) → CASE B merge:
+// a VALID progression store gains exactly the NEWLY backfilled quest
+// completions' XP, once, identity-keyed. No other path issues at boot.
 const hydratedMastery = loadMastery();
 const hydratedGameEvents = loadGameEvents();
 const hydratedLegacy = loadState();
+const questBoot = loadQuests({
+  gameBadges: hydratedLegacy.gameBadges,
+  gameMastery: hydratedMastery,
+});
+const progressionBoot = loadProgression({
+  gameBadges: hydratedLegacy.gameBadges,
+  gameMastery: hydratedMastery,
+  gameEvents: hydratedGameEvents,
+  questCompletions: questBoot.store.completions,
+});
+const initialProgression =
+  !progressionBoot.initialized && questBoot.newlyBackfilled.length > 0
+    ? applyXpAwards(
+        progressionBoot.progression,
+        questBoot.newlyBackfilled.map(questCompletionXpAward),
+      )
+    : progressionBoot.progression;
 
 const initialState: AppState = {
   page: 'home',
@@ -397,11 +480,8 @@ const initialState: AppState = {
   gameMastery: hydratedMastery,
   collectibles: loadCollectibles(),
   gameEvents: hydratedGameEvents,
-  progression: loadProgression({
-    gameBadges: hydratedLegacy.gameBadges,
-    gameMastery: hydratedMastery,
-    gameEvents: hydratedGameEvents,
-  }),
+  progression: initialProgression,
+  quests: questBoot.store,
   ...hydratedLegacy,
 };
 
@@ -505,6 +585,10 @@ function reducer(state: AppState, action: Action): AppState {
         collectibles: {},
         gameEvents: {},
         progression: createEmptyProgression(),
+        // GAME.13 — the quest store keeps its version MARKER (empty
+        // completions) so the retroactive initializer can never
+        // resurrect what reset just cleared.
+        quests: createEmptyQuestStore(),
       };
 
     // GAME.6 — fold a sealed GameResult into the per-GameId personal
@@ -577,12 +661,30 @@ function reducer(state: AppState, action: Action): AppState {
         resultingGameEvents: nextGameEvents,
       });
 
-      // 5 — XP awards (GAME.12): the SAME single result seam evaluates
-      // the finite progression ledger against the resulting truths
-      // computed above (post-badge completion, post-upgrade mastery,
-      // pre/post event fold). Every award is once-per-identity; replays
-      // and derived artifacts (collectibles, PBs) earn nothing. Awards
-      // only ever originate here or in the one-time versioned backfill —
+      // 5 — quests (GAME.13): the SAME single result seam folds the
+      // result into the completion ledger. Completion requires an
+      // AVAILABLE quest, every objective satisfied by RESULTING truth,
+      // AND a real objective transition caused by this result (§16 —
+      // stored already-satisfied state never completes opportunistically
+      // at runtime; that repair belongs to the one-time initializer).
+      const nextQuestCompletions = applyResultToQuests({
+        result: action.result,
+        previousGameMastery: state.gameMastery,
+        resultingGameMastery: nextGameMastery,
+        resultingGameBadges: state.gameBadges,
+        currentCompletions: state.quests.completions,
+      });
+      const nextQuests =
+        nextQuestCompletions === state.quests.completions
+          ? state.quests
+          : { questsVersion: state.quests.questsVersion, completions: nextQuestCompletions };
+
+      // 6 — XP awards (GAME.12/13): the single evaluator reads every
+      // resulting truth computed above (post-badge completion,
+      // post-upgrade mastery, pre/post event fold, pre/post quest
+      // fold). Every award is once-per-identity; replays and derived
+      // artifacts (collectibles, PBs) earn nothing. Awards only ever
+      // originate here or in the one-time versioned initializers —
       // never from effects, pages, or ordinary hydration.
       const xpAwards = evaluateXpAwards({
         result: action.result,
@@ -590,12 +692,15 @@ function reducer(state: AppState, action: Action): AppState {
         resultingGameMastery: nextGameMastery,
         previousGameEvents: state.gameEvents,
         resultingGameEvents: nextGameEvents,
+        previousQuestCompletions: state.quests.completions,
+        resultingQuestCompletions: nextQuestCompletions,
         ownedAwards: state.progression.awards,
       });
 
       if (
         !pbImproved && !masteryUpgraded && grants.length === 0 &&
-        nextGameEvents === state.gameEvents && xpAwards.length === 0
+        nextGameEvents === state.gameEvents && nextQuests === state.quests &&
+        xpAwards.length === 0
       ) return state;
       return {
         ...state,
@@ -610,6 +715,7 @@ function reducer(state: AppState, action: Action): AppState {
           state.collectibles, grants, action.result, new Date().toISOString(),
         ),
         gameEvents: nextGameEvents,
+        quests: nextQuests,
         // applyXpAwards returns the same reference when nothing is new.
         progression: applyXpAwards(state.progression, xpAwards),
       };
@@ -753,6 +859,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(LS_ARCADE_PROGRESSION, JSON.stringify(state.progression));
     } catch (_) { /* storage full or blocked */ }
   }, [state.progression]);
+
+  // GAME.13 — persist the quest completion ledger on the same narrow
+  // pattern. Reference-gated: no-completion results keep the store
+  // identity, and the boot write durably records the initializer marker.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_ARCADE_QUESTS, JSON.stringify(state.quests));
+    } catch (_) { /* storage full or blocked */ }
+  }, [state.quests]);
 
   const nav = useCallback((page: PageId) => {
     dispatch({ type: 'NAV', page });

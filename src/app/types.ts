@@ -8,6 +8,7 @@ import type { GameMasteryRecord } from '../games/mastery';
 import type { CollectibleOwnershipRecord } from '../games/collectibles';
 import type { GameEventProgress } from '../games/events';
 import type { ArcadeProgression } from '../games/progression';
+import type { QuestStore } from '../games/quests';
 
 export interface StoryBlock {
   type: 'p' | 'quote' | 'h2' | 'h3';
@@ -228,6 +229,12 @@ export interface AppState {
    *  totalXp/rank are always DERIVED from the ledger, never stored.
    *  progressionVersion doubles as the one-time backfill marker. */
   progression: ArcadeProgression;
+  /** PUBLIC-v7.4B.GAME.13 — the quest completion ledger (persisted to
+   *  LS_ARCADE_QUESTS). COMPLETION-ONLY: live objective progress is
+   *  always derived from badge/mastery truth; each completion freezes
+   *  its earned xpReward. questsVersion doubles as the one-time
+   *  retroactive-initializer marker. */
+  quests: QuestStore;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)
@@ -254,6 +261,9 @@ export const LS_GAME_EVENTS       = 'tb_game_events';
 // PUBLIC-v7.4B.GAME.12 — the XP award ledger (a sixth durable key
 // family, XpAwardId-keyed inside {progressionVersion, awards}).
 export const LS_ARCADE_PROGRESSION = 'tb_arcade_progression';
+// PUBLIC-v7.4B.GAME.13 — the quest completion ledger (a seventh durable
+// key family, QuestId-keyed inside {questsVersion, completions}).
+export const LS_ARCADE_QUESTS = 'tb_arcade_quests';
 export const LS_UNLOCKED         = 'tb_unlocked';
 export const LS_SCAN_BADGES      = 'tb_scan_badges';
 export const LS_GAME_BADGES      = 'tb_game_badges';

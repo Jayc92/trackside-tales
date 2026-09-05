@@ -13,6 +13,10 @@ import { GameType } from '../games/gameConfigs';
 import { EventBoard } from '../components/EventBoard';
 import { getEventPresentationModels } from '../games/events';
 import { getRankProgress, getTotalXp } from '../games/progression';
+import {
+  QuestObjective,
+  getQuestPresentationModels,
+} from '../games/quests';
 
 // ================== TRACKSIDE ARCADE — the games of the archive ==================
 // PUBLIC-v7.4B.GAME.5 — the first player-facing platform surface on the
@@ -130,6 +134,25 @@ export function ArcadePage() {
   // this page issues XP.
   const rankProgress = getRankProgress(getTotalXp(state.progression));
 
+  // GAME.13 — TRAIN ORDERS: posted quests. Objective progress derives
+  // from durable badge/mastery truth; completion truth comes from the
+  // quest ledger. Presentation-only — completion is automatic in the
+  // result reducer, never here.
+  const questModels = getQuestPresentationModels(
+    state.quests.completions,
+    { gameBadges: state.gameBadges, gameMastery: state.gameMastery },
+    new Date(),
+  );
+
+  // One calm textual objective line, canonical titles only (never raw
+  // GameIds; the registry is the single title authority).
+  const questObjectiveLabel = (objective: QuestObjective): string => {
+    const title = getAllGameDefinitions().find((d) => d.gameId === objective.gameId)?.title ?? objective.gameId;
+    return objective.kind === 'reach-mastery'
+      ? `${title} — ${MASTERY_TIER_LABELS[objective.minimumTier]}`
+      : `${title} — WIN`;
+  };
+
   return (
     <div className="page active px-screen arcade-page" id="page-arcade">
 
@@ -219,6 +242,70 @@ export function ArcadePage() {
             </span>
           </div>
         </section>
+
+        {/* GAME.13 — TRAIN ORDERS: posted quests (renders nothing with
+            zero posted quests). Text only — no acceptance, no claim. */}
+        {questModels.length > 0 && (
+          <section className="train-orders" aria-labelledby="train-orders-heading">
+            <div className="train-orders-head">
+              <span className="train-orders-label" id="train-orders-heading">
+                Train Orders
+              </span>
+            </div>
+            <ul className="train-orders-list">
+              {questModels.map((model) => {
+                const total = model.definition.objectives.length;
+                const noun = model.definition.progressNoun ?? 'COMPLETE';
+                return (
+                  <li
+                    key={model.definition.questId}
+                    className={`quest-notice quest-notice--${model.status}`}
+                  >
+                    <article
+                      aria-label={`${model.definition.name} — ${model.status === 'complete' ? 'complete' : model.status === 'expired' ? 'ended' : `${model.satisfiedCount} of ${total}`}`}
+                    >
+                      <div className="quest-notice-top">
+                        <h3 className="quest-notice-name">{model.definition.name}</h3>
+                        {model.status !== 'available' && (
+                          <span className={`quest-notice-status quest-notice-status--${model.status}`}>
+                            {model.status === 'complete' ? 'COMPLETE' : 'ENDED'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="quest-notice-desc">{model.definition.description}</p>
+                      <ul className="quest-notice-objectives">
+                        {model.definition.objectives.map((objective, index) => (
+                          <li
+                            key={`${objective.kind}:${objective.gameId}`}
+                            className={`quest-objective${model.objectiveSatisfied[index] ? ' quest-objective--cleared' : ''}`}
+                          >
+                            <span className="quest-objective-glyph" aria-hidden="true">
+                              {model.objectiveSatisfied[index] ? '●' : '○'}
+                            </span>
+                            <span className="quest-objective-label">
+                              {questObjectiveLabel(objective)}
+                            </span>
+                            {model.objectiveSatisfied[index] && (
+                              <span className="quest-objective-state">CLEARED</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="quest-notice-progress">
+                        {model.satisfiedCount} OF {total} {noun}
+                      </p>
+                      <p className="quest-notice-reward">
+                        REWARD
+                        <span className="service-record-xp-sep" aria-hidden="true">·</span>
+                        {model.definition.xpReward.toLocaleString('en-US')} XP
+                      </p>
+                    </article>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
         {/* GAME.10B — event notices (renders nothing with zero events).
             GAME.11 — ownership truth feeds the optional textual reward
