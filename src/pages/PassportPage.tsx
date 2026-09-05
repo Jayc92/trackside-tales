@@ -11,6 +11,7 @@ import {
   getEngineerCollectibleForGame,
   getGlobalCollectibles,
 } from '../games/collectibles';
+import { getRankProgress, getTotalXp } from '../games/progression';
 
 // ================== PASSPORT — personal travel document ==================
 // PUBLIC-v7.4B.P.28g.7 — presentation/structural refinement of the
@@ -98,6 +99,10 @@ export function PassportPage() {
   // GAME.10B — special-timetable records (same shared models as the
   // Arcade board; [] in production ⇒ zero DOM).
   const eventModels = getEventPresentationModels(state.gameEvents, new Date());
+
+  // GAME.12 — compact rank row (derived from the XP ledger; display
+  // only — Passport COMPLETE/reward math is untouched).
+  const rankProgress = getRankProgress(getTotalXp(state.progression));
 
   const talesUnlocked = state.unlocked.size;
   const stampsEarned  = state.scanBadges.size;
@@ -215,6 +220,26 @@ export function PassportPage() {
             ))}
           </div>
         )}
+
+        {/* GAME.12 — compact SERVICE RECORD row: rank + XP endorsement
+            (no bar, no duplicate plaque; the Arcade owns the full
+            treatment). */}
+        <div
+          className="service-record service-record--compact"
+          aria-label={`Service record: ${rankProgress.rank.name}, ${rankProgress.totalXp.toLocaleString('en-US')} XP`}
+        >
+          <span className="service-record-label">Service Record</span>
+          <span className="service-record-rank">{rankProgress.rank.name}</span>
+          <span className="service-record-xp">
+            {rankProgress.totalXp.toLocaleString('en-US')} XP
+            {rankProgress.next && (
+              <>
+                <span className="service-record-xp-sep" aria-hidden="true">·</span>
+                {`NEXT ${rankProgress.next.name} · ${rankProgress.remaining.toLocaleString('en-US')} XP`}
+              </>
+            )}
+          </span>
+        </div>
 
         {/* ── Collection summary — derived from current state only ── */}
         <div className="passport-summary" role="status">

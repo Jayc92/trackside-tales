@@ -12,6 +12,7 @@ import {
 import { GameType } from '../games/gameConfigs';
 import { EventBoard } from '../components/EventBoard';
 import { getEventPresentationModels } from '../games/events';
+import { getRankProgress, getTotalXp } from '../games/progression';
 
 // ================== TRACKSIDE ARCADE — the games of the archive ==================
 // PUBLIC-v7.4B.GAME.5 — the first player-facing platform surface on the
@@ -124,6 +125,11 @@ export function ArcadePage() {
   // NOTHING — zero event DOM in production.
   const eventModels = getEventPresentationModels(state.gameEvents, new Date());
 
+  // GAME.12 — the SERVICE RECORD: rank/progress DERIVED from the XP
+  // ledger every render (never stored). Presentation-only — nothing on
+  // this page issues XP.
+  const rankProgress = getRankProgress(getTotalXp(state.progression));
+
   return (
     <div className="page active px-screen arcade-page" id="page-arcade">
 
@@ -173,6 +179,46 @@ export function ArcadePage() {
       </header>
 
       <div className="arcade-wrap">
+
+        {/* GAME.12 — SERVICE RECORD: the player's rank plaque. Compact,
+            above the timetable, cabinets stay primary. Textual rank +
+            XP line carry the meaning; the thin bar is reinforcement
+            (never color-only). */}
+        <section className="service-record" aria-labelledby="service-record-heading">
+          <div className="service-record-head">
+            <span className="service-record-label" id="service-record-heading">
+              Service Record
+            </span>
+          </div>
+          <div className="service-record-plaque">
+            <span className="service-record-rank">{rankProgress.rank.name}</span>
+            <div
+              className="service-record-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={rankProgress.percent}
+              aria-label={
+                rankProgress.next
+                  ? `Progress to ${rankProgress.next.name}: ${rankProgress.remaining.toLocaleString('en-US')} XP remaining`
+                  : 'Highest rank held'
+              }
+            >
+              <span
+                className="service-record-bar-fill"
+                style={{ width: `${rankProgress.percent}%` }}
+                aria-hidden="true"
+              />
+            </div>
+            <span className="service-record-xp">
+              {rankProgress.totalXp.toLocaleString('en-US')} XP
+              <span className="service-record-xp-sep" aria-hidden="true">·</span>
+              {rankProgress.next
+                ? `${rankProgress.remaining.toLocaleString('en-US')} TO ${rankProgress.next.name}`
+                : 'HIGHEST RANK HELD'}
+            </span>
+          </div>
+        </section>
 
         {/* GAME.10B — event notices (renders nothing with zero events).
             GAME.11 — ownership truth feeds the optional textual reward

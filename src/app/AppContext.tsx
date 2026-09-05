@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
-import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES, LS_GAME_EVENTS } from './types';
+import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES, LS_GAME_EVENTS, LS_ARCADE_PROGRESSION } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
 import {
   GAME_REGISTRY,
@@ -27,6 +27,14 @@ import {
   applyResultToGameEvents,
   getAllGameEvents,
 } from '../games/events';
+import {
+  ArcadeProgression,
+  applyXpAwards,
+  createEmptyProgression,
+  deriveBackfillAwards,
+  evaluateXpAwards,
+  sanitizeStoredProgression,
+} from '../games/progression';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import {
@@ -334,7 +342,50 @@ export function applyCollectibleGrants(
   return next;
 }
 
+// ================== GAME.12 — XP progression hydration ==================
+
+/** Hydrate tb_arcade_progression, or run the APPROVED one-time
+ *  backfill (G12B §§25–31) when no versioned store exists yet.
+ *
+ *  The backfill is NOT hydration issuance of an accomplishment
+ *  artifact: it is the one-time initialization of a newly introduced
+ *  DERIVED ledger over durable truths that already exist (and mastery
+ *  upgrades are monotone/unrepeatable, so replay reconciliation could
+ *  never recover them). The version marker makes it run at most once:
+ *  every later boot — including the post-RESET empty-but-versioned
+ *  store — hydrates without issuing anything. A store that fails to
+ *  parse loses its marker and is deterministically re-derived from the
+ *  same durable truths (identity-keyed, so nothing can double). */
+function loadProgression(durable: {
+  gameBadges: ReadonlySet<string>;
+  gameMastery: Record<string, GameMasteryRecord>;
+  gameEvents: Record<string, GameEventProgress>;
+}): ArcadeProgression {
+  try {
+    const raw = localStorage.getItem(LS_ARCADE_PROGRESSION);
+    if (raw) {
+      const stored = sanitizeStoredProgression(JSON.parse(raw));
+      if (stored) return stored;
+    }
+  } catch (_) { /* fall through to one-time derivation */ }
+  return applyXpAwards(
+    createEmptyProgression(),
+    deriveBackfillAwards({
+      gameBadges: durable.gameBadges,
+      gameMastery: durable.gameMastery,
+      gameEvents: durable.gameEvents,
+      backfillTimestamp: new Date().toISOString(),
+    }),
+  );
+}
+
 // ================== STATE ==================
+
+// GAME.12 — the persisted families hydrate FIRST so the one-time XP
+// backfill can read the same durable truths this boot will use.
+const hydratedMastery = loadMastery();
+const hydratedGameEvents = loadGameEvents();
+const hydratedLegacy = loadState();
 
 const initialState: AppState = {
   page: 'home',
@@ -343,10 +394,15 @@ const initialState: AppState = {
   lastEarnedGame: null,
   lastUnlocked: null,
   gameResultsBest: loadBestResults(),
-  gameMastery: loadMastery(),
+  gameMastery: hydratedMastery,
   collectibles: loadCollectibles(),
-  gameEvents: loadGameEvents(),
-  ...loadState(),
+  gameEvents: hydratedGameEvents,
+  progression: loadProgression({
+    gameBadges: hydratedLegacy.gameBadges,
+    gameMastery: hydratedMastery,
+    gameEvents: hydratedGameEvents,
+  }),
+  ...hydratedLegacy,
 };
 
 // ================== ACTIONS ==================
@@ -431,8 +487,11 @@ function reducer(state: AppState, action: Action): AppState {
     case 'RESET_DEMO':
       // GAME.6 — the demo reset also clears personal bests; GAME.7 —
       // earned mastery; GAME.9A — collectible ownership; GAME.10A —
-      // event participation: reset restores a clean local Trackside
-      // experience. No other reset semantics broadened.
+      // event participation; GAME.12 — the XP ledger: reset restores a
+      // clean local Trackside experience. The progression store keeps
+      // its version MARKER (empty awards) so the one-time backfill can
+      // never resurrect cleared progression. No other reset semantics
+      // broadened.
       return {
         ...state,
         unlocked: new Set(),
@@ -445,6 +504,7 @@ function reducer(state: AppState, action: Action): AppState {
         gameMastery: {},
         collectibles: {},
         gameEvents: {},
+        progression: createEmptyProgression(),
       };
 
     // GAME.6 — fold a sealed GameResult into the per-GameId personal
@@ -517,9 +577,25 @@ function reducer(state: AppState, action: Action): AppState {
         resultingGameEvents: nextGameEvents,
       });
 
+      // 5 — XP awards (GAME.12): the SAME single result seam evaluates
+      // the finite progression ledger against the resulting truths
+      // computed above (post-badge completion, post-upgrade mastery,
+      // pre/post event fold). Every award is once-per-identity; replays
+      // and derived artifacts (collectibles, PBs) earn nothing. Awards
+      // only ever originate here or in the one-time versioned backfill —
+      // never from effects, pages, or ordinary hydration.
+      const xpAwards = evaluateXpAwards({
+        result: action.result,
+        resultingGameBadges: state.gameBadges,
+        resultingGameMastery: nextGameMastery,
+        previousGameEvents: state.gameEvents,
+        resultingGameEvents: nextGameEvents,
+        ownedAwards: state.progression.awards,
+      });
+
       if (
         !pbImproved && !masteryUpgraded && grants.length === 0 &&
-        nextGameEvents === state.gameEvents
+        nextGameEvents === state.gameEvents && xpAwards.length === 0
       ) return state;
       return {
         ...state,
@@ -534,6 +610,8 @@ function reducer(state: AppState, action: Action): AppState {
           state.collectibles, grants, action.result, new Date().toISOString(),
         ),
         gameEvents: nextGameEvents,
+        // applyXpAwards returns the same reference when nothing is new.
+        progression: applyXpAwards(state.progression, xpAwards),
       };
     }
 
@@ -666,6 +744,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(LS_GAME_EVENTS, JSON.stringify(state.gameEvents));
     } catch (_) { /* storage full or blocked */ }
   }, [state.gameEvents]);
+
+  // GAME.12 — persist the XP ledger on the same narrow pattern.
+  // Reference-gated: no-award results keep the store identity, and the
+  // boot write is what durably records the one-time backfill marker.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_ARCADE_PROGRESSION, JSON.stringify(state.progression));
+    } catch (_) { /* storage full or blocked */ }
+  }, [state.progression]);
 
   const nav = useCallback((page: PageId) => {
     dispatch({ type: 'NAV', page });

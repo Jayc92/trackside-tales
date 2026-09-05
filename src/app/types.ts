@@ -7,6 +7,7 @@ import type { GameResultSummary } from '../games/registry';
 import type { GameMasteryRecord } from '../games/mastery';
 import type { CollectibleOwnershipRecord } from '../games/collectibles';
 import type { GameEventProgress } from '../games/events';
+import type { ArcadeProgression } from '../games/progression';
 
 export interface StoryBlock {
   type: 'p' | 'quote' | 'h2' | 'h3';
@@ -222,6 +223,11 @@ export interface AppState {
    *  version is ignored at hydration. Production ships ZERO events, so
    *  this stays empty until a real event gate registers one. */
   gameEvents: Record<string, GameEventProgress>;
+  /** PUBLIC-v7.4B.GAME.12 — the ARCADE XP award ledger (persisted to
+   *  LS_ARCADE_PROGRESSION). Append-only, values frozen at grant time;
+   *  totalXp/rank are always DERIVED from the ledger, never stored.
+   *  progressionVersion doubles as the one-time backfill marker. */
+  progression: ArcadeProgression;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)
@@ -245,6 +251,9 @@ export const LS_COLLECTIBLES      = 'tb_collectibles';
 // PUBLIC-v7.4B.GAME.10A — per-EventId event participation.
 // EventId-keyed (a fifth durable key family).
 export const LS_GAME_EVENTS       = 'tb_game_events';
+// PUBLIC-v7.4B.GAME.12 — the XP award ledger (a sixth durable key
+// family, XpAwardId-keyed inside {progressionVersion, awards}).
+export const LS_ARCADE_PROGRESSION = 'tb_arcade_progression';
 export const LS_UNLOCKED         = 'tb_unlocked';
 export const LS_SCAN_BADGES      = 'tb_scan_badges';
 export const LS_GAME_BADGES      = 'tb_game_badges';
