@@ -2,6 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { GameOverlay } from '../games/GameOverlay';
 import { getGamesForTale } from '../games/registry';
+import {
+  GameLaunchWorldContext,
+  getArcadeWorldState,
+  getGameLaunchWorldContext,
+  isLaunchRunRecorded,
+} from '../games/worldState';
 import { formatDate } from '../services/badgeService';
 import { prodSlugFromAppSlug } from '../services/talePresentationPack';
 import { TsIcon } from '../components/TsIcon';
@@ -152,6 +158,14 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   const { state, awardGameBadge, nav, guestId, liveTapSlugs, recordGameResult } = useApp();
   const tale = previewTale ?? state.currentTale;
   const [showGame, setShowGame] = useState(false);
+  // GAME.16 — the launch-frozen timetable snapshot for the CURRENT
+  // overlay session, exactly the ArcadePage pattern: same pure helpers,
+  // same selected-event rules, lifetime 1:1 with the overlay session
+  // (set on launch, cleared on close). Transient React state only —
+  // timetable acknowledgment follows the game session, not the page
+  // the player launched it from.
+  const [launchContext, setLaunchContext] =
+    useState<GameLaunchWorldContext | null>(null);
 
   // P.28e.3 timeline correction — the horizontal track always opens at
   // its FIRST event: scrollLeft is reset whenever the rendered Tale
@@ -464,7 +478,26 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
               <button
                 type="button"
                 className="tale-detail-action tale-detail-action--primary"
-                onClick={() => !showAsComingSoon && setShowGame(true)}
+                // GAME.16 — the same click atomically freezes the
+                // timetable snapshot via the SAME shared composer +
+                // helper the Arcade uses (per-page render clock is fine:
+                // only one route is active at a time). Tale unlock and
+                // launch semantics are unchanged.
+                onClick={() => {
+                  if (showAsComingSoon) return;
+                  setShowGame(true);
+                  setLaunchContext(
+                    gameDefinition
+                      ? getGameLaunchWorldContext(
+                          gameDefinition.gameId,
+                          getArcadeWorldState({
+                            now: new Date(),
+                            gameEvents: state.gameEvents,
+                          }),
+                        )
+                      : null,
+                  );
+                }}
                 disabled={showAsComingSoon}
                 aria-label={showAsEarned ? 'Replay mini-game' : 'Play mini-game'}
               >
@@ -512,7 +545,12 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
       {showGame && gameDefinition && (
         <GameOverlay
           definition={gameDefinition}
-          onClose={() => setShowGame(false)}
+          onClose={() => {
+            setShowGame(false);
+            // GAME.16 — the snapshot dies with the session; a reopen
+            // takes a fresh helper evaluation (null once credited).
+            setLaunchContext(null);
+          }}
           onBadgeAwarded={handleBadgeAwarded}
           alreadyEarned={hasGameBadge}
           successBadgeIcon={tale.gameBadge.icon}
@@ -521,6 +559,19 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
           // GAME.6 — personal-best persistence (AppContext-owned).
           // Entirely separate from the badge callback above.
           onResult={recordGameResult}
+          // GAME.16 — identical contract to the Arcade mount: frozen
+          // event identity + reducer-observed credit transition, derived
+          // every render; the gameId guard protects against any stale
+          // snapshot contextualizing the wrong game (this mount is
+          // unkeyed).
+          timetableContext={
+            launchContext && launchContext.gameId === gameDefinition.gameId
+              ? {
+                  eventName: launchContext.eventName,
+                  runRecorded: isLaunchRunRecorded(launchContext, state.gameEvents),
+                }
+              : null
+          }
         />
       )}
 

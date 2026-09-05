@@ -12,6 +12,7 @@ import {
   createGameSession,
   sealGameResult,
 } from './resultPipeline';
+import type { GameOverlayTimetableContext } from './worldState';
 
 // ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
 // First playable vertical slice. Renders against the golden CSS schema in
@@ -277,6 +278,13 @@ interface GameOverlayProps {
    *  GameResult.score). No caller passes it yet — wiring belongs to
    *  later GAME gates. */
   onResult?: (result: GameResult) => void;
+  /** PUBLIC-v7.4B.GAME.16 — optional timetable context from the
+   *  launching page: the launch-frozen event name plus the
+   *  authoritative reducer-observed credit transition. Presentation
+   *  only — absent/null means byte-identical pre-GAME.16 behavior.
+   *  The overlay derives NOTHING itself (no AppContext, no registry,
+   *  no clock); it renders exactly what the launch surface derived. */
+  timetableContext?: GameOverlayTimetableContext | null;
 }
 
 export function GameOverlay(props: GameOverlayProps) {
@@ -317,6 +325,7 @@ function GameOverlayInner({
   successBadgeTitle,
   guestId,
   onResult,
+  timetableContext,
   rootRef,
 }: GameOverlayProps & {
   config: NonNullable<GameDefinition['legacyConfig']>;
@@ -644,6 +653,21 @@ function GameOverlayInner({
             <span className="game-intro-era-rule" />
           </div>
           <p className="game-intro-flavor">{theme.flavor}</p>
+          {/* GAME.16 — launch-frozen timetable membership (intro only;
+              nothing persists over gameplay). "PART OF" states context
+              without promising credit — eligibility is decided by the
+              reducer at result.completedAt, and a session can cross the
+              event-end boundary. Text only, zero controls. */}
+          {timetableContext && (
+            <div className="game-timetable-context">
+              <span className="game-timetable-context-tag">
+                Special Timetable
+              </span>
+              <span className="game-timetable-context-detail">
+                PART OF {timetableContext.eventName}
+              </span>
+            </div>
+          )}
           <p className="game-instructions">{config.instructions}</p>
           <button
             type="button"
@@ -800,6 +824,19 @@ function GameOverlayInner({
       </div>
       <h3 className="game-success-title">{config.successTitle}</h3>
       <p className="game-success-msg">{config.successMsg}</p>
+      {/* GAME.16 — result stamp, present iff THIS session's captured
+          event/version/game flipped uncredited→credited in the
+          authoritative post-result event state (observed by the
+          launching page; never inferred from won/score/badge here).
+          Renders with the success panel's first paint — the reducer
+          dispatch and the success phase commit in the same batch. */}
+      {timetableContext?.runRecorded && (
+        <p className="game-timetable-stamp">
+          <span className="game-timetable-stamp-tag">Special Timetable</span>
+          <span className="game-timetable-stamp-sep" aria-hidden="true">·</span>
+          <span className="game-timetable-stamp-detail">RUN RECORDED</span>
+        </p>
+      )}
       <div className="game-success-btns">
         <button type="button" className="game-start-btn" onClick={onClose} data-modal-focus>
           CONTINUE TO TALE

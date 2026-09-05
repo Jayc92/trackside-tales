@@ -913,3 +913,57 @@
 .service-record--compact .service-record-rank {
   font-size: 1.15rem;
 }
+
+/* ── GAME.16 — overlay timetable context (launch + result) ───────────
+   Rendered inside the shared #game-overlay, which mounts under BOTH
+   ArcadePage and TaleDetailPage — the .arcade-page-scoped --ar-*
+   custom properties do not resolve there, so this family carries its
+   own literal values from the same palette. Text carries the state;
+   zero controls; no stored state exists. */
+.game-timetable-context {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.55rem;
+  /* Bottom clearance for the instructions panel's floating OBJECTIVE
+     tab, which projects above that panel's top edge. */
+  margin: 0.9rem auto 1.2rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed rgba(163, 128, 63, 0.3);
+  max-width: 30rem;
+}
+.game-timetable-context-tag {
+  padding: 0.14rem 0.45rem;
+  border: 1px solid rgba(217, 138, 74, 0.5);
+  border-radius: 2px;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.2em;
+  color: #d98a4a;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.game-timetable-context-detail {
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  color: #c9bda4;
+  text-transform: uppercase;
+}
+
+/* Success-screen ledger stamp — one line, brass/recorded treatment
+   (the overlay's own acknowledgment of an authoritative new event
+   credit; whole-event completion messaging stays with LINE STATUS). */
+.game-timetable-stamp {
+  margin: 0.85rem 0 0;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: #d8b46b;
+  text-transform: uppercase;
+}
+.game-timetable-stamp-sep {
+  margin: 0 0.45rem;
+  color: rgba(216, 180, 107, 0.6);
+}

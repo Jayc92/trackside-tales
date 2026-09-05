@@ -17,7 +17,13 @@ import {
   QuestObjective,
   getQuestPresentationModels,
 } from '../games/quests';
-import { getArcadeWorldState, getCabinetWorldReaction } from '../games/worldState';
+import {
+  GameLaunchWorldContext,
+  getArcadeWorldState,
+  getCabinetWorldReaction,
+  getGameLaunchWorldContext,
+  isLaunchRunRecorded,
+} from '../games/worldState';
 
 // ================== TRACKSIDE ARCADE — the games of the archive ==================
 // PUBLIC-v7.4B.GAME.5 — the first player-facing platform surface on the
@@ -86,6 +92,13 @@ function masteryNextLine(def: GameDefinition, tier: MasteryTier): string {
 export function ArcadePage() {
   const { state, tales, nav, navToTale, awardGameBadge, guestId, recordGameResult } = useApp();
   const [activeGame, setActiveGame] = useState<GameDefinition | null>(null);
+  // GAME.16 — the launch-frozen timetable snapshot for the CURRENT
+  // overlay session (null = launched outside any pending timetable
+  // context). Transient React state only: set with activeGame on
+  // launch, cleared with it on close — its lifetime is 1:1 with the
+  // overlay mount. Never persisted, never a reducer concern.
+  const [launchContext, setLaunchContext] =
+    useState<GameLaunchWorldContext | null>(null);
 
   // Catalog: registry definitions joined to their Tales. Fail closed —
   // a definition without a resolvable Tale association renders nothing
@@ -478,7 +491,16 @@ export function ArcadePage() {
                       <button
                         type="button"
                         className="arcade-action arcade-action--primary"
-                        onClick={() => setActiveGame(def)}
+                        // GAME.16 — the same click atomically freezes the
+                        // timetable snapshot from the SAME worldState the
+                        // visible rail/cabinets derive from. Launch
+                        // eligibility is unchanged.
+                        onClick={() => {
+                          setActiveGame(def);
+                          setLaunchContext(
+                            getGameLaunchWorldContext(def.gameId, worldState),
+                          );
+                        }}
                       >
                         {cab === 'complete' ? '↻ REPLAY' : '▶ PLAY'}
                       </button>
@@ -525,7 +547,12 @@ export function ArcadePage() {
           // a background PLAY button; the key forces a clean remount.
           key={activeGame.gameId}
           definition={activeGame}
-          onClose={() => setActiveGame(null)}
+          onClose={() => {
+            setActiveGame(null);
+            // GAME.16 — the snapshot dies with the session; a reopen
+            // takes a fresh helper evaluation (null once credited).
+            setLaunchContext(null);
+          }}
           // Badge award mirrors TaleDetailPage exactly: ownership stays
           // the TALE id (frozen tb_game_badges contract), never GameId.
           onBadgeAwarded={() => awardGameBadge(activeTale.id)}
@@ -535,6 +562,21 @@ export function ArcadePage() {
           guestId={guestId}
           // GAME.6 — same shared personal-best path as Tale Detail.
           onResult={recordGameResult}
+          // GAME.16 — frozen event identity + the authoritative credit
+          // transition, DERIVED every render (never stored): runRecorded
+          // flips in the same commit the reducer credits the captured
+          // event/version/game, so the success screen's first paint
+          // already carries the stamp. The gameId guard keeps any
+          // hypothetical stale snapshot from contextualizing the wrong
+          // game.
+          timetableContext={
+            launchContext && launchContext.gameId === activeGame.gameId
+              ? {
+                  eventName: launchContext.eventName,
+                  runRecorded: isLaunchRunRecorded(launchContext, state.gameEvents),
+                }
+              : null
+          }
         />
       )}
     </div>

@@ -52,6 +52,10 @@ export interface ArcadeWorldState {
   platform: {
     event?: {
       eventId: string;
+      /** GAME.16 — the selected event's definition version, needed by
+       *  the launch snapshot's version-current credit comparison.
+       *  Definition authority, like gameIds below. */
+      version: number;
       name: string;
       status: 'active' | 'upcoming';
       /** GAME.15 — the selected event's target games, straight from
@@ -144,6 +148,7 @@ export function getArcadeWorldState(args: {
       platform: {
         event: {
           eventId: primary.definition.eventId,
+          version: primary.definition.version,
           name,
           status: 'active',
           gameIds: primary.definition.gameIds,
@@ -169,6 +174,7 @@ export function getArcadeWorldState(args: {
     platform: {
       event: {
         eventId: primary.definition.eventId,
+        version: primary.definition.version,
         name,
         status: 'upcoming',
         gameIds: primary.definition.gameIds,
@@ -219,4 +225,77 @@ export function getCabinetWorldReaction(
       ? 'recorded'
       : 'pending',
   };
+}
+
+// ── GAME.16 — launch / result world context ─────────────────────────────
+/** A launch-frozen presentation snapshot: the one selected ACTIVE event
+ *  this game session belongs to, captured by the launching page at the
+ *  moment of launch and held for the overlay session only. It is NOT
+ *  event credit, NOT eligibility, and never persisted — eligibility
+ *  stays with the reducer, evaluated at result.completedAt. */
+export interface GameLaunchWorldContext {
+  eventId: string;
+  eventVersion: number;
+  eventName: string;
+  gameId: GameId;
+}
+
+/** What the shared GameOverlay receives (optional prop): the frozen
+ *  event name for the intro context line, plus the authoritative
+ *  observed credit transition for the result stamp. Derived by the
+ *  launching page every render — never stored, never a promise. */
+export interface GameOverlayTimetableContext {
+  eventName: string;
+  runRecorded: boolean;
+}
+
+/**
+ * The launch context for one game at launch time, or null (= zero
+ * overlay context) when ANY of these hold (G16B §§10–13):
+ *   - baseline mode / no selected event
+ *   - the selected event is UPCOMING or the whole event is complete
+ *   - this gameId is not targeted by the selected event
+ *   - this gameId is ALREADY credited (the cabinet owns RUN RECORDED;
+ *     another credit is impossible, so membership copy would mislead)
+ * Pure: no clock (it enters only through the composer), no registry
+ * lookup, no storage. Because the context exists only for an
+ * uncredited game, a later credited read IS the false→true transition.
+ */
+export function getGameLaunchWorldContext(
+  gameId: GameId,
+  worldState: ArcadeWorldState,
+): GameLaunchWorldContext | null {
+  const event = worldState.platform.event;
+  if (worldState.mode !== 'timetable' || event === undefined) return null;
+  if (event.status !== 'active') return null;
+  if (worldState.player.eventComplete === true) return null;
+  if (!event.gameIds.includes(gameId)) return null;
+  if (worldState.player.eventCreditedGameIds.includes(gameId)) return null;
+  return {
+    eventId: event.eventId,
+    eventVersion: event.version,
+    eventName: event.name,
+    gameId,
+  };
+}
+
+/**
+ * Whether the captured launch event/version/game is credited in the
+ * authoritative post-result event state. A pure OBSERVATION of the
+ * reducer's output — deliberately no won/clock/target/registry/
+ * event-complete predicates here; those decisions belong exclusively
+ * to the existing RECORD_GAME_RESULT fold. Version mismatch and
+ * de-registration fail closed (no record, or a re-versioned record,
+ * simply reads false).
+ */
+export function isLaunchRunRecorded(
+  context: GameLaunchWorldContext,
+  gameEvents: Record<string, GameEventProgress>,
+): boolean {
+  const record = gameEvents[context.eventId];
+  return (
+    record !== undefined &&
+    record.eventVersion === context.eventVersion &&
+    record.completedGameIds.includes(context.gameId)
+  );
 }
