@@ -27,6 +27,11 @@
 // tb_game_badges migration.
 
 import type { GameDefinition, GameId, GameResult } from './registry';
+// GAME.17D1 — the approved band→mastery authority: ASSISTED results cap
+// at Bronze, STANDARD keeps full canonical rules, unsupported bands
+// fail closed to the completion tier. Prospective only — stored tiers
+// are durable (the reducer's monotone upgrade rule never downgrades).
+import { masteryCapForBand } from './challengePolicy';
 
 // ── Tiers ───────────────────────────────────────────────────────────────
 export type MasteryTier = 'bronze' | 'silver' | 'gold' | 'engineer';
@@ -158,6 +163,16 @@ export function evaluateMastery(
 ): MasteryTier | null {
   if (result.gameId !== definition.gameId) return null;
   if (!result.won) return null;
+
+  // GAME.17D1 — band authority (approved matrix): only a 'full'-cap
+  // band may earn score-based tiers. ASSISTED (bronze cap) and any
+  // unsupported band (fail closed) still complete the game — Bronze is
+  // completion-based — but can never buy Silver/Gold/Engineer, no
+  // matter the score or metrics. This caps what THIS RESULT can earn;
+  // durable higher tiers are untouched by the monotone upgrade rule.
+  if (masteryCapForBand(result.difficultyBand) !== 'full') {
+    return 'bronze';
+  }
 
   const mastery = definition.mastery;
   const scoreTrusted =

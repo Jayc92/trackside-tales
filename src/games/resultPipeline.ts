@@ -81,6 +81,10 @@ export interface SealGameResultArgs {
    *  those live with the trace finalizer (GameOverlay) and the PB
    *  persistence boundary (AppContext). */
   trace?: GhostTrace;
+  /** PUBLIC-v7.4B.GAME.17D1 — optional challenge-tuning provenance
+   *  (CHALLENGE_VERSION of the profile that drove the run). Attached
+   *  verbatim when present; sealing decides nothing about it. */
+  challengeVersion?: number;
 }
 
 /**
@@ -111,5 +115,8 @@ export function sealGameResult(args: SealGameResultArgs): GameResult {
     difficultyBand,
     metrics: { ...outcome.metrics },
     ...(args.trace !== undefined ? { trace: args.trace } : {}),
+    ...(args.challengeVersion !== undefined
+      ? { challengeVersion: args.challengeVersion }
+      : {}),
   };
 }

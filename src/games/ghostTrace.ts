@@ -84,13 +84,18 @@ export interface GhostTraceDraft {
   readonly checkpoints: readonly GhostCheckpoint[];
 }
 
-/** A complete, validated, immutable trace of one successful run. */
+/** A complete, validated, immutable trace of one successful run.
+ *  GAME.17D1 — challengeVersion is OPTIONAL provenance: present when a
+ *  live ChallengeProfile drove the run, absent for every trace captured
+ *  under fixed shipped constants (all legacy traces, and games not yet
+ *  profile-wired). */
 export interface GhostTrace {
   readonly ghostVersion: number;
   readonly gameId: GameId;
   readonly scoringVersion: number;
   readonly difficultyBand: DifficultyBand;
   readonly durationMs: number;
+  readonly challengeVersion?: number;
   readonly checkpoints: readonly GhostCheckpoint[];
 }
 
@@ -159,8 +164,10 @@ export function finalizeGhostTrace(args: {
   durationMs: number;
   scoringVersion: number;
   difficultyBand: DifficultyBand;
+  /** GAME.17D1 — optional tuning provenance; attached verbatim. */
+  challengeVersion?: number;
 }): GhostTrace | null {
-  const { draft, durationMs, scoringVersion, difficultyBand } = args;
+  const { draft, durationMs, scoringVersion, difficultyBand, challengeVersion } = args;
   const expected = getExpectedCheckpointCount(draft.gameId);
   if (expected === null) return null;
   if (draft.checkpoints.length !== expected) return null;
@@ -168,12 +175,17 @@ export function finalizeGhostTrace(args: {
   if (draft.checkpoints.some((c) => c.elapsedMs > durationMs)) return null;
   if (!Number.isInteger(difficultyBand) || difficultyBand < 0 || difficultyBand > 4) return null;
   if (!Number.isInteger(scoringVersion) || scoringVersion <= 0) return null;
+  if (
+    challengeVersion !== undefined &&
+    (!Number.isInteger(challengeVersion) || challengeVersion <= 0)
+  ) return null;
   const trace: GhostTrace = Object.freeze({
     ghostVersion: GHOST_VERSION,
     gameId: draft.gameId,
     scoringVersion,
     difficultyBand,
     durationMs,
+    ...(challengeVersion !== undefined ? { challengeVersion } : {}),
     checkpoints: freezeCheckpoints(draft.checkpoints),
   });
   return isValidGhostTrace(trace) ? trace : null;
@@ -202,6 +214,10 @@ export function isValidGhostTrace(value: unknown): value is GhostTrace {
     (t.difficultyBand as number) < 0 || (t.difficultyBand as number) > 4
   ) return false;
   if (!Number.isInteger(t.durationMs) || (t.durationMs as number) <= 0) return false;
+  if (
+    t.challengeVersion !== undefined &&
+    (!Number.isInteger(t.challengeVersion) || (t.challengeVersion as number) <= 0)
+  ) return false;
   if (!Array.isArray(t.checkpoints) || t.checkpoints.length !== expected) return false;
   let previousElapsed = -1;
   for (let i = 0; i < t.checkpoints.length; i++) {
@@ -252,6 +268,17 @@ export function isGhostCompatible(args: {
   gameId: GameId;
   scoringVersion: number;
   difficultyBand: DifficultyBand;
+  /** GAME.17D1 — the CURRENT session's challenge-tuning version, when
+   *  a live profile drives it. LEGACY POLICY (adopted after proof): a
+   *  ghost without challengeVersion is interpreted as version 1,
+   *  because the committed CHALLENGE_VERSION=1 STANDARD profiles are
+   *  mechanically proven identical to the fixed shipped constants
+   *  every legacy trace was captured under (120/4/1, 90/7/2 — the
+   *  GAME.17 standard-equivalence and scoring-alignment pins). A
+   *  session without a live profile defaults the same way, so
+   *  legacy-vs-legacy and legacy-vs-v1 both compare truthfully; any
+   *  future version 2 profile mismatches all of them, fail closed. */
+  challengeVersion?: number;
 }): boolean {
   const { ghost, gameId, scoringVersion, difficultyBand } = args;
   if (!isValidGhostTrace(ghost)) return false;
@@ -259,6 +286,7 @@ export function isGhostCompatible(args: {
     ghost.ghostVersion === GHOST_VERSION &&
     ghost.gameId === gameId &&
     ghost.scoringVersion === scoringVersion &&
-    ghost.difficultyBand === difficultyBand
+    ghost.difficultyBand === difficultyBand &&
+    (ghost.challengeVersion ?? 1) === (args.challengeVersion ?? 1)
   );
 }

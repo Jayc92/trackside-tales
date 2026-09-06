@@ -130,6 +130,14 @@ export interface GameResult {
    *  field; resultVersion deliberately NOT bumped (producers without
    *  it remain valid, no durable raw-result consumer exists). */
   trace?: GhostTrace;
+  /** PUBLIC-v7.4B.GAME.17D1 — the CHALLENGE_VERSION of the parameter
+   *  table that tuned this attempt, sealed only when a live
+   *  ChallengeProfile actually drove the run (the Wooden pilot, both
+   *  bands). Absent = the game's tuning was the fixed shipped
+   *  constants (every historical result, and Allen/Packer until they
+   *  are profile-wired). Additive optional; resultVersion deliberately
+   *  NOT bumped — the same GAME.18C2 discipline applies. */
+  challengeVersion?: number;
 }
 
 /** Compact projection of a GameResult for prior-best display, Arcade
@@ -264,6 +272,21 @@ export interface LegacyGameRuntimeProps {
    *  Absent callback = exact existing behavior. Packer is the only
    *  emitter in the GAME.18C2 pilot. */
   onCheckpoint?: (completedCount: number) => void;
+  /** PUBLIC-v7.4B.GAME.17D1 — optional gameplay parameters from the
+   *  session's selected ChallengeProfile (Wooden pilot). The runtime
+   *  receives PARAMETERS ONLY — it never decides bands, reads policy,
+   *  or touches storage. Absent = the runtime's own shipped constants
+   *  (exact existing behavior). */
+  challenge?: ChallengeRuntimeParams;
+}
+
+/** PUBLIC-v7.4B.GAME.17D1 — the gameplay-parameter slice of a
+ *  ChallengeProfile, exactly what a runtime may consume: no band, no
+ *  version, no identity, no authority. */
+export interface ChallengeRuntimeParams {
+  readonly durationSec: number;
+  readonly mistakePool: number;
+  readonly hintBudget: number;
 }
 
 export type LegacyGameRuntimeComponent = ComponentType<LegacyGameRuntimeProps>;

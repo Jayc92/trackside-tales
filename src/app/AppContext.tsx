@@ -4,6 +4,9 @@ import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersi
 // GAME.18C2 — ghost-child validation at the PB persistence boundary
 // (the ONLY authority location that may inspect result traces).
 import { GhostTrace, isValidGhostTrace } from '../games/ghostTrace';
+// GAME.17D1 — canonical-PB band authority goes live: only bands the
+// policy marks canonical (STANDARD) may set/replace the stored BEST.
+import { isCanonicalPbBand } from '../games/challengePolicy';
 import {
   GAME_REGISTRY,
   GameId,
@@ -648,10 +651,16 @@ function reducer(state: AppState, action: Action): AppState {
       if (!(gameId in GAME_REGISTRY)) return state;
       const definition = GAME_REGISTRY[gameId];
 
-      // 1 — personal best (GAME.6 semantics, unchanged)
+      // 1 — personal best (GAME.6 comparator unchanged; GAME.17D1 adds
+      // the approved band gate IN FRONT of it: an ASSISTED result can
+      // never become the canonical BEST — and therefore never carries
+      // a canonical ghost — regardless of score or duration. The
+      // comparator itself is untouched.)
       const candidate = toGameResultSummary(action.result);
       const incumbent = state.gameResultsBest[gameId];
-      const pbImproved = isBetterResult(candidate, incumbent);
+      const pbImproved =
+        isCanonicalPbBand(action.result.difficultyBand) &&
+        isBetterResult(candidate, incumbent);
 
       // 2 — mastery (GAME.7): monotone — only a strictly higher tier
       // writes; worse replays and losses leave the achievement alone.

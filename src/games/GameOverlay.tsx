@@ -3,15 +3,25 @@ import { GameType } from './gameConfigs';
 import { TsIcon } from '../components/TsIcon';
 import { logEvent, flushEvents } from '../services/eventLogger';
 import {
+  DifficultyBand,
   GameDefinition,
   GameResult,
   LegacyGameRuntimeComponent,
 } from './registry';
 import {
-  DEFAULT_DIFFICULTY_BAND,
   createGameSession,
   sealGameResult,
 } from './resultPipeline';
+// GAME.17D1 — the challenge-policy foundation goes live (Wooden pilot):
+// band semantics, the session profile, the failure-offer threshold, and
+// CHALLENGE_VERSION provenance all come from the one committed policy.
+import {
+  ASSISTED_BAND,
+  ASSISTED_OFFER_AFTER_FAILURES,
+  CHALLENGE_VERSION,
+  STANDARD_BAND,
+  getChallengeProfile,
+} from './challengePolicy';
 import type { GameOverlayTimetableContext } from './worldState';
 import {
   GhostTrace,
@@ -22,6 +32,12 @@ import {
   isGhostCompatible,
   recordGhostCheckpoint,
 } from './ghostTrace';
+
+// ── GAME.17D1 — ASSISTED pilot ──────────────────────────────────────────
+/** The one game with live ASSISTED support in this pilot. The policy
+ *  module describes all three games, but production wiring stays
+ *  Wooden-only until a later gate generalizes it. */
+const ASSISTED_PILOT_GAME_ID = 'station-preservation';
 
 // ── GAME.18D1/18E1 — RACE BEST ──────────────────────────────────────────
 /** Pure pace copy. One deterministic rounding rule: tenths of a second
@@ -480,13 +496,43 @@ function GameOverlayInner({
   // uncontracted/unknown game can never have a valid ghost — fail
   // closed). Anything invalid or mismatched simply produces no option:
   // no error surface, normal run untouched.
+  // ── GAME.17D1 — session difficulty (Wooden pilot) ────────────────────
+  // Every session opens STANDARD; the band is transient overlay state
+  // (no preference storage). ASSISTED becomes reachable only for the
+  // pilot game, only by explicit choice after the failure threshold.
+  const [selectedBand, setSelectedBand] = useState<DifficultyBand>(STANDARD_BAND);
+  // Terminal failed attempts in THIS session only (losses counted at
+  // the one terminal-loss funnel; mistakes/Escape/close never count).
+  const [sessionFailures, setSessionFailures] = useState(0);
+  const assistedSupported =
+    definition.gameId === ASSISTED_PILOT_GAME_ID &&
+    getChallengeProfile(definition.gameId, ASSISTED_BAND) !== null;
+  const assistedOffered =
+    assistedSupported && sessionFailures >= ASSISTED_OFFER_AFTER_FAILURES;
+  // The session's live gameplay profile (pilot game only). STANDARD
+  // resolves the exact shipped constants; the runtime receives
+  // parameters only, and the SAME profile feeds scoring via the band.
+  const sessionProfile =
+    definition.gameId === ASSISTED_PILOT_GAME_ID
+      ? getChallengeProfile(definition.gameId, selectedBand)
+      : null;
+  // Challenge-tuning provenance is sealed only when a live profile
+  // actually drove the run (absent = fixed shipped constants).
+  const sessionChallengeVersion =
+    sessionProfile !== null ? CHALLENGE_VERSION : undefined;
+
   const raceEligibleGhost =
+    selectedBand === STANDARD_BAND &&
     pbGhost != null &&
     isGhostCompatible({
       ghost: pbGhost,
       gameId: definition.gameId,
       scoringVersion: definition.scoring.scoringVersion,
-      difficultyBand: DEFAULT_DIFFICULTY_BAND,
+      difficultyBand: STANDARD_BAND,
+      // GAME.17D1 — tuning provenance joins compatibility: legacy
+      // ghosts without a version and sessions without a live profile
+      // both default to version 1 (proven identical tuning).
+      challengeVersion: sessionChallengeVersion,
     })
       ? pbGhost
       : null;
@@ -555,7 +601,10 @@ function GameOverlayInner({
             draft,
             durationMs,
             scoringVersion: def.scoring.scoringVersion,
-            difficultyBand: DEFAULT_DIFFICULTY_BAND,
+            difficultyBand: selectedBand,
+            ...(sessionChallengeVersion !== undefined
+              ? { challengeVersion: sessionChallengeVersion }
+              : {}),
           }) ?? undefined
         : undefined;
     const result = sealGameResult({
@@ -573,13 +622,16 @@ function GameOverlayInner({
         },
       },
       scoring: def.scoring,
-      difficultyBand: DEFAULT_DIFFICULTY_BAND,
+      difficultyBand: selectedBand,
       durationMs,
       attempt: attemptsRef.current,
       ...(trace !== undefined ? { trace } : {}),
+      ...(sessionChallengeVersion !== undefined
+        ? { challengeVersion: sessionChallengeVersion }
+        : {}),
     });
     onResult?.(result);
-  }, [definition, onResult]);
+  }, [definition, onResult, selectedBand, sessionChallengeVersion]);
 
   /** Compute per-attempt durationMs from gameStartedAtRef, or undefined
    *  if we never recorded a start (defensive — shouldn't happen via the
@@ -638,11 +690,18 @@ function GameOverlayInner({
     // non-grid/spike/match type) but stays for type safety. We do NOT
     // emit game_completed here — completion is the badge-grant moment
     // in handleAnswer below, not the moment we route to the quiz.
-  }, [config, alreadyEarned, onBadgeAwarded, emitGameCompleted]);
+    // GAME.17D1 — emitResult now depends on the session band, so the
+    // win funnel must hold the CURRENT closure (a stale one would seal
+    // an assisted win as STANDARD — caught live in review).
+  }, [config, alreadyEarned, onBadgeAwarded, emitGameCompleted, emitResult]);
 
   const handleGameLose = useCallback((metrics?: Record<string, number>) => {
     // GAME.6B — same capture-first contract as handleGameWin.
     runtimeMetricsRef.current = metrics ?? null;
+    // GAME.17D1 — a legitimate TERMINAL loss is the only failure-count
+    // increment (session presentation state; never persisted, never in
+    // results).
+    setSessionFailures((n) => n + 1);
     setPhase('fail');
     // ADMIN-v6.8D — game_failed emits AFTER setPhase. Gated by
     // gameFailedLoggedRef so a single onLose firing twice can't
@@ -721,6 +780,18 @@ function GameOverlayInner({
     // run's pace display resets with the attempt clock.
     setRacePaceMs(null);
   }, [definition]);
+
+  /** GAME.17D1 — explicit band switch + retry (the fail-screen ASSISTED
+   *  RUN / STANDARD RUN choices). Switching bands ALWAYS clears the
+   *  race context (§36): a STANDARD ghost must never pace an ASSISTED
+   *  attempt, and returning to STANDARD leaves RACE BEST default-OFF
+   *  until the player explicitly reselects it. */
+  const switchBandAndRetry = useCallback((band: DifficultyBand) => {
+    setSelectedBand(band);
+    setRaceBestSelected(false);
+    raceGhostRef.current = null;
+    retryGame();
+  }, [retryGame]);
 
   // ADMIN-v6.8D — BEGIN handler. Visible behavior is identical to the
   // previous inline arrow (setPhase 'playing'). The only addition is
@@ -879,6 +950,13 @@ function GameOverlayInner({
             Tale launches are identical; text only, no focus target, no
             aria-live (five quiet updates per run at most). Hidden until
             the first checkpoint — no projected pace, no interpolation. */}
+        {/* GAME.17D1 — the active-mode indicator: the player always
+            knows an assisted attempt is assisted. Text only, calm
+            treatment, no focus stop. Mutually exclusive with the pace
+            line (race is unavailable in ASSISTED). */}
+        {selectedBand === ASSISTED_BAND && (
+          <p className="game-assisted-indicator">ASSISTED RUN</p>
+        )}
         {racePaceMs !== null && (
           <p
             className={`game-race-pace${
@@ -902,6 +980,19 @@ function GameOverlayInner({
           // emitter in this pilot; Allen/Wooden don't declare or read
           // it, so this single generic mount point stays branch-free.
           onCheckpoint={handleRuntimeCheckpoint}
+          // GAME.17D1 — the session profile's gameplay parameters
+          // (Wooden pilot only; absent = the runtime's own shipped
+          // constants, exact existing behavior). The SAME profile
+          // normalizes scoring via the sealed band — single source.
+          challenge={
+            sessionProfile !== null
+              ? {
+                  durationSec: sessionProfile.durationSec,
+                  mistakePool: sessionProfile.mistakePool,
+                  hintBudget: sessionProfile.hintBudget,
+                }
+              : undefined
+          }
         />
       </div>
     );
@@ -1050,6 +1141,32 @@ function GameOverlayInner({
           <button type="button" className="game-start-btn" onClick={retryGame} data-modal-focus>
             TRY AGAIN
           </button>
+          {/* GAME.17D1 — the explicit band choices (Wooden pilot).
+              STANDARD sessions surface ASSISTED RUN only after the
+              failure threshold; ASSISTED sessions surface the way
+              back. Always a deliberate opt-in — TRY AGAIN keeps the
+              current band and stays the primary focus target. */}
+          {assistedOffered && selectedBand === STANDARD_BAND && (
+            <button
+              type="button"
+              className="game-assisted-btn"
+              onClick={() => switchBandAndRetry(ASSISTED_BAND)}
+            >
+              <span className="game-assisted-btn-label">ASSISTED RUN</span>
+              <span className="game-assisted-btn-note">
+                MORE TIME · MORE MISTAKES · EXTRA HINT
+              </span>
+            </button>
+          )}
+          {assistedSupported && selectedBand === ASSISTED_BAND && (
+            <button
+              type="button"
+              className="game-assisted-btn"
+              onClick={() => switchBandAndRetry(STANDARD_BAND)}
+            >
+              <span className="game-assisted-btn-label">STANDARD RUN</span>
+            </button>
+          )}
           <button type="button" className="game-success-story-btn" onClick={onClose}>
             SKIP
           </button>

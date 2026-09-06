@@ -53,6 +53,13 @@
 
 import type { DifficultyBand, GameOutcome, ScoringSpec } from './registry';
 import { clampScore } from './registry';
+// GAME.17D1 — the Wooden pilot's normalization inputs come from the SAME
+// ChallengeProfile that tunes its runtime (the single-source rule: a
+// 150s/6-pool assisted run must never be normalized against 120/4).
+// Allen/Packer stay on their fixed constants until they are
+// profile-wired; their standard profiles are mechanically proven equal
+// to those constants by the GAME.17 alignment pins.
+import { getChallengeProfile } from './challengePolicy';
 
 /** Read one bounded metric from the untrusted map. Anything missing,
  *  non-numeric, non-finite, or outside [0, max] yields `fallback`
@@ -141,10 +148,22 @@ export const PACKER_ROUTE_SCORING: ScoringSpec = {
  *  36% completion / 42% accuracy / 18% time / 4% flawless. */
 export const STATION_PRESERVATION_SCORING: ScoringSpec = {
   scoringVersion: 2,
-  score(outcome: GameOutcome, _band: DifficultyBand): number {
+  // GAME.17D1 — band-aware normalization: the previously ignored band
+  // argument now selects the ChallengeProfile whose mistakePool and
+  // durationSec tuned the actual run (STANDARD band 1 resolves the
+  // exact historical 120/4, so every existing score vector is
+  // bit-identical). The formula shape and weights are unchanged —
+  // scoringVersion stays 2 because band + profile identity fully
+  // describe the contract and the result already carries the band.
+  // A band with no profile (ADVANCED/EXPERT/RESERVED — unreachable
+  // live) fails closed to 0 rather than borrowing another band's
+  // normalization.
+  score(outcome: GameOutcome, band: DifficultyBand): number {
+    const profile = getChallengeProfile('station-preservation', band);
+    if (profile === null) return 0;
     return poolGameScore(outcome, {
-      mistakePool: 4,
-      durationSec: 120,
+      mistakePool: profile.mistakePool,
+      durationSec: profile.durationSec,
       completionBase: 3600,
       accuracyWeight: 4200,
       timeWeight: 1800,

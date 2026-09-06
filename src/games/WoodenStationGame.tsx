@@ -218,15 +218,26 @@ interface WoodenStationGameProps {
    *  room identity. Observational only; identical behavior when
    *  absent. */
   onCheckpoint?: (completedCount: number) => void;
+  /** GAME.17D1 — gameplay parameters from the session's selected
+   *  ChallengeProfile. PARAMETERS ONLY: the runtime never decides
+   *  bands or reads policy/storage. Absent = the shipped constants
+   *  below (exact existing behavior). */
+  challenge?: { durationSec: number; mistakePool: number; hintBudget: number };
 }
 
 
-export function WoodenStationGame({ config, onWin, onLose, quizShowing, onCheckpoint }: WoodenStationGameProps) {
+export function WoodenStationGame({ config, onWin, onLose, quizShowing, onCheckpoint, challenge }: WoodenStationGameProps) {
+  // GAME.17D1 — the attempt's tuning: profile-supplied when the shell
+  // passes one, otherwise the shipped constants. The runtime remounts
+  // per attempt, so these initialize every reset (§26 profile reset).
+  const durationSec     = challenge?.durationSec ?? GAME_DURATION_SEC;
+  const startingMatches = challenge?.mistakePool ?? STARTING_MATCHES;
+  const startingHints   = challenge?.hintBudget ?? STARTING_HINTS;
   // ── State ──────────────────────────────────────────────────────────
   const [restored, setRestored] = useState<Set<string>>(new Set());
-  const [matchesLeft, setMatchesLeft] = useState(STARTING_MATCHES);
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION_SEC);
-  const [hintsLeft, setHintsLeft] = useState(STARTING_HINTS);
+  const [matchesLeft, setMatchesLeft] = useState(startingMatches);
+  const [timeLeft, setTimeLeft] = useState(durationSec);
+  const [hintsLeft, setHintsLeft] = useState(startingHints);
   const [hintRoomId, setHintRoomId] = useState<string | null>(null);
 
   const [activeQuizRoomId, setActiveQuizRoomId] = useState<string | null>(null);
@@ -261,15 +272,15 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing, onCheckp
   // before the setTimeout-deferred triggerWin/triggerLose fire.
   const metricsRef = useRef<Record<string, number>>({
     mistakes: 0,
-    timeLeftSec: GAME_DURATION_SEC,
+    timeLeftSec: durationSec,
     hintsUsed: 0,
     roomsRestored: 0,
   });
   useEffect(() => {
     metricsRef.current = {
-      mistakes: STARTING_MATCHES - matchesLeft,
+      mistakes: startingMatches - matchesLeft,
       timeLeftSec: timeLeft,
-      hintsUsed: STARTING_HINTS - hintsLeft,
+      hintsUsed: startingHints - hintsLeft,
       roomsRestored: restored.size,
     };
   }, [matchesLeft, timeLeft, hintsLeft, restored]);
@@ -434,7 +445,7 @@ export function WoodenStationGame({ config, onWin, onLose, quizShowing, onCheckp
             aria-label={`${matchesLeft} matches remaining`}
           >
             <span className="hud-pips-filled">{'●'.repeat(matchesLeft)}</span>
-            <span className="hud-pips-empty">{'○'.repeat(Math.max(0, STARTING_MATCHES - matchesLeft))}</span>
+            <span className="hud-pips-empty">{'○'.repeat(Math.max(0, startingMatches - matchesLeft))}</span>
           </div>
         </div>
         <div className="game-hud-stat">
