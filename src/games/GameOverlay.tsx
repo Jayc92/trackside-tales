@@ -12,9 +12,10 @@ import {
   createGameSession,
   sealGameResult,
 } from './resultPipeline';
-// GAME.17D1 — the challenge-policy foundation goes live (Wooden pilot):
-// band semantics, the session profile, the failure-offer threshold, and
-// CHALLENGE_VERSION provenance all come from the one committed policy.
+// GAME.17D1/17E1 — the challenge-policy foundation is live for every
+// registered game: band semantics, the session profile, the
+// failure-offer threshold, and CHALLENGE_VERSION provenance all come
+// from the one committed policy.
 import {
   ASSISTED_BAND,
   ASSISTED_OFFER_AFTER_FAILURES,
@@ -32,12 +33,6 @@ import {
   isGhostCompatible,
   recordGhostCheckpoint,
 } from './ghostTrace';
-
-// ── GAME.17D1 — ASSISTED pilot ──────────────────────────────────────────
-/** The one game with live ASSISTED support in this pilot. The policy
- *  module describes all three games, but production wiring stays
- *  Wooden-only until a later gate generalizes it. */
-const ASSISTED_PILOT_GAME_ID = 'station-preservation';
 
 // ── GAME.18D1/18E1 — RACE BEST ──────────────────────────────────────────
 /** Pure pace copy. One deterministic rounding rule: tenths of a second
@@ -496,26 +491,29 @@ function GameOverlayInner({
   // uncontracted/unknown game can never have a valid ghost — fail
   // closed). Anything invalid or mismatched simply produces no option:
   // no error surface, normal run untouched.
-  // ── GAME.17D1 — session difficulty (Wooden pilot) ────────────────────
+  // ── GAME.17D1/17E1 — session difficulty (all registered games) ───────
   // Every session opens STANDARD; the band is transient overlay state
-  // (no preference storage). ASSISTED becomes reachable only for the
-  // pilot game, only by explicit choice after the failure threshold.
+  // (no preference storage). ASSISTED becomes reachable only by
+  // explicit choice after the failure threshold.
   const [selectedBand, setSelectedBand] = useState<DifficultyBand>(STANDARD_BAND);
   // Terminal failed attempts in THIS session only (losses counted at
   // the one terminal-loss funnel; mistakes/Escape/close never count).
   const [sessionFailures, setSessionFailures] = useState(0);
+  // GAME.17E1 — capability is PROFILE-driven, never a game-id list: a
+  // game supports ASSISTED iff the policy table carries BOTH its
+  // STANDARD and ASSISTED profiles. Unknown/unprofiled games fail
+  // closed to STANDARD-only with no offer.
   const assistedSupported =
-    definition.gameId === ASSISTED_PILOT_GAME_ID &&
+    getChallengeProfile(definition.gameId, STANDARD_BAND) !== null &&
     getChallengeProfile(definition.gameId, ASSISTED_BAND) !== null;
   const assistedOffered =
     assistedSupported && sessionFailures >= ASSISTED_OFFER_AFTER_FAILURES;
-  // The session's live gameplay profile (pilot game only). STANDARD
-  // resolves the exact shipped constants; the runtime receives
-  // parameters only, and the SAME profile feeds scoring via the band.
-  const sessionProfile =
-    definition.gameId === ASSISTED_PILOT_GAME_ID
-      ? getChallengeProfile(definition.gameId, selectedBand)
-      : null;
+  // The session's live gameplay profile. STANDARD resolves the exact
+  // shipped constants; the runtime receives parameters only, and the
+  // SAME profile feeds scoring via the band (single-source rule). A
+  // game without a table row runs on its own shipped constants with no
+  // challenge provenance (exact legacy sealing).
+  const sessionProfile = getChallengeProfile(definition.gameId, selectedBand);
   // Challenge-tuning provenance is sealed only when a live profile
   // actually drove the run (absent = fixed shipped constants).
   const sessionChallengeVersion =
@@ -975,13 +973,13 @@ function GameOverlayInner({
           onWin={handleGameWin}
           onLose={handleGameLose}
           quizShowing={quizShowingRef.current}
-          // GAME.18C2 — optional semantic-progress observer (shared
-          // LegacyGameRuntimeProps contract). Packer is the only
-          // emitter in this pilot; Allen/Wooden don't declare or read
-          // it, so this single generic mount point stays branch-free.
+          // GAME.18C2/18E1 — optional semantic-progress observer
+          // (shared LegacyGameRuntimeProps contract). All three
+          // runtimes emit accepted-progress checkpoints through this
+          // single generic mount point — branch-free by construction.
           onCheckpoint={handleRuntimeCheckpoint}
-          // GAME.17D1 — the session profile's gameplay parameters
-          // (Wooden pilot only; absent = the runtime's own shipped
+          // GAME.17D1/17E1 — the session profile's gameplay parameters
+          // (every registered game; absent = the runtime's own shipped
           // constants, exact existing behavior). The SAME profile
           // normalizes scoring via the sealed band — single source.
           challenge={
@@ -1141,11 +1139,12 @@ function GameOverlayInner({
           <button type="button" className="game-start-btn" onClick={retryGame} data-modal-focus>
             TRY AGAIN
           </button>
-          {/* GAME.17D1 — the explicit band choices (Wooden pilot).
-              STANDARD sessions surface ASSISTED RUN only after the
-              failure threshold; ASSISTED sessions surface the way
-              back. Always a deliberate opt-in — TRY AGAIN keeps the
-              current band and stays the primary focus target. */}
+          {/* GAME.17D1/17E1 — the explicit band choices (all games with
+              an ASSISTED profile). STANDARD sessions surface ASSISTED
+              RUN only after the failure threshold; ASSISTED sessions
+              surface the way back. Always a deliberate opt-in — TRY
+              AGAIN keeps the current band and stays the primary focus
+              target. */}
           {assistedOffered && selectedBand === STANDARD_BAND && (
             <button
               type="button"

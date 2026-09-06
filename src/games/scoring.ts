@@ -53,12 +53,12 @@
 
 import type { DifficultyBand, GameOutcome, ScoringSpec } from './registry';
 import { clampScore } from './registry';
-// GAME.17D1 — the Wooden pilot's normalization inputs come from the SAME
+// GAME.17D1/17E1 — every spec's normalization inputs come from the SAME
 // ChallengeProfile that tunes its runtime (the single-source rule: a
-// 150s/6-pool assisted run must never be normalized against 120/4).
-// Allen/Packer stay on their fixed constants until they are
-// profile-wired; their standard profiles are mechanically proven equal
-// to those constants by the GAME.17 alignment pins.
+// 120s/9-pool assisted run must never be normalized against 90/7).
+// STANDARD profiles are mechanically proven equal to the historical
+// fixed constants by the GAME.17 alignment pins, so every existing
+// score vector is bit-identical.
 import { getChallengeProfile } from './challengePolicy';
 
 /** Read one bounded metric from the untrusted map. Anything missing,
@@ -107,10 +107,19 @@ function poolGameScore(
  *  40% completion / 36% accuracy / 20% time / 4% flawless. */
 export const ALLEN_TOWN_SCORING: ScoringSpec = {
   scoringVersion: 2,
-  score(outcome: GameOutcome, _band: DifficultyBand): number {
+  // GAME.17E1 — band-aware normalization (the Wooden 17D1 pattern): the
+  // band selects the ChallengeProfile whose mistakePool and durationSec
+  // tuned the actual run (STANDARD band 1 resolves the exact historical
+  // 90/7, so every existing score vector is bit-identical). Formula
+  // shape and weights unchanged — scoringVersion stays 2 because band +
+  // profile identity fully describe the contract. A band with no
+  // profile fails closed to 0 rather than borrowing normalization.
+  score(outcome: GameOutcome, band: DifficultyBand): number {
+    const profile = getChallengeProfile('allen-town-grid', band);
+    if (profile === null) return 0;
     return poolGameScore(outcome, {
-      mistakePool: 7,
-      durationSec: 90,
+      mistakePool: profile.mistakePool,
+      durationSec: profile.durationSec,
       completionBase: 4000,
       accuracyWeight: 3600,
       timeWeight: 2000,
@@ -126,10 +135,15 @@ export const ALLEN_TOWN_SCORING: ScoringSpec = {
  *  40% completion / 38% accuracy / 18% time / 4% flawless. */
 export const PACKER_ROUTE_SCORING: ScoringSpec = {
   scoringVersion: 2,
-  score(outcome: GameOutcome, _band: DifficultyBand): number {
+  // GAME.17E1 — same band-aware normalization as Allen: STANDARD
+  // resolves the exact historical 90/7 (bit-identical vectors),
+  // ASSISTED resolves 120/9, unprofiled bands fail closed to 0.
+  score(outcome: GameOutcome, band: DifficultyBand): number {
+    const profile = getChallengeProfile('packer-rail-line', band);
+    if (profile === null) return 0;
     return poolGameScore(outcome, {
-      mistakePool: 7,
-      durationSec: 90,
+      mistakePool: profile.mistakePool,
+      durationSec: profile.durationSec,
       completionBase: 4000,
       accuracyWeight: 3800,
       timeWeight: 1800,

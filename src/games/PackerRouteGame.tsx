@@ -152,15 +152,26 @@ interface PackerRouteGameProps {
    *  Observational only — this runtime knows nothing about timing,
    *  ghosts, PBs, or storage, and behaves identically when absent. */
   onCheckpoint?: (completedCount: number) => void;
+  /** GAME.17E1 — gameplay parameters from the session's selected
+   *  ChallengeProfile (the Wooden 17D1 pattern). PARAMETERS ONLY: the
+   *  runtime never decides bands or reads policy/storage. Absent = the
+   *  shipped constants below (exact existing behavior). */
+  challenge?: { durationSec: number; mistakePool: number; hintBudget: number };
 }
 
 
-export function PackerRouteGame({ config, onWin, onLose, quizShowing, onCheckpoint }: PackerRouteGameProps) {
+export function PackerRouteGame({ config, onWin, onLose, quizShowing, onCheckpoint, challenge }: PackerRouteGameProps) {
+  // GAME.17E1 — the attempt's tuning: profile-supplied when the shell
+  // passes one, otherwise the shipped constants. The runtime remounts
+  // per attempt, so these initialize every reset (profile reset).
+  const durationSec   = challenge?.durationSec ?? GAME_DURATION_SEC;
+  const startingMoves = challenge?.mistakePool ?? STARTING_MOVES;
+  const startingHints = challenge?.hintBudget ?? STARTING_HINTS;
   // ── State ──────────────────────────────────────────────────────────
   const [placements, setPlacements] = useState<Record<string, string>>({});
-  const [movesLeft, setMovesLeft]   = useState(STARTING_MOVES);
-  const [timeLeft, setTimeLeft]     = useState(GAME_DURATION_SEC);
-  const [hintsLeft, setHintsLeft]   = useState(STARTING_HINTS);
+  const [movesLeft, setMovesLeft]   = useState(startingMoves);
+  const [timeLeft, setTimeLeft]     = useState(durationSec);
+  const [hintsLeft, setHintsLeft]   = useState(startingHints);
 
   const [unlocked, setUnlocked] = useState<Set<string>>(
     () => new Set(ELEMENTS.filter((e) => e.startsUnlocked).map((e) => e.id)),
@@ -220,15 +231,15 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing, onCheckpoi
   // before the setTimeout-deferred triggerWin/triggerLose fire.
   const metricsRef = useRef<Record<string, number>>({
     mistakes: 0,
-    timeLeftSec: GAME_DURATION_SEC,
+    timeLeftSec: durationSec,
     hintsUsed: 0,
     placements: 0,
   });
   useEffect(() => {
     metricsRef.current = {
-      mistakes: STARTING_MOVES - movesLeft,
+      mistakes: startingMoves - movesLeft,
       timeLeftSec: timeLeft,
-      hintsUsed: STARTING_HINTS - hintsLeft,
+      hintsUsed: startingHints - hintsLeft,
       placements: Object.keys(placements).length,
     };
   }, [movesLeft, timeLeft, hintsLeft, placements]);
@@ -574,7 +585,7 @@ export function PackerRouteGame({ config, onWin, onLose, quizShowing, onCheckpoi
             aria-label={`${movesLeft} mistakes remaining`}
           >
             <span className="hud-pips-filled">{'●'.repeat(movesLeft)}</span>
-            <span className="hud-pips-empty">{'○'.repeat(Math.max(0, STARTING_MOVES - movesLeft))}</span>
+            <span className="hud-pips-empty">{'○'.repeat(Math.max(0, startingMoves - movesLeft))}</span>
           </div>
         </div>
         <div className="game-hud-stat">
