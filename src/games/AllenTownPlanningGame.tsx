@@ -422,21 +422,33 @@ export function AllenTownPlanningGame({ config, onWin, onLose, quizShowing, onCh
   useEffect(() => {
     timerRef.current = setInterval(() => {
       if (completedRef.current || quizShowing) return;
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          stopTimer();
-          // GAME.6B — the clock truly hit zero; the snapshot still
-          // holds last commit's value (1). Constant write: idempotent
-          // under StrictMode's double-invoked updater.
-          metricsRef.current = { ...metricsRef.current, timeLeftSec: 0 };
-          triggerLose();
-          return 0;
-        }
-        return t - 1;
-      });
+      // GAME.20B — PURE updater (GAME.20A Option A): the terminal
+      // cascade moved to the post-commit effect below; the updater
+      // only computes. Floors at 0 — never negative, never skipped.
+      setTimeLeft((t) => Math.max(0, t - 1));
     }, 1000);
     return stopTimer;
-  }, [quizShowing, triggerLose, stopTimer]);
+  }, [quizShowing, stopTimer]);
+
+  // GAME.20B — timeout terminal signal, post-commit (GAME.20A Option
+  // A): reacting to the COMMITTED zero keeps the cross-component
+  // terminal cascade out of React's updater execution (the old
+  // in-updater triggerLose produced the dev warning "Cannot update a
+  // component while rendering a different component"). Guards are the
+  // EXISTING exactly-once refs — triggerLose stays the single
+  // canonical terminal callback, and its loseFiredRef gate absorbs
+  // any StrictMode double-run of this effect. Initial mount can never
+  // be zero (every profile duration is ≥ 90 seconds).
+  useEffect(() => {
+    if (timeLeft !== 0) return;
+    if (completedRef.current || winFiredRef.current || loseFiredRef.current) return;
+    stopTimer();
+    // Explicit zero write (G20B §8): the metrics mirror above already
+    // mirrored this commit's 0, but the sealed result's truth must
+    // not depend on effect declaration order — legal effect work.
+    metricsRef.current = { ...metricsRef.current, timeLeftSec: 0 };
+    triggerLose();
+  }, [timeLeft, stopTimer, triggerLose]);
 
 
   // v5.1.13: lock body scroll while a drag is in progress so the page
