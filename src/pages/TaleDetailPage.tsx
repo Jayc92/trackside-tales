@@ -1,7 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { GameOverlay } from '../games/GameOverlay';
-import { getGamesForTale } from '../games/registry';
+import { GameResult, getGamesForTale } from '../games/registry';
+// GAME.19B — pure post-run authority observation (facts only, no UI),
+// exactly the ArcadePage pattern: shared helpers, per-dispatch before
+// snapshot, per-render after observation (route parity by construction).
+import {
+  PostRunBeforeSnapshot,
+  buildPostRunObservation,
+  capturePostRunBeforeSnapshot,
+} from '../games/postRunFacts';
 import {
   GameLaunchWorldContext,
   getArcadeWorldState,
@@ -167,6 +175,26 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   const [launchContext, setLaunchContext] =
     useState<GameLaunchWorldContext | null>(null);
 
+  // GAME.19B — the per-DISPATCH observation baseline (identical to the
+  // ArcadePage pattern; see that mount for the full rationale —
+  // notably why this is STATE, not a ref: a fully no-op dispatch
+  // returns the same reducer state and skips the re-render, so only a
+  // setState here guarantees the after-observation ever renders).
+  const [pendingPostRun, setPendingPostRun] = useState<{
+    result: GameResult;
+    before: PostRunBeforeSnapshot;
+  } | null>(null);
+  const handleOverlayResult = useCallback(
+    (result: GameResult) => {
+      setPendingPostRun({
+        result,
+        before: capturePostRunBeforeSnapshot(state),
+      });
+      recordGameResult(result);
+    },
+    [state, recordGameResult],
+  );
+
   // P.28e.3 timeline correction — the horizontal track always opens at
   // its FIRST event: scrollLeft is reset whenever the rendered Tale
   // changes (initial render included), and never touched afterwards so
@@ -201,6 +229,22 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   // climax is only reachable from the unlocked branch below, matching
   // definition.requires.unlockedTale).
   const gameDefinition = getGamesForTale(tale.id)[0];
+
+  // GAME.19B — derived every render once the reducer's after-state is
+  // visible (the GAME.16 observation posture); correlation-checked by
+  // the overlay against its own sealed result.
+  const postRunObservation =
+    gameDefinition && pendingPostRun && pendingPostRun.result.gameId === gameDefinition.gameId
+      ? buildPostRunObservation({
+          result: pendingPostRun.result,
+          before: pendingPostRun.before,
+          after: capturePostRunBeforeSnapshot(state),
+          launchContext:
+            launchContext && launchContext.gameId === gameDefinition.gameId
+              ? launchContext
+              : null,
+        })
+      : null;
   const collected    = previewMode ? undefined : state.collectedDates[tale.id];
 
   const handleBadgeAwarded = (_badgeKey: string) => awardGameBadge(tale.id);
@@ -550,6 +594,9 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
             // GAME.16 — the snapshot dies with the session; a reopen
             // takes a fresh helper evaluation (null once credited).
             setLaunchContext(null);
+            // GAME.19B — the observation baseline dies with the
+            // session too (a fresh overlay can never inherit facts).
+            setPendingPostRun(null);
           }}
           onBadgeAwarded={handleBadgeAwarded}
           alreadyEarned={hasGameBadge}
@@ -558,7 +605,12 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
           guestId={guestId}
           // GAME.6 — personal-best persistence (AppContext-owned).
           // Entirely separate from the badge callback above.
-          onResult={recordGameResult}
+          // GAME.19B — wrapped only to capture the per-dispatch before
+          // snapshot; the dispatch itself is byte-identical.
+          onResult={handleOverlayResult}
+          // GAME.19B — this dispatch's authority-transition facts
+          // (pure observation; nothing renders from them yet).
+          postRunObservation={postRunObservation}
           // GAME.16 — identical contract to the Arcade mount: frozen
           // event identity + reducer-observed credit transition, derived
           // every render; the gameId guard protects against any stale

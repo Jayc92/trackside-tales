@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { Tale } from '../app/types';
 import { GameOverlay } from '../games/GameOverlay';
-import { GameDefinition, getAllGameDefinitions } from '../games/registry';
+import { GameDefinition, GameResult, getAllGameDefinitions } from '../games/registry';
+// GAME.19B — pure post-run authority observation (facts only, no UI):
+// a per-dispatch before snapshot + a per-render after observation.
+import {
+  PostRunBeforeSnapshot,
+  buildPostRunObservation,
+  capturePostRunBeforeSnapshot,
+} from '../games/postRunFacts';
 import { MASTERY_TIER_LABELS, MasteryTier } from '../games/mastery';
 import {
   COLLECTIBLE_RARITY_LABELS,
@@ -99,6 +106,48 @@ export function ArcadePage() {
   // overlay mount. Never persisted, never a reducer concern.
   const [launchContext, setLaunchContext] =
     useState<GameLaunchWorldContext | null>(null);
+
+  // GAME.19B — the per-DISPATCH observation baseline: the sealed result
+  // paired with the six authoritative store references captured
+  // immediately before recordGameResult (retry chains dispatch several
+  // results; each gets its own baseline). Deliberately React STATE, not
+  // a ref: a fully no-op dispatch returns the SAME state object from
+  // the reducer and React skips the re-render, so a ref-held baseline
+  // would never be observed — the setState below forces exactly one
+  // render (batched with any real reducer update), and the no-op case
+  // truthfully yields an all-empty-transitions envelope. Session-local
+  // presentation state only; never persisted, authority untouched.
+  const [pendingPostRun, setPendingPostRun] = useState<{
+    result: GameResult;
+    before: PostRunBeforeSnapshot;
+  } | null>(null);
+  const handleOverlayResult = useCallback(
+    (result: GameResult) => {
+      setPendingPostRun({
+        result,
+        before: capturePostRunBeforeSnapshot(state),
+      });
+      recordGameResult(result);
+    },
+    [state, recordGameResult],
+  );
+  // Derived every render (the GAME.16 observation posture): once the
+  // reducer's after-state is visible, the pending pair yields this
+  // dispatch's authority-transition facts. The overlay pairs them with
+  // its own sealed result via the correlation key, so stale pairings
+  // are structurally impossible.
+  const postRunObservation =
+    activeGame && pendingPostRun && pendingPostRun.result.gameId === activeGame.gameId
+      ? buildPostRunObservation({
+          result: pendingPostRun.result,
+          before: pendingPostRun.before,
+          after: capturePostRunBeforeSnapshot(state),
+          launchContext:
+            launchContext && launchContext.gameId === activeGame.gameId
+              ? launchContext
+              : null,
+        })
+      : null;
 
   // Catalog: registry definitions joined to their Tales. Fail closed —
   // a definition without a resolvable Tale association renders nothing
@@ -552,6 +601,9 @@ export function ArcadePage() {
             // GAME.16 — the snapshot dies with the session; a reopen
             // takes a fresh helper evaluation (null once credited).
             setLaunchContext(null);
+            // GAME.19B — the observation baseline dies with the
+            // session too (a fresh overlay can never inherit facts).
+            setPendingPostRun(null);
           }}
           // Badge award mirrors TaleDetailPage exactly: ownership stays
           // the TALE id (frozen tb_game_badges contract), never GameId.
@@ -561,7 +613,13 @@ export function ArcadePage() {
           successBadgeTitle={activeTale.gameBadge.title}
           guestId={guestId}
           // GAME.6 — same shared personal-best path as Tale Detail.
-          onResult={recordGameResult}
+          // GAME.19B — wrapped only to capture the per-dispatch before
+          // snapshot; the dispatch itself is byte-identical.
+          onResult={handleOverlayResult}
+          // GAME.19B — this dispatch's authority-transition facts
+          // (pure observation; the overlay renders NOTHING from them
+          // in this milestone).
+          postRunObservation={postRunObservation}
           // GAME.16 — frozen event identity + the authoritative credit
           // transition, DERIVED every render (never stored): runRecorded
           // flips in the same commit the reducer credits the captured

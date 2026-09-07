@@ -24,6 +24,16 @@ import {
   getChallengeProfile,
 } from './challengePolicy';
 import type { GameOverlayTimetableContext } from './worldState';
+// GAME.19B — the pure post-run fact envelope: the page supplies
+// authority-transition facts, the overlay contributes its own
+// race/session facts, and the merge is correlation-checked against the
+// overlay's LAST SEALED result. Facts only — nothing renders from them
+// in this milestone.
+import {
+  PostRunFacts,
+  PostRunObservation,
+  mergePostRunSessionFacts,
+} from './postRunFacts';
 import {
   GhostTrace,
   GhostTraceDraft,
@@ -329,6 +339,13 @@ interface GameOverlayProps {
    *  Presentation only — a tampered ghost can at worst mislabel the
    *  pace line; it carries no authority anywhere. */
   pbGhost?: GhostTrace | null;
+  /** PUBLIC-v7.4B.GAME.19B — the launching page's authority-transition
+   *  observation for the LAST dispatched result (pure facts; see
+   *  postRunFacts.ts). The overlay merges its own race/session facts
+   *  and exposes the combined envelope ONLY as a root data attribute
+   *  for the deterministic test harness — no UI, no copy, no focus, no
+   *  storage, and no authority flows FROM it anywhere. */
+  postRunObservation?: PostRunObservation | null;
 }
 
 export function GameOverlay(props: GameOverlayProps) {
@@ -371,6 +388,7 @@ function GameOverlayInner({
   onResult,
   timetableContext,
   pbGhost,
+  postRunObservation,
   rootRef,
 }: GameOverlayProps & {
   config: NonNullable<GameDefinition['legacyConfig']>;
@@ -465,6 +483,12 @@ function GameOverlayInner({
   );
   const resultWonEmittedRef  = useRef(false);
   const resultLostEmittedRef = useRef(false);
+  // GAME.19B — the overlay's own copy of the LAST result it sealed,
+  // used ONLY to correlation-check the page's post-run observation
+  // (sessionId + attempt + completedAt + gameId) so a retry chain can
+  // never pair attempt N's facts with another attempt. Transient ref;
+  // never persisted, never read by any authority path.
+  const lastSealedResultRef = useRef<GameResult | null>(null);
 
   // GAME.6B — the CURRENT attempt's runtime metric payload, captured at
   // the onWin/onLose funnel (each runtime's METRIC CONTRACT documents
@@ -628,6 +652,10 @@ function GameOverlayInner({
         ? { challengeVersion: sessionChallengeVersion }
         : {}),
     });
+    // GAME.19B — remember what was sealed BEFORE surfacing it, so the
+    // fact merge below can bind the page's observation to exactly this
+    // attempt. Pure bookkeeping; the result itself is unchanged.
+    lastSealedResultRef.current = result;
     onResult?.(result);
   }, [definition, onResult, selectedBand, sessionChallengeVersion]);
 
@@ -1217,6 +1245,26 @@ function GameOverlayInner({
     };
   }, []);
 
+  // GAME.19B — the merged post-run fact envelope for the LAST sealed
+  // result (page authority observation + this session's race facts),
+  // or null before any terminal result / on correlation mismatch.
+  // Exposed ONLY as an invisible root data attribute so the
+  // deterministic test harness can verify facts against real reducer
+  // transitions. Nothing player-visible renders from it (GAME.19C),
+  // and nothing reads it back into any authority path.
+  const postRunFacts: PostRunFacts | null =
+    postRunObservation != null && lastSealedResultRef.current !== null
+      ? mergePostRunSessionFacts(
+          postRunObservation,
+          {
+            raceSelected: raceGhostRef.current !== null,
+            frozenRaceGhost: raceGhostRef.current,
+            lastRaceCheckpointDeltaMs: racePaceMs,
+          },
+          lastSealedResultRef.current,
+        )
+      : null;
+
   return (
     <div
       id="game-overlay"
@@ -1230,6 +1278,7 @@ function GameOverlayInner({
       aria-labelledby="game-overlay-title"
       ref={rootRef}
       tabIndex={-1}
+      data-postrun-facts={postRunFacts !== null ? JSON.stringify(postRunFacts) : undefined}
     >
       <div className="game-header">
         <h2 className="game-title" id="game-overlay-title">{definition.title}</h2>
