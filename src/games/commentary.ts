@@ -40,7 +40,12 @@ export type CommentaryTemplateId =
   | 'pb-delta-time'
   | 'pb-delta-score'
   | 'mastery-promoted'
-  | 'event-recorded'
+  // G19D1A — 'event-recorded' was retired: on the only rendering
+  // surface, creditedByThisRun already produces the authoritative
+  // GAME.16 stamp (SPECIAL TIMETABLE · RUN RECORDED), so a commentary
+  // line carried zero new information and rendered as a verbatim
+  // duplicate. event-completed remains — a stronger transition than
+  // the per-run stamp.
   | 'quest-completed'
   | 'rank-up'
   | 'race-ahead'
@@ -134,8 +139,20 @@ export const COMMENTARY_CLAIM_GUARDS: ReadonlyArray<{
   phrase: string;
   allows: (facts: PostRunFacts) => boolean;
 }> = [
-  { phrase: 'NEW PERSONAL BEST', allows: (f) => f.pb.becamePb && f.pb.hadWinningPbBefore },
-  { phrase: 'FIRST RUN ON THE BOARD', allows: (f) => f.pb.becamePb && !f.pb.hadWinningPbBefore },
+  // G19D1A — the PB claims require the WIN itself, not merely the
+  // storage transition (a fresh terminal loss legitimately seeds the
+  // empty slot under GAME.6).
+  {
+    phrase: 'NEW PERSONAL BEST',
+    allows: (f) => f.result.won && f.pb.becamePb && f.pb.hadWinningPbBefore,
+  },
+  {
+    phrase: 'FIRST RUN ON THE BOARD',
+    allows: (f) => f.result.won && f.pb.becamePb && !f.pb.hadWinningPbBefore,
+  },
+  // G19D1A — no commentary template emits RUN RECORDED anymore (the
+  // GAME.16 stamp owns that presentation); the guard is deliberately
+  // RETAINED as whitelist defense for any future generative layer.
   { phrase: 'RUN RECORDED', allows: (f) => f.event.creditedByThisRun },
   { phrase: 'PROMOTED TO', allows: (f) => f.xp.rankedUp },
   { phrase: 'FASTER', allows: (f) => f.pb.durationDeltaMs !== undefined && f.pb.durationDeltaMs < 0 },
@@ -289,7 +306,11 @@ function buildCandidates(facts: PostRunFacts): CommentaryCandidate[] {
   // P40 — canonical PB (authoritative transition only, §§12-13). The
   // assisted guard is structural (becamePb is false under the live band
   // gate) and repeated here for fail-closed defense (§§21/55).
-  if (pb.becamePb && !assisted) {
+  // G19D1A — the WON guard is load-bearing, not defensive: GAME.6
+  // legitimately seeds an empty PB slot with a terminal LOSS, so
+  // becamePb alone is a STORAGE transition, not a winning personal
+  // best. Player-facing PB language requires the win itself.
+  if (result.won && pb.becamePb && !assisted) {
     if (pb.hadWinningPbBefore) {
       push('pb-improved', 'pb', 40, 'NEW PERSONAL BEST');
       // Complement secondaries — wording must respect the comparator
@@ -314,10 +335,10 @@ function buildCandidates(facts: PostRunFacts): CommentaryCandidate[] {
     push('mastery-promoted', 'mastery', 50, `${MASTERY_TIER_LABELS[mastery.durableAfter]} EARNED`);
   }
 
-  // P60 — event run credit (§22 — the established GAME.16 vocabulary).
-  if (event.creditedByThisRun && !event.eventCompletedByThisRun) {
-    push('event-recorded', 'event', 60, 'SPECIAL TIMETABLE · RUN RECORDED');
-  }
+  // P60 — RETIRED (G19D1A): the ordinary run-credit line duplicated the
+  // GAME.16 stamp verbatim wherever it could appear (the stamp renders
+  // exactly when creditedByThisRun is true). The stamp remains the one
+  // presentation of that fact; commentary stays silent about it.
 
   // P70 — quest completion (new completion records only, §27).
   const newQuest = quest.newCompletions[0];

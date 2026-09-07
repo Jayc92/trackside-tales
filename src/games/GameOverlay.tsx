@@ -34,6 +34,11 @@ import {
   PostRunObservation,
   mergePostRunSessionFacts,
 } from './postRunFacts';
+// GAME.19D1 — the committed deterministic commentary engine becomes
+// visible: terminal screens render its output byte-exact (no JSX
+// rewrite, no casing, no decoration). All selection/copy rules live in
+// commentary.ts; the overlay only places the returned text.
+import { PostRunCommentary, getPostRunCommentary } from './commentary';
 import {
   GhostTrace,
   GhostTraceDraft,
@@ -1128,6 +1133,11 @@ function GameOverlayInner({
           <span className="game-timetable-stamp-detail">RUN RECORDED</span>
         </p>
       )}
+      {/* GAME.19D1 — commentary sits between the established stamp and
+          the controls (§9): the title stays the conclusion, the GAME.16
+          stamp keeps its semantic position, CONTINUE stays last and
+          dominant. Renders nothing when the engine returns null. */}
+      {renderCommentary()}
       <div className="game-success-btns">
         <button type="button" className="game-start-btn" onClick={onClose} data-modal-focus>
           CONTINUE TO TALE
@@ -1163,6 +1173,9 @@ function GameOverlayInner({
         <div className="game-fail-eyebrow">{theme.failEyebrow}</div>
         <h3 className="game-fail-title">NOT QUITE</h3>
         <p className="game-fail-msg">{failMsg}</p>
+        {/* GAME.19D1 — factual loss lines between the message and the
+            controls (§10); TRY AGAIN keeps its primacy and position. */}
+        {renderCommentary()}
         <div className="game-success-btns">
           <button type="button" className="game-start-btn" onClick={retryGame} data-modal-focus>
             TRY AGAIN
@@ -1264,6 +1277,27 @@ function GameOverlayInner({
           lastSealedResultRef.current,
         )
       : null;
+
+  // GAME.19D1 — deterministic commentary for the correlated sealed
+  // result. null renders NOTHING (no placeholder, no reserved gap —
+  // §8): an ordinary run keeps the exact pre-19D terminal screen. The
+  // correlation check above already guarantees these lines can only
+  // describe THIS session's last sealed result, so a retry chain can
+  // never show a stale attempt's commentary.
+  const postRunCommentary: PostRunCommentary | null =
+    postRunFacts !== null ? getPostRunCommentary(postRunFacts) : null;
+  // One compact block shared by the success and failure terminals:
+  // plain text, no control, no focus stop, no aria-live (§§11-12) —
+  // the committed engine's strings pass through byte-exact (§15).
+  const renderCommentary = () =>
+    postRunCommentary !== null ? (
+      <div className="game-commentary">
+        <p className="game-commentary-primary">{postRunCommentary.primary.text}</p>
+        {postRunCommentary.secondary !== undefined && (
+          <p className="game-commentary-secondary">{postRunCommentary.secondary.text}</p>
+        )}
+      </div>
+    ) : null;
 
   return (
     <div

@@ -1082,3 +1082,32 @@
   text-transform: uppercase;
   color: #c9bda4;
 }
+
+/* ── GAME.19D1 — post-run commentary ─────────────────────────────────
+   Overlay-owned terminal text (renders under BOTH ArcadePage and
+   TaleDetailPage, so literal palette values as with the GAME.16/17/18
+   families). Two quiet ledger lines between the result copy/stamp and
+   the controls: the committed deterministic engine's output, byte-
+   exact — deliberately NO text-transform so the CSS can never mask the
+   reviewed strings. No controls, no focus stop, no animation, and no
+   competition with the title, medallion, stamp, or primary buttons. */
+.game-commentary {
+  margin: 0.9rem 0 0;
+}
+.game-fail .game-commentary {
+  margin: 0.9rem 0 0.2rem;
+}
+.game-commentary-primary {
+  margin: 0;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  color: #d8b46b;
+}
+.game-commentary-secondary {
+  margin: 0.35rem 0 0;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  color: #c9bda4;
+}
