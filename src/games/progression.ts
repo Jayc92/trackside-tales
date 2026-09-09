@@ -199,6 +199,35 @@ export function getRankProgress(totalXp: number): RankProgress {
   return { rank, next, totalXp, remaining: next.threshold - totalXp, percent };
 }
 
+// ── PUBLIC-v7.4B.GAME.22B — rank path (pure read, presentation-facing) ──
+// One result can carry a player across several thresholds (600 XP from a
+// first Gold win moves PASSENGER → BRAKEMAN, silently crossing STATION
+// HAND). The approved GAME.22 rule is ONE ceremony naming the FINAL rank;
+// the structured result model additionally records the ranks that were
+// passed. This helper is the single source of that path — RANKS is read,
+// never changed; no XP is awarded or mutated here.
+export interface RankPath {
+  readonly before: string;
+  readonly after: string;
+  readonly rankedUp: boolean;
+  /** Ranks strictly between before and after, ascending — the thresholds
+   *  this transition crossed without ever being displayed. Empty for a
+   *  one-step promotion or when no promotion happened. */
+  readonly passed: readonly string[];
+}
+
+export function getRankPath(totalXpBefore: number, totalXpAfter: number): RankPath {
+  const before = getRankForXp(totalXpBefore);
+  const after = getRankForXp(totalXpAfter);
+  const rankedUp = after.threshold > before.threshold;
+  const passed = rankedUp
+    ? RANKS
+        .filter((rank) => rank.threshold > before.threshold && rank.threshold < after.threshold)
+        .map((rank) => rank.name)
+    : [];
+  return { before: before.name, after: after.name, rankedUp, passed };
+}
+
 // ── Pure result evaluation ──────────────────────────────────────────────
 /**
  * Which finite XP awards does this terminal result newly earn?

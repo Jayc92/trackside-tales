@@ -45,14 +45,17 @@ import { GameMasteryRecord, MasteryTier, evaluateMastery } from './mastery';
 import { ASSISTED_BAND, getChallengeProfile, masteryCapForBand } from './challengePolicy';
 import type { CollectibleOwnershipRecord } from './collectibles';
 import { COLLECTIBLE_REGISTRY, CollectibleId } from './collectibles';
-import type { GameEventProgress } from './events';
+import type { GameEventDefinition, GameEventProgress, GameEventStatus } from './events';
+import { getAllGameEvents, getGameEventStatus } from './events';
 import {
   ArcadeProgression,
   XpAwardId,
   getRankForXp,
+  getRankPath,
   getTotalXp,
 } from './progression';
-import type { QuestCompletionRecord, QuestStore } from './quests';
+import type { QuestCompletionRecord, QuestDefinition, QuestStore } from './quests';
+import { countSatisfiedObjectives, getAllQuests } from './quests';
 import type { GameLaunchWorldContext } from './worldState';
 
 // ── Before snapshot (G19B §6) ───────────────────────────────────────────
@@ -69,6 +72,12 @@ export interface PostRunBeforeSnapshot {
   readonly gameEvents: Record<string, GameEventProgress>;
   readonly progression: ArcadeProgression;
   readonly quests: QuestStore;
+  /** GAME.22B — the challenge-badge set reference. AWARD_GAME_BADGE is
+   *  dispatched BEFORE recordGameResult inside the same React batch, so
+   *  the page's pre-batch `state` still holds the PRE-run set here; the
+   *  AFTER capture holds the post-run set. The stamp fact and the quest
+   *  objective counts read this pair — nothing here awards a badge. */
+  readonly gameBadges: ReadonlySet<string>;
 }
 
 /** Pick the six authoritative references from app state. Shared by both
@@ -81,6 +90,7 @@ export function capturePostRunBeforeSnapshot(state: {
   gameEvents: Record<string, GameEventProgress>;
   progression: ArcadeProgression;
   quests: QuestStore;
+  gameBadges: ReadonlySet<string>;
 }): PostRunBeforeSnapshot {
   return {
     gameResultsBest: state.gameResultsBest,
@@ -89,6 +99,7 @@ export function capturePostRunBeforeSnapshot(state: {
     gameEvents: state.gameEvents,
     progression: state.progression,
     quests: state.quests,
+    gameBadges: state.gameBadges,
   };
 }
 
@@ -217,6 +228,9 @@ export interface PostRunXpFacts {
   readonly rankBefore: string;
   readonly rankAfter: string;
   readonly rankedUp: boolean;
+  /** GAME.22B — ranks crossed but never displayed between rankBefore and
+   *  rankAfter (getRankPath). Empty unless one result jumped ≥2 ranks. */
+  readonly passedRanks: readonly string[];
 }
 
 export interface PostRunQuestCompletionFact {
@@ -233,6 +247,43 @@ export interface PostRunCollectibleFacts {
   /** Registry order (the one existing deterministic order); rarity
    *  prioritization, if ever needed, belongs to GAME.19C. */
   readonly newlyAcquired: readonly CollectibleId[];
+}
+
+// ── GAME.22B observation extensions (§§7–11) — informational facts only ──
+/** The challenge-stamp transition: won AND the badge was NOT held before
+ *  this run AND it is held after (both reads from the snapshot pair;
+ *  ownership alone is never enough). Fail-closed false when a snapshot
+ *  carries no badge set. */
+export interface PostRunStampFacts {
+  readonly challengeStampEarned: boolean;
+}
+
+/** Per registered quest: objective counts against BEFORE and AFTER truth
+ *  via the exported pure counter — never the quest authority fold. */
+export interface PostRunQuestProgressFact {
+  readonly questId: string;
+  readonly name: string;
+  readonly satisfiedBefore: number;
+  readonly satisfiedAfter: number;
+  readonly total: number;
+  /** Completion record absent before AND present after (pure diff). */
+  readonly completedByThisRun: boolean;
+}
+
+/** Per registered event: stored credit counts from BEFORE/AFTER, the
+ *  window status at result.completedAt (so an expired event can never be
+ *  recommended while its historical completion stays reportable), and
+ *  the reward-artifact VIEW over the collectibles diff. */
+export interface PostRunEventProgressFact {
+  readonly eventId: string;
+  readonly name: string;
+  readonly status: GameEventStatus;
+  readonly creditedBefore: number;
+  readonly creditedAfter: number;
+  readonly total: number;
+  readonly creditedByThisRun: boolean;
+  readonly completedByThisRun: boolean;
+  readonly rewardGranted: boolean;
 }
 
 export interface PostRunLossFacts {
@@ -255,6 +306,10 @@ export interface PostRunAuthorityFacts {
   readonly xp: PostRunXpFacts;
   readonly quest: PostRunQuestFacts;
   readonly collectibles: PostRunCollectibleFacts;
+  /** GAME.22B — informational extensions (see interfaces above). */
+  readonly stamp: PostRunStampFacts;
+  readonly questProgress: readonly PostRunQuestProgressFact[];
+  readonly eventProgress: readonly PostRunEventProgressFact[];
   readonly loss?: PostRunLossFacts;
 }
 
@@ -268,6 +323,9 @@ export interface PostRunObservation {
 export interface PostRunFacts extends PostRunAuthorityFacts {
   readonly race: PostRunRaceFacts;
 }
+
+/** GAME.22B — fail-closed default when a snapshot carries no badge set. */
+const EMPTY_BADGE_SET: ReadonlySet<string> = new Set<string>();
 
 // ── Metric reads (G19B §37) ─────────────────────────────────────────────
 /** Strict finite-number read, pinned to the same semantics as
@@ -365,6 +423,10 @@ export function buildPostRunObservation(args: {
    *  by the caller), consumed where it is already exact — never a
    *  duplicate event system. */
   launchContext?: GameLaunchWorldContext | null;
+  /** GAME.22B — injectable definitions for deterministic tests; the
+   *  shipped registries are the defaults. */
+  questDefinitions?: readonly QuestDefinition[];
+  eventDefinitions?: readonly GameEventDefinition[];
 }): PostRunObservation | null {
   const { result, before, after } = args;
   const launchContext = args.launchContext ?? null;
@@ -495,6 +557,7 @@ export function buildPostRunObservation(args: {
     rankBefore,
     rankAfter,
     rankedUp: rankBefore !== rankAfter,
+    passedRanks: getRankPath(totalXpBefore, totalXpAfter).passed,
   };
 
   // — quest diff (§31: observation of what DID happen) —
@@ -509,6 +572,68 @@ export function buildPostRunObservation(args: {
             xpReward: record.xpReward,
           }));
   const quest: PostRunQuestFacts = { newCompletions };
+
+  // — GAME.22B extensions (§§7–11): pure reads of the same snapshot pair —
+  // A hand-built snapshot may carry no badge set (the GAME.19B battery
+  // predates the field); read fail-closed against an empty set so no
+  // stamp or objective claim is ever manufactured.
+  const beforeBadges: ReadonlySet<string> = before.gameBadges ?? EMPTY_BADGE_SET;
+  const afterBadges: ReadonlySet<string> = after.gameBadges ?? EMPTY_BADGE_SET;
+  const stamp: PostRunStampFacts = {
+    challengeStampEarned:
+      result.won &&
+      definition.taleId !== undefined &&
+      !beforeBadges.has(definition.taleId) &&
+      afterBadges.has(definition.taleId),
+  };
+  const questDefinitions = args.questDefinitions ?? getAllQuests();
+  const truthsBefore = { gameBadges: beforeBadges, gameMastery: before.gameMastery };
+  const truthsAfter = { gameBadges: afterBadges, gameMastery: after.gameMastery };
+  const questProgress: PostRunQuestProgressFact[] = questDefinitions.map((def) => ({
+    questId: def.questId,
+    name: def.name,
+    satisfiedBefore: countSatisfiedObjectives(def, truthsBefore),
+    satisfiedAfter: countSatisfiedObjectives(def, truthsAfter),
+    total: def.objectives.length,
+    completedByThisRun:
+      def.questId in after.quests.completions && !(def.questId in before.quests.completions),
+  }));
+  const eventDefinitions = args.eventDefinitions ?? getAllGameEvents();
+  const eventProgress: PostRunEventProgressFact[] = eventDefinitions.map((def) => {
+    const beforeRecord = before.gameEvents[def.eventId];
+    const afterRecord = after.gameEvents[def.eventId];
+    const beforeIds =
+      beforeRecord !== undefined && beforeRecord.eventVersion === def.version
+        ? beforeRecord.completedGameIds
+        : [];
+    const afterIds =
+      afterRecord !== undefined && afterRecord.eventVersion === def.version
+        ? afterRecord.completedGameIds
+        : [];
+    const changed = afterRecord !== beforeRecord;
+    return {
+      eventId: def.eventId,
+      name: def.name,
+      status: getGameEventStatus(def, result.completedAt),
+      creditedBefore: beforeIds.length,
+      creditedAfter: afterIds.length,
+      total: def.gameIds.length,
+      creditedByThisRun:
+        changed && afterIds.includes(result.gameId) && !beforeIds.includes(result.gameId),
+      completedByThisRun:
+        changed &&
+        afterRecord !== undefined &&
+        afterRecord.eventVersion === def.version &&
+        afterRecord.completedAt !== undefined &&
+        (beforeRecord === undefined ||
+          beforeRecord.eventVersion !== def.version ||
+          beforeRecord.completedAt === undefined),
+      rewardGranted: newlyAcquired.some((id) => {
+        const source = COLLECTIBLE_REGISTRY[id].source;
+        return source.kind === 'event-completion' && source.eventId === def.eventId;
+      }),
+    };
+  });
 
   // — loss facts (§§34–36) —
   const loss = deriveLossFacts(definition, result);
@@ -529,6 +654,9 @@ export function buildPostRunObservation(args: {
       xp,
       quest,
       collectibles,
+      stamp,
+      questProgress,
+      eventProgress,
       ...(loss !== undefined ? { loss } : {}),
     },
   };
