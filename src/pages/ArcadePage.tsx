@@ -136,12 +136,16 @@ export function ArcadePage() {
   // dispatch's authority-transition facts. The overlay pairs them with
   // its own sealed result via the correlation key, so stale pairings
   // are structurally impossible.
+  // GAME.22C — the AFTER snapshot is captured once per render and shared
+  // by the observation and the overlay's RUN RESULTS summary, so the
+  // ledger reports exactly the settlement the observation saw.
+  const postRunAfter = capturePostRunBeforeSnapshot(state);
   const postRunObservation =
     activeGame && pendingPostRun && pendingPostRun.result.gameId === activeGame.gameId
       ? buildPostRunObservation({
           result: pendingPostRun.result,
           before: pendingPostRun.before,
-          after: capturePostRunBeforeSnapshot(state),
+          after: postRunAfter,
           launchContext:
             launchContext && launchContext.gameId === activeGame.gameId
               ? launchContext
@@ -639,6 +643,13 @@ export function ArcadePage() {
           // zero page-side logic (the overlay owns pilot gating +
           // compatibility, keeping Arcade/Tale identical).
           pbGhost={state.gameResultsBest[activeGame.gameId]?.ghost ?? null}
+          // GAME.22C — RUN RESULTS inputs: the shared AFTER snapshot, the
+          // unlocked set (sealed flags inside the pure summary), and this
+          // mount's origin (carried for the summary type only — CTA
+          // behavior by origin belongs to GAME.22D).
+          postRunAfter={postRunAfter}
+          unlockedTaleIds={state.unlocked}
+          origin="arcade"
         />
       )}
     </div>

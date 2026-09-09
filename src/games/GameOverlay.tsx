@@ -30,6 +30,7 @@ import type { GameOverlayTimetableContext } from './worldState';
 // overlay's LAST SEALED result. Facts only — nothing renders from them
 // in this milestone.
 import {
+  PostRunBeforeSnapshot,
   PostRunFacts,
   PostRunObservation,
   mergePostRunSessionFacts,
@@ -39,6 +40,19 @@ import {
 // rewrite, no casing, no decoration). All selection/copy rules live in
 // commentary.ts; the overlay only places the returned text.
 import { PostRunCommentary, getPostRunCommentary } from './commentary';
+// GAME.22C — the RUN RESULTS ledger (information layer): RunRewardSummary
+// v1 is built from the SAME merged facts above plus the launching page's
+// AFTER snapshot, then reduced to renderable rows by a pure helper.
+// Commentary stays the ceremony; direction (next objective) is GAME.22D
+// and nothing here routes or changes a button.
+import type { RunOrigin, RunRewardSummary } from './runRewardSummary';
+import { buildRunRewardSummary } from './runRewardSummary';
+import type { RunRewardLedgerRow } from './runRewardLedger';
+import {
+  RUN_REWARD_LEDGER_LABEL,
+  buildRunRewardLedger,
+  ledgerHasTimetableRow,
+} from './runRewardLedger';
 import {
   GhostTrace,
   GhostTraceDraft,
@@ -354,6 +368,17 @@ interface GameOverlayProps {
    *  for the deterministic test harness — no UI, no copy, no focus, no
    *  storage, and no authority flows FROM it anywhere. */
   postRunObservation?: PostRunObservation | null;
+  /** PUBLIC-v7.4B.GAME.22C — the launching page's AFTER snapshot (the
+   *  very references it already feeds buildPostRunObservation), its
+   *  unlocked-Tale set, and the mount origin. With the merged facts they
+   *  build the pure RunRewardSummary behind the RUN RESULTS ledger.
+   *  Presentation only: nothing is read back into any authority path,
+   *  and an absent snapshot renders the pre-22C success screen. `origin`
+   *  is carried for the summary type only — CTA behavior by origin
+   *  belongs to GAME.22D; no button label or route changes here. */
+  postRunAfter?: PostRunBeforeSnapshot | null;
+  unlockedTaleIds?: ReadonlySet<string>;
+  origin?: RunOrigin;
 }
 
 export function GameOverlay(props: GameOverlayProps) {
@@ -397,6 +422,9 @@ function GameOverlayInner({
   timetableContext,
   pbGhost,
   postRunObservation,
+  postRunAfter,
+  unlockedTaleIds,
+  origin,
   rootRef,
 }: GameOverlayProps & {
   config: NonNullable<GameDefinition['legacyConfig']>;
@@ -1129,7 +1157,10 @@ function GameOverlayInner({
           launching page; never inferred from won/score/badge here).
           Renders with the success panel's first paint — the reducer
           dispatch and the success phase commit in the same batch. */}
-      {timetableContext?.runRecorded && (
+      {/* GAME.22C §18 — the TIMETABLE ledger row is the event-result
+          communication; the standalone stamp yields to it ONLY when that
+          row is actually present (no summary ⇒ the GAME.16 stamp stays). */}
+      {timetableContext?.runRecorded && !ledgerHasTimetable && (
         <p className="game-timetable-stamp">
           <span className="game-timetable-stamp-tag">Special Timetable</span>
           <span className="game-timetable-stamp-sep" aria-hidden="true">·</span>
@@ -1141,6 +1172,11 @@ function GameOverlayInner({
           stamp keeps its semantic position, CONTINUE stays last and
           dominant. Renders nothing when the engine returns null. */}
       {renderCommentary()}
+      {/* GAME.22C — RUN RESULTS: the information layer sits between the
+          ceremony (commentary) and the controls; CONTINUE stays last,
+          dominant, and the focus target. Nothing renders on a plain
+          screen without settled facts. */}
+      {renderRunLedger()}
       <div className="game-success-btns">
         <button type="button" className="game-start-btn" onClick={onClose} data-modal-focus>
           CONTINUE TO TALE
@@ -1198,6 +1234,13 @@ function GameOverlayInner({
               <span className="game-assisted-btn-label">ASSISTED RUN</span>
               <span className="game-assisted-btn-note">
                 MORE TIME · MORE MISTAKES · EXTRA HINT
+              </span>
+              {/* GAME.22C §25 — the progression tradeoff, stated once at
+                  the offer (decision F): the stamp still counts; records
+                  and mastery do not. Copy only — offer timing, band
+                  allowances and every authority gate are untouched. */}
+              <span className="game-assisted-btn-note game-assisted-btn-tradeoff">
+                COUNTS FOR THE STAMP · NOT FOR RECORDS OR MASTERY
               </span>
             </button>
           )}
@@ -1300,6 +1343,64 @@ function GameOverlayInner({
           <p className="game-commentary-secondary">{postRunCommentary.secondary.text}</p>
         )}
       </div>
+    ) : null;
+
+  // GAME.22C — RunRewardSummary v1 + RUN RESULTS rows for the SAME
+  // correlated sealed result. Pure: the merged facts and the page's
+  // AFTER snapshot go in, rows come out. `now` is the result's own
+  // completedAt (no clock), origin is carried for the type only, and
+  // the summary's direction output is deliberately NOT rendered in this
+  // gate (22D). No summary ⇒ no ledger ⇒ the pre-22C screen; a loss
+  // never has one (§7 — the row builder returns nothing for 'lost').
+  const sealedForSummary = lastSealedResultRef.current;
+  const runRewardSummary: RunRewardSummary | null =
+    postRunFacts !== null && sealedForSummary !== null && postRunAfter != null && unlockedTaleIds !== undefined
+      ? buildRunRewardSummary({
+          facts: postRunFacts,
+          after: postRunAfter,
+          origin: origin ?? 'tale',
+          // The correlated sealed result's own instant — the only clock.
+          now: sealedForSummary.completedAt,
+          unlockedTaleIds,
+          dispatch: null,
+          raceAvailable: raceEligibleGhost !== null,
+        })
+      : null;
+  const runLedgerRows: readonly RunRewardLedgerRow[] =
+    runRewardSummary !== null ? buildRunRewardLedger(runRewardSummary) : [];
+  const ledgerHasTimetable = ledgerHasTimetableRow(runLedgerRows);
+  // One static plate: a labelled group of rows, no controls, no focus
+  // stop, no aria-live (§31). The rank arrow is replaced for screen
+  // readers by its `srValue` phrase (§32); every other value is plain
+  // uppercase text and reads as written.
+  const renderRunLedger = () =>
+    runLedgerRows.length > 0 ? (
+      <section
+        className="game-ledger"
+        aria-labelledby="game-ledger-heading"
+        data-ledger-rows={runLedgerRows.map((row) => row.kind).join(',')}
+      >
+        <h4 className="game-ledger-heading" id="game-ledger-heading">{RUN_REWARD_LEDGER_LABEL}</h4>
+        <ul className="game-ledger-rows">
+          {runLedgerRows.map((row) => (
+            <li key={row.key} className={`game-ledger-row game-ledger-row--${row.kind}`}>
+              <span className="game-ledger-label">{row.label}</span>
+              <span className="game-ledger-value">
+                {row.srValue !== undefined ? (
+                  <>
+                    <span aria-hidden="true">{row.value}</span>
+                    <span className="sr-only">{row.srValue}</span>
+                  </>
+                ) : (
+                  row.value
+                )}
+                {row.isNew === true && <span className="game-ledger-new">NEW</span>}
+              </span>
+              {row.detail !== undefined && <span className="game-ledger-detail">{row.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
     ) : null;
 
   return (

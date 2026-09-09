@@ -233,12 +233,16 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   // GAME.19B — derived every render once the reducer's after-state is
   // visible (the GAME.16 observation posture); correlation-checked by
   // the overlay against its own sealed result.
+  // GAME.22C — the AFTER snapshot is captured once per render and shared
+  // by the observation and the overlay's RUN RESULTS summary, so the
+  // ledger reports exactly the settlement the observation saw.
+  const postRunAfter = capturePostRunBeforeSnapshot(state);
   const postRunObservation =
     gameDefinition && pendingPostRun && pendingPostRun.result.gameId === gameDefinition.gameId
       ? buildPostRunObservation({
           result: pendingPostRun.result,
           before: pendingPostRun.before,
-          after: capturePostRunBeforeSnapshot(state),
+          after: postRunAfter,
           launchContext:
             launchContext && launchContext.gameId === gameDefinition.gameId
               ? launchContext
@@ -628,6 +632,13 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
           // mount; the overlay owns all gating (route parity by
           // construction).
           pbGhost={state.gameResultsBest[gameDefinition.gameId]?.ghost ?? null}
+          // GAME.22C — RUN RESULTS inputs: the shared AFTER snapshot, the
+          // unlocked set (sealed flags inside the pure summary), and this
+          // mount's origin (carried for the summary type only — CTA
+          // behavior by origin belongs to GAME.22D).
+          postRunAfter={postRunAfter}
+          unlockedTaleIds={state.unlocked}
+          origin="tale"
         />
       )}
 
