@@ -10,8 +10,10 @@ import { useApp } from '../app/AppContext';
 //
 // Route invariants preserved: PageId values unchanged; `#/about` now
 // renders the same restored page via a minimal compatibility wrapper
-// (no redirect machinery, old links keep working). WoodenMatchPage and
-// TracksPage remain stubs — their restorations are later gates.
+// (no redirect machinery, old links keep working). TracksPage is the
+// restored rail-corridor history page (P.28g.3); WoodenMatchPage is the
+// Alburtis Tavern venue page (P.28g.4) whose component name, PageId and
+// #/woodenmatch route are retained for link compatibility.
 // Recovered legacy copy is preserved verbatim where quoted; personal
 // contact details from the old About page are intentionally omitted.
 

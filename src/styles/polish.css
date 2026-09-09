@@ -199,9 +199,8 @@
    v5.1.3 → v5.1.6 — Allen Town planning game UI
    ---------------------------------------------------------------------
    Map + zones + HUD + element rail + drag ghost. All scoped to the
-   planning game. The old AllenTownGame styles earlier in this file
-   (.allen-grid / .allen-cell block) are dead since GAME.21B retired
-   that runtime.
+   planning game. (The retired AllenTownGame legacy mini-game CSS was
+   removed in GAME.21F3, after GAME.21B retired that runtime.)
    ===================================================================== */
 
 
