@@ -1,8 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../app/AppContext';
+// GAME.22D — ephemeral cross-game handoff (module memory; never persisted).
+import { consumeArcadeHandoffTarget } from '../app/arcadeHandoff';
 import { Tale } from '../app/types';
 import { GameOverlay } from '../games/GameOverlay';
-import { GameDefinition, GameResult, getAllGameDefinitions } from '../games/registry';
+import { GameDefinition, GameId, GameResult, getAllGameDefinitions } from '../games/registry';
 // GAME.19B — pure post-run authority observation (facts only, no UI):
 // a per-dispatch before snapshot + a per-render after observation.
 import {
@@ -99,6 +101,14 @@ function masteryNextLine(def: GameDefinition, tier: MasteryTier): string {
 export function ArcadePage() {
   const { state, tales, nav, navToTale, awardGameBadge, guestId, recordGameResult } = useApp();
   const [activeGame, setActiveGame] = useState<GameDefinition | null>(null);
+  // GAME.22D — remount nonce for the overlay: an objective-aware REPLAY
+  // relaunches the same game through the exact mount lifecycle a cabinet
+  // press uses (fresh session, intro card, RACE BEST default-OFF).
+  const [launchNonce, setLaunchNonce] = useState(0);
+  // GAME.22D — transient target emphasis (never persisted): set by a
+  // cross-game handoff — this page's own result screen, or the Tale route
+  // via the ephemeral handoff module — and cleared by a short timer.
+  const [emphasizedGameId, setEmphasizedGameId] = useState<GameId | null>(null);
   // GAME.16 — the launch-frozen timetable snapshot for the CURRENT
   // overlay session (null = launched outside any pending timetable
   // context). Transient React state only: set with activeGame on
@@ -212,6 +222,59 @@ export function ArcadePage() {
   // ledger every render (never stored). Presentation-only — nothing on
   // this page issues XP.
   const rankProgress = getRankProgress(getTotalXp(state.progression));
+
+  // GAME.22D §33 — consume a pending cross-game handoff exactly once on
+  // mount (a refresh has nothing to consume; an unknown target is ignored).
+  useEffect(() => {
+    const target = consumeArcadeHandoffTarget();
+    if (target !== null && getAllGameDefinitions().some((def) => def.gameId === target)) {
+      setEmphasizedGameId(target);
+    }
+  }, []);
+  // GAME.22D §§17,19-21 — bring the emphasized cabinet into view (only if
+  // it is not already fully visible), move focus to its primary control
+  // (the app has no route-level focus management to conflict with), and
+  // clear the emphasis after a short beat. The scroll is scheduled AFTER
+  // the closing overlay's own scroll-position restoration (it re-applies
+  // the saved position in a requestAnimationFrame and again 60 ms later),
+  // so the two never fight. Reduced motion: instant scroll, no pulse.
+  useEffect(() => {
+    if (emphasizedGameId === null) return;
+    const settle = window.setTimeout(() => {
+      const cabinet = document.querySelector<HTMLElement>(`.arcade-cab[data-game-id="${emphasizedGameId}"]`);
+      if (cabinet === null) return;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const rect = cabinet.getBoundingClientRect();
+      const fullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+      if (!fullyVisible) cabinet.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+      cabinet.querySelector<HTMLElement>('.arcade-action--primary')?.focus({ preventScroll: true });
+    }, 140);
+    const clear = window.setTimeout(() => setEmphasizedGameId(null), 2800);
+    return () => {
+      window.clearTimeout(settle);
+      window.clearTimeout(clear);
+    };
+  }, [emphasizedGameId]);
+  // GAME.22D — REPLAY this game: focus its cabinet control (so the fresh
+  // overlay captures the same launcher for restoration), reset the
+  // session-local observation, freeze a fresh timetable snapshot exactly
+  // as the cabinet press does, and remount the overlay at its intro.
+  const handleReplay = (def: GameDefinition) => {
+    document
+      .querySelector<HTMLElement>(`.arcade-cab[data-game-id="${def.gameId}"] .arcade-action--primary`)
+      ?.focus({ preventScroll: true });
+    setPendingPostRun(null);
+    setLaunchContext(getGameLaunchWorldContext(def.gameId, worldState));
+    setLaunchNonce((n) => n + 1);
+  };
+  // GAME.22D — cross-game handoff on this page: close exactly as onClose
+  // does, then emphasize the target cabinet. Never launches anything.
+  const handleArcadeTarget = (gameId: GameId) => {
+    setActiveGame(null);
+    setLaunchContext(null);
+    setPendingPostRun(null);
+    if (getAllGameDefinitions().some((def) => def.gameId === gameId)) setEmphasizedGameId(gameId);
+  };
 
   // GAME.13 — TRAIN ORDERS: posted quests. Objective progress derives
   // from durable badge/mastery truth; completion truth comes from the
@@ -455,7 +518,8 @@ export function ArcadePage() {
               return (
                 <article
                   key={def.gameId}
-                  className={`arcade-cab arcade-cab--${cab}`}
+                  data-game-id={def.gameId}
+                  className={`arcade-cab arcade-cab--${cab}${emphasizedGameId === def.gameId ? ' arcade-cab--next' : ''}`}
                   aria-label={`${def.title} — ${cab === 'sealed' ? 'sealed' : cab === 'complete' ? 'complete' : 'playable'}`}
                 >
                   <div className="arcade-cab-marquee">
@@ -463,6 +527,10 @@ export function ArcadePage() {
                     <span className={`arcade-chip arcade-chip--${cab}`}>
                       {cab === 'sealed' ? 'SEALED' : cab === 'complete' ? 'COMPLETE' : 'PLAYABLE'}
                     </span>
+                    {/* GAME.22D — transient handoff tag; disappears with the emphasis. */}
+                    {emphasizedGameId === def.gameId && (
+                      <span className="arcade-cab-next-tag">NEXT OBJECTIVE</span>
+                    )}
                   </div>
                   <h3 className="arcade-cab-title">{def.title}</h3>
                   <p className="arcade-cab-tale">
@@ -598,7 +666,7 @@ export function ArcadePage() {
           // the previous game's identity. Unreachable by touch (the
           // modal covers the page) but reachable by keyboard focus on
           // a background PLAY button; the key forces a clean remount.
-          key={activeGame.gameId}
+          key={`${activeGame.gameId}:${launchNonce}`}
           definition={activeGame}
           onClose={() => {
             setActiveGame(null);
@@ -650,6 +718,10 @@ export function ArcadePage() {
           postRunAfter={postRunAfter}
           unlockedTaleIds={state.unlocked}
           origin="arcade"
+          // GAME.22D — direction actions: replay remounts this overlay at
+          // its intro; a cross-game target closes and emphasizes its cabinet.
+          onReplay={() => handleReplay(activeGame)}
+          onArcadeTarget={handleArcadeTarget}
         />
       )}
     </div>

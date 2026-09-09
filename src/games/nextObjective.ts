@@ -77,6 +77,11 @@ export interface NextObjective {
   readonly destination: NextObjectiveDestination;
   /** The priority rung that won — for tests and for a future ledger note. */
   readonly reason: NextObjectiveReason;
+  /** GAME.22D — the mastery tier the objective asks for (quest-signal
+   *  reach-mastery, weekly-dispatch, mastery-current, mastery-other), so
+   *  the direction layer labels its action truthfully without parsing
+   *  `text`. Absent for retry / event-game / first-win / race / line-complete. */
+  readonly targetTier?: MasteryObjectiveTier;
 }
 
 /** GAME.22B §21 — the FUTURE weekly-dispatch state, supplied by the caller
@@ -266,6 +271,9 @@ export function resolveNextObjective(input: NextObjectiveInput): NextObjective {
         detail: `${satisfied} OF ${questDef.objectives.length} ${questDef.progressNoun ?? 'COMPLETE'}`,
         destination: destinationFor(game),
         reason: 'P3',
+        ...(objective.kind === 'reach-mastery' && objective.minimumTier !== 'bronze'
+          ? { targetTier: objective.minimumTier }
+          : {}),
       };
     }
   }
@@ -280,6 +288,7 @@ export function resolveNextObjective(input: NextObjectiveInput): NextObjective {
         detail: `${MASTERY_TIER_LABELS[input.dispatch.requiredTier]} OR BETTER · ${NEXT_OBJECTIVE_COPY.standardRun}`,
         destination: destinationFor(featured),
         reason: 'P4',
+        targetTier: input.dispatch.requiredTier,
       };
     }
   }
@@ -295,6 +304,7 @@ export function resolveNextObjective(input: NextObjectiveInput): NextObjective {
         detail: getMasteryCriteriaLabel(current, nextTier),
         destination: { surface: 'replay', gameId: current.gameId },
         reason: 'P5',
+        targetTier: nextTier,
       };
     }
   }
@@ -316,6 +326,7 @@ export function resolveNextObjective(input: NextObjectiveInput): NextObjective {
       detail: getMasteryCriteriaLabel(lowest.game, lowest.nextTier),
       destination: destinationFor(lowest.game),
       reason: 'P6',
+      targetTier: lowest.nextTier,
     };
   }
 

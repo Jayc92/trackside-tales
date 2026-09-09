@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { GameOverlay } from '../games/GameOverlay';
-import { GameResult, getGamesForTale } from '../games/registry';
+import { GameId, GameResult, getGamesForTale } from '../games/registry';
+// GAME.22D — ephemeral cross-game handoff to the Arcade (module memory).
+import { setArcadeHandoffTarget } from '../app/arcadeHandoff';
 // GAME.19B — pure post-run authority observation (facts only, no UI),
 // exactly the ArcadePage pattern: shared helpers, per-dispatch before
 // snapshot, per-render after observation (route parity by construction).
@@ -166,6 +168,11 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   const { state, awardGameBadge, nav, guestId, liveTapSlugs, recordGameResult } = useApp();
   const tale = previewTale ?? state.currentTale;
   const [showGame, setShowGame] = useState(false);
+  // GAME.22D — remount nonce for the overlay (objective-aware REPLAY) and
+  // the play control ref so a replay's fresh overlay captures the same
+  // launcher for focus restoration.
+  const [launchNonce, setLaunchNonce] = useState(0);
+  const playCtaRef = useRef<HTMLButtonElement | null>(null);
   // GAME.16 — the launch-frozen timetable snapshot for the CURRENT
   // overlay session, exactly the ArcadePage pattern: same pure helpers,
   // same selected-event rules, lifetime 1:1 with the overlay session
@@ -229,6 +236,33 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
   // climax is only reachable from the unlocked branch below, matching
   // definition.requires.unlockedTale).
   const gameDefinition = getGamesForTale(tale.id)[0];
+
+  // GAME.22D — REPLAY this game from the result screen: same page, no
+  // route change; the overlay remounts at its intro with a fresh session
+  // and a freshly frozen timetable snapshot (exactly the PLAY press).
+  const handleReplay = () => {
+    playCtaRef.current?.focus({ preventScroll: true });
+    setPendingPostRun(null);
+    setLaunchContext(
+      gameDefinition
+        ? getGameLaunchWorldContext(
+            gameDefinition.gameId,
+            getArcadeWorldState({ now: new Date(), gameEvents: state.gameEvents }),
+          )
+        : null,
+    );
+    setLaunchNonce((n) => n + 1);
+  };
+  // GAME.22D — cross-game handoff: close exactly as onClose does, record
+  // the target in the ephemeral handoff, and route to the Arcade, which
+  // emphasizes the cabinet. Never launches anything.
+  const handleArcadeTarget = (gameId: GameId) => {
+    setShowGame(false);
+    setLaunchContext(null);
+    setPendingPostRun(null);
+    setArcadeHandoffTarget(gameId);
+    nav('arcade');
+  };
 
   // GAME.19B — derived every render once the reducer's after-state is
   // visible (the GAME.16 observation posture); correlation-checked by
@@ -525,6 +559,7 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
             <div className="tale-detail-actions">
               <button
                 type="button"
+                ref={playCtaRef}
                 className="tale-detail-action tale-detail-action--primary"
                 // GAME.16 — the same click atomically freezes the
                 // timetable snapshot via the SAME shared composer +
@@ -592,6 +627,8 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
 
       {showGame && gameDefinition && (
         <GameOverlay
+          // GAME.22D — keyed so an objective-aware REPLAY remounts at the intro.
+          key={`${gameDefinition.gameId}:${launchNonce}`}
           definition={gameDefinition}
           onClose={() => {
             setShowGame(false);
@@ -639,6 +676,9 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
           postRunAfter={postRunAfter}
           unlockedTaleIds={state.unlocked}
           origin="tale"
+          // GAME.22D — direction actions (see ArcadePage for the mirror).
+          onReplay={handleReplay}
+          onArcadeTarget={handleArcadeTarget}
         />
       )}
 

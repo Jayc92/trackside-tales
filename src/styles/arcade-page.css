@@ -1246,3 +1246,117 @@
     animation: none;
   }
 }
+
+/* ── GAME.22D — NEXT OBJECTIVE direction plate + origin-honest actions ──
+   The DIRECTION layer sits after RUN RESULTS and before the actions: the
+   same plate-and-brass-tag vocabulary as the ledger, tighter, with the
+   objective in Bebas and its detail muted. Static text; no motion. The
+   return action reuses the quiet secondary-button style when a primary
+   objective action is present. */
+.game-direction {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0.9rem 0 0;
+  padding: 0.8rem 0.9rem 0.6rem;
+  text-align: left;
+  background:
+    linear-gradient(135deg, rgba(224, 161, 90, 0.08), transparent),
+    var(--iron-2);
+  border: 1px solid rgba(224, 161, 90, 0.32);
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 3px 10px rgba(0, 0, 0, 0.35);
+}
+.game-direction-heading {
+  position: absolute;
+  top: -0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.12rem 0.5rem;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.38rem;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  line-height: 1.4;
+  color: #191715;
+  background: linear-gradient(135deg, var(--ember), var(--gold));
+  border-radius: 1px;
+  white-space: nowrap;
+}
+.game-direction-text {
+  margin: 0;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  color: #E0A15A;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  overflow-wrap: anywhere;
+}
+.game-direction-detail {
+  margin: 0.2rem 0 0;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.14em;
+  line-height: 1.5;
+  color: #c9bda4;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.game-success-btns .game-success-return.game-success-story-btn {
+  margin-top: 0.1rem;
+}
+
+/* ── GAME.22D — Arcade cross-game handoff: transient target emphasis ──
+   Set by the result screen's primary action, cleared by a short timer;
+   never persisted. Brief brass pulse plus a small NEXT OBJECTIVE tag in
+   the cabinet marquee. Reduced motion: static emphasis only. */
+.arcade-cab--next {
+  border-color: rgba(224, 161, 90, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(224, 161, 90, 0.55),
+    0 0 26px rgba(224, 161, 90, 0.28);
+  animation: cabNextPulse 1.3s ease-in-out 2;
+}
+@keyframes cabNextPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(224, 161, 90, 0.55),
+      0 0 26px rgba(224, 161, 90, 0.28);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(224, 161, 90, 0.95),
+      0 0 40px rgba(224, 161, 90, 0.5);
+  }
+}
+.arcade-cab-next-tag {
+  margin-left: auto;
+  padding: 0.12rem 0.5rem;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-size: 0.4rem;
+  letter-spacing: 0.26em;
+  line-height: 1.4;
+  color: #191715;
+  background: linear-gradient(135deg, var(--ember), var(--gold));
+  border-radius: 1px;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arcade-cab--next {
+    animation: none;
+  }
+}
+
+/* ── GAME.22D1 — success-result focus target ──
+   When a SUCCESS result opens, the result title receives programmatic
+   focus (tabIndex -1, preventScroll) so the ceremony stays in view and
+   the outcome is announced. The title is never a Tab stop, so the
+   user-agent focus ring is suppressed here; keyboard focus indication
+   belongs to the actions the first Tab reaches. */
+.game-success-title:focus {
+  outline: none;
+}

@@ -5,6 +5,7 @@ import { logEvent, flushEvents } from '../services/eventLogger';
 import {
   DifficultyBand,
   GameDefinition,
+  GameId,
   GameResult,
   LegacyGameRuntimeComponent,
 } from './registry';
@@ -53,6 +54,12 @@ import {
   buildRunRewardLedger,
   ledgerHasTimetableRow,
 } from './runRewardLedger';
+// GAME.22D — the DIRECTION layer: the resolved next objective renders under
+// NEXT OBJECTIVE with an objective-aware primary action and an origin-honest
+// return. The view model is pure; navigation stays with the launching page
+// (onReplay / onArcadeTarget) and nothing here ever auto-launches a game.
+import type { DirectionAction, ResultDirection } from './resultDirection';
+import { buildResultDirection, getReturnLabel } from './resultDirection';
 import {
   GhostTrace,
   GhostTraceDraft,
@@ -379,6 +386,14 @@ interface GameOverlayProps {
   postRunAfter?: PostRunBeforeSnapshot | null;
   unlockedTaleIds?: ReadonlySet<string>;
   origin?: RunOrigin;
+  /** PUBLIC-v7.4B.GAME.22D — direction actions, interpreted by the
+   *  launching page: `onReplay` relaunches THIS game from its intro (a
+   *  fresh session on the same page, no route change); `onArcadeTarget`
+   *  hands the player to the Arcade with the target cabinet emphasized
+   *  (never an auto-launch; a sealed target keeps its FIND THE TALE
+   *  state). An absent callback fails closed to the origin return. */
+  onReplay?: () => void;
+  onArcadeTarget?: (gameId: GameId, sealed: boolean) => void;
 }
 
 export function GameOverlay(props: GameOverlayProps) {
@@ -425,6 +440,8 @@ function GameOverlayInner({
   postRunAfter,
   unlockedTaleIds,
   origin,
+  onReplay,
+  onArcadeTarget,
   rootRef,
 }: GameOverlayProps & {
   config: NonNullable<GameDefinition['legacyConfig']>;
@@ -1149,7 +1166,11 @@ function GameOverlayInner({
               ? 'STATION RELIT'
               : 'BADGE EARNED'}
       </div>
-      <h3 className="game-success-title">{config.successTitle}</h3>
+      {/* GAME.22D1 — the result title is the success screen's programmatic
+          focus target (tabIndex -1: never in the Tab order). Focusing it keeps
+          the ceremony in view and lets a screen reader announce the outcome;
+          the first Tab reaches the primary action. */}
+      <h3 className="game-success-title" tabIndex={-1}>{config.successTitle}</h3>
       <p className="game-success-msg">{config.successMsg}</p>
       {/* GAME.16 — result stamp, present iff THIS session's captured
           event/version/game flipped uncredited→credited in the
@@ -1177,10 +1198,33 @@ function GameOverlayInner({
           dominant, and the focus target. Nothing renders on a plain
           screen without settled facts. */}
       {renderRunLedger()}
+      {/* GAME.22D — DIRECTION: NEXT OBJECTIVE, then the actions. PRIMARY acts
+          on the resolved objective when actionable (replay this game, or go
+          to the target cabinet — never an auto-launch) and takes the modal
+          focus; SECONDARY returns to the launch origin under its honest
+          name (BACK TO THE TALE / BACK TO THE ARCADE). With nothing
+          actionable the return is the single primary-styled action. */}
+      {renderDirection()}
       <div className="game-success-btns">
-        <button type="button" className="game-start-btn" onClick={onClose} data-modal-focus>
-          CONTINUE TO TALE
-        </button>
+        {resultDirection?.primary ? (
+          <>
+            <button
+              type="button"
+              className="game-start-btn game-success-primary"
+              onClick={() => runDirectionAction(resultDirection.primary as DirectionAction)}
+              data-modal-focus
+            >
+              {resultDirection.primary.label}
+            </button>
+            <button type="button" className="game-success-story-btn game-success-return" onClick={onClose}>
+              {resultDirection.secondary.label}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="game-start-btn game-success-return" onClick={onClose} data-modal-focus>
+            {resultDirection?.secondary.label ?? getReturnLabel(origin ?? 'tale')}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1286,6 +1330,22 @@ function GameOverlayInner({
       const active = document.activeElement;
       if (active instanceof HTMLElement && root.contains(active)) return;
     }
+    // GAME.22D1 — a SUCCESS result opens at its TOP. `focus()` on the primary
+    // action scrolled the overlay's own scroll surface (#game-overlay,
+    // overflow-y auto) whenever the result was taller than the viewport, so
+    // the medallion/outcome opened above the fold. Instead: reset the surface
+    // once (a board scrolled during play must not carry over), then focus the
+    // result title with preventScroll — focus stays inside the dialog, the
+    // outcome is announced, and the first Tab reaches the primary action.
+    // Loss/quiz keep the existing primary-control focus (TRY AGAIN).
+    if (phase === 'success') {
+      root.scrollTop = 0;
+      const title = root.querySelector<HTMLElement>('.game-success-title');
+      if (title) {
+        try { title.focus({ preventScroll: true }); } catch (_) { title.focus(); }
+        return;
+      }
+    }
     focusModalEntry(root);
   }, [phase, runtimeLoad, rootRef]);
 
@@ -1353,7 +1413,7 @@ function GameOverlayInner({
   // gate (22D). No summary ⇒ no ledger ⇒ the pre-22C screen; a loss
   // never has one (§7 — the row builder returns nothing for 'lost').
   const sealedForSummary = lastSealedResultRef.current;
-  const runRewardSummary: RunRewardSummary | null =
+  const freshSummary: RunRewardSummary | null =
     postRunFacts !== null && sealedForSummary !== null && postRunAfter != null && unlockedTaleIds !== undefined
       ? buildRunRewardSummary({
           facts: postRunFacts,
@@ -1366,6 +1426,36 @@ function GameOverlayInner({
           raceAvailable: raceEligibleGhost !== null,
         })
       : null;
+  // GAME.22D §§35-36 — FREEZE per sealed result. The first render that can
+  // build the summary pins it, together with its direction view model, for
+  // that result's whole presentation; later renders (clock ticks, focus,
+  // unrelated state) reuse the pinned model. A retry / new result carries a
+  // new key and resolves afresh; close/reopen remounts the overlay. The
+  // freeze covers the RUN RESULTS rows too (same summary object).
+  const resultKey =
+    sealedForSummary !== null
+      ? `${sealedForSummary.sessionId}:${sealedForSummary.attempt}:${sealedForSummary.completedAt}`
+      : null;
+  const frozenResultRef = useRef<{
+    key: string;
+    summary: RunRewardSummary;
+    direction: ResultDirection | null;
+  } | null>(null);
+  if (resultKey !== null && freshSummary !== null && frozenResultRef.current?.key !== resultKey) {
+    frozenResultRef.current = {
+      key: resultKey,
+      summary: freshSummary,
+      direction: buildResultDirection({
+        objective: freshSummary.nextObjective,
+        origin: origin ?? 'tale',
+        currentGameId: definition.gameId,
+      }),
+    };
+  }
+  const frozenResult =
+    resultKey !== null && frozenResultRef.current?.key === resultKey ? frozenResultRef.current : null;
+  const runRewardSummary: RunRewardSummary | null = frozenResult?.summary ?? null;
+  const resultDirection: ResultDirection | null = frozenResult?.direction ?? null;
   const runLedgerRows: readonly RunRewardLedgerRow[] =
     runRewardSummary !== null ? buildRunRewardLedger(runRewardSummary) : [];
   const ledgerHasTimetable = ledgerHasTimetableRow(runLedgerRows);
@@ -1402,6 +1492,37 @@ function GameOverlayInner({
         </ul>
       </section>
     ) : null;
+
+  // GAME.22D — the direction plate (after RUN RESULTS, before the actions):
+  // heading + objective text + optional detail. Static text, no aria-live,
+  // no controls inside; the actions live in the button group below. Never
+  // rendered on a loss (the view model is null for 'retry').
+  const renderDirection = () =>
+    resultDirection !== null ? (
+      <section
+        className="game-direction"
+        aria-labelledby="game-direction-heading"
+        data-direction-kind={runRewardSummary?.nextObjective.kind}
+        data-direction-primary={resultDirection.primary?.kind ?? 'none'}
+      >
+        <h4 className="game-direction-heading" id="game-direction-heading">{resultDirection.heading}</h4>
+        <p className="game-direction-text">{resultDirection.text}</p>
+        {resultDirection.detail !== undefined && (
+          <p className="game-direction-detail">{resultDirection.detail}</p>
+        )}
+      </section>
+    ) : null;
+  // The page owns navigation: replay = remount this game at its intro;
+  // arcade-target = close + emphasize the cabinet (no auto-launch). An
+  // unwired callback fails closed to the plain origin return.
+  const runDirectionAction = (action: DirectionAction) => {
+    if (action.kind === 'replay' && onReplay !== undefined) { onReplay(); return; }
+    if (action.kind === 'arcade-target' && onArcadeTarget !== undefined) {
+      onArcadeTarget(action.gameId, action.sealed);
+      return;
+    }
+    onClose();
+  };
 
   return (
     <div
