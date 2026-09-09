@@ -25,7 +25,8 @@ import { TsIcon } from '../components/TsIcon';
 //   - same { config, onWin, onLose, quizShowing } prop contract
 //   - badge contract unchanged — onWin only fires once all 5 are restored
 //   - no badge-key, localStorage, Supabase, scan, or QR changes
-//   - legacy WoodenMatchGame.tsx remains on disk untouched
+//   - canonical successor to the retired WoodenMatchGame.tsx (removed in
+//     GAME.21D, 2026-09-08); no fallback runtime exists
 // =====================================================================
 
 

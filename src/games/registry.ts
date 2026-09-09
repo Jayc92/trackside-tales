@@ -19,15 +19,13 @@
 // the tale-id game badge is treated by later gates as having completed
 // the associated game (implicit Bronze), with no data rewrite.
 //
-// ── Deferred items recorded for later gates ────────────────────────────
-//   * GAME.4 — the wooden-match title mismatch (Tale Detail shows the
-//     Tale copy "STRIKE THE MATCH"; the overlay shows the config title
-//     "PRESERVE THE STATION LIGHT"). Structural gate only — not fixed
-//     here.
-//   * The dead legacy runtimes on disk (AllenTownGame.tsx,
-//     PackerRailGame.tsx, WoodenMatchGame.tsx) remain unreferenced and
-//     untouched; this registry uses only the currently active
-//     implementations. Cleanup needs separate authorization.
+// ── Historical notes (former deferred items, both resolved) ───────────
+//   * GAME.4 — the wooden-match title mismatch is resolved: the definition
+//     title below ('STRIKE THE MATCH') is authoritative and supersedes the
+//     legacy config heading 'PRESERVE THE STATION LIGHT' in all chrome.
+//   * The three legacy runtimes (AllenTownGame.tsx, PackerRailGame.tsx,
+//     WoodenMatchGame.tsx) were retired in GAME.21B / 21D / 21E (Sep 2026);
+//     this registry has only ever loaded the canonical implementations.
 
 import type { ComponentType } from 'react';
 // GAME.18C2 — type-only, erased at compile: ghostTrace itself imports

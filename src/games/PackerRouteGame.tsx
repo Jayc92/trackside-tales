@@ -27,7 +27,8 @@ import { TsIcon } from '../components/TsIcon';
 //   - same { config, onWin, onLose, quizShowing } prop contract
 //   - badge contract unchanged — onWin only fires when all 5 are laid
 //   - no badge-key, localStorage, Supabase, scan, or QR changes
-//   - old PackerRailGame.tsx remains on disk as the legacy fallback
+//   - canonical successor to the retired PackerRailGame.tsx (removed in
+//     GAME.21E, 2026-09-09); no fallback runtime exists
 // =====================================================================
 
 

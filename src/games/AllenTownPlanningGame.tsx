@@ -31,7 +31,8 @@ import { TsIcon } from '../components/TsIcon';
 //   - same { config, onWin, onLose, quizShowing } prop contract
 //   - badge contract unchanged — onWin is gated on all 5 placed
 //   - no badge-key, localStorage, Supabase, scan, or QR changes
-//   - AllenTownGame.tsx (v5.1.2 fallback) still on disk untouched
+//   - canonical successor to the retired AllenTownGame.tsx (removed in
+//     GAME.21B, 2026-09-08); no fallback runtime exists
 // =====================================================================
 
 

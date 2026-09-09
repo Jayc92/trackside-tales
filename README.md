@@ -112,13 +112,14 @@ All data extracted to TypeScript:
 - `pages/TaleDetailPage.tsx` — full story view + ONE game CTA
 - `pages/ScanPage.tsx` — camera scanner + demo dispatch board
 - `pages/PassportPage.tsx` — guest profile + stamp collection
-- `pages/SecondaryPages.tsx` — **stubs** for OurStory, About, WoodenMatch, Tracks
+- `pages/SecondaryPages.tsx` — Our Story (restored brand narrative; `#/about` renders it through a compatibility wrapper), Tracks (restored rail-corridor history page), and the Alburtis Tavern venue page (`WoodenMatchPage` — component name and `#/woodenmatch` route kept so legacy links work)
 
 ### ✅ Phase 6 — Game System
 - `games/GameOverlay.tsx` — unified modal with PLAYING → QUIZ → SUCCESS/FAIL
-- `games/AllenTownGame.tsx` — grid tap game (wa-lager)
-- `games/PackerRailGame.tsx` — spike driving game (packer-pils)
-- `games/WoodenMatchGame.tsx` — swipe-to-strike game (wooden-match)
+- `games/registry.ts` — GAME_REGISTRY: the three canonical runtimes below, lazy-loaded by gameId
+- `games/AllenTownPlanningGame.tsx` — town-planning survey game (wa-lager)
+- `games/PackerRouteGame.tsx` — Lehigh Valley route-building game (packer-pils)
+- `games/WoodenStationGame.tsx` — station-preservation game (wooden-match)
 - `games/gameConfigs.ts` — per-tale configs + quiz questions
 
 ---

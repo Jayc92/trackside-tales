@@ -64,24 +64,27 @@ export function formatGhostPace(deltaMs: number): string {
     : `${seconds}s BEHIND BEST RUN`;
 }
 
-// ================== GAME OVERLAY (v5.1.2 — orchestrator) ==================
-// First playable vertical slice. Renders against the golden CSS schema in
-// app.css: #game-overlay + .game-header + .game-instructions + .game-stats
-// + .game-start-btn + .game-success + .game-fail + .game-quiz-panel.
+// ================== GAME OVERLAY (orchestrator) ==================
+// Shared shell for every registry runtime. Renders against the overlay
+// chrome in app.css + polish.css: #game-overlay + .game-header +
+// .game-intro-card / .game-instructions + .game-start-btn + .game-success
+// + .game-fail + .game-quiz-panel + .game-commentary.
 //
 // Flow:
 //   intro    → user reads the OBJECTIVE panel, taps "BEGIN"
-//   playing  → AllenTownGame runs; onWin → quiz, onLose → fail
+//   playing  → the runtime resolved by the registry runs; onWin → quiz,
+//              onLose → fail
 //   quiz     → one question; correct → success (badge awarded once),
 //              wrong → reveal correct + retry option
 //   success  → brass medallion + CONTINUE; badge already recorded
 //   fail     → TRY AGAIN (replay game) or SKIP (close)
 //
-// v5.1.2 SCOPE: only W.A. Lager is reachable from the UI. The other two
-// games stay behind the COMING SOON disabled CTA on Tale Detail. If this
-// overlay is ever opened with a non-grid config (dev console, future
-// regression) it shows a polite "rebuild in progress" fallback rather
-// than the broken game UI.
+// SCOPE: all three registry games (allen-town-grid, packer-rail-line,
+// station-preservation) are reachable from Arcade and Tale Detail.
+// GameType is the closed union grid | spike | match; the shell keys its
+// theme by type (SHELL_THEMES) and keeps a generic fallback theme for any
+// future unwired value (DEFAULT_THEME below), so a stray config never
+// renders broken chrome.
 //
 // HARD CONSTRAINTS PRESERVED:
 //   - awardGameBadge is only called via onBadgeAwarded AFTER a correct
