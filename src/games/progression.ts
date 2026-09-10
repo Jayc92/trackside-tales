@@ -40,6 +40,13 @@ import { getAllGameEvents } from './events';
 // (quests.ts never imports this module), so no cycle exists.
 import type { QuestCompletionRecord, QuestDefinition } from './quests';
 import { getAllQuests } from './quests';
+// GAME.22E.C — order completions (WEEKLY DISPATCH): the fold in orders.ts
+// is the completion authority; this module only observes completion
+// TRANSITIONS (family 9) and reconstructs order XP from durable
+// completion truth in the one-time recovery path. orders.ts never imports
+// progression — no grant path exists there.
+import type { OrderCompletionRecord, OrderXpRecoveryEntry } from './orders';
+import { WEEKLY_DISPATCH_XP, orderCompletionAwardId } from './orders';
 
 // ── Award identity ──────────────────────────────────────────────────────
 // The awardId is the idempotency boundary: one id, at most one ledger
@@ -82,6 +89,11 @@ export const XP_VALUES = {
   platformAllGames: 300,
   eventParticipation: 100,
   eventCompletion: 500,
+  // GAME.22E.C — the frozen WEEKLY DISPATCH reward. orders.ts owns the
+  // number (copied into every completion record); listed here so the
+  // economy table stays complete. The evaluator grants the RECORD's
+  // frozen xpReward, never this constant.
+  orderCompletion: WEEKLY_DISPATCH_XP,
 } as const;
 const MASTERY_TIER_XP: Record<MasteryXpTier, number> = {
   silver: XP_VALUES.silver,
@@ -108,7 +120,11 @@ export type XpAwardSource =
   // strings, never live-registry foreign keys); the xp VALUE comes from
   // the completion record's frozen xpReward, so a retired quest's XP
   // stays reconstructable without the live registry.
-  | { kind: 'quest-completion'; questId: string; questVersion: number };
+  | { kind: 'quest-completion'; questId: string; questVersion: number }
+  // GAME.22E.C — order completion (WEEKLY DISPATCH). Provenance only:
+  // plain recorded strings, never live-registry keys; the xp VALUE is the
+  // completion record's frozen xpReward.
+  | { kind: 'order-completion'; orderId: string; orderVersion: number; periodId: string };
 
 export interface XpAwardRecord {
   awardId: XpAwardId;
@@ -285,6 +301,13 @@ export function evaluateXpAwards(args: {
   previousQuestCompletions?: Record<string, QuestCompletionRecord>;
   resultingQuestCompletions?: Record<string, QuestCompletionRecord>;
   questDefinitions?: readonly QuestDefinition[];
+  /** GAME.22E.C — order completion transition: the completion map before
+   *  and after this result's order fold (reducer step 6). Order XP grants
+   *  ONLY for a completion key that is NEW in this result; eligibility is
+   *  never re-run here (the fold is the authority). Optional so every
+   *  pre-22E caller stays valid. */
+  previousOrderCompletions?: Readonly<Record<string, OrderCompletionRecord>>;
+  resultingOrderCompletions?: Readonly<Record<string, OrderCompletionRecord>>;
 }): XpAwardRecord[] {
   const {
     result,
@@ -377,6 +400,35 @@ export function evaluateXpAwards(args: {
       questVersion: next.questVersion,
     });
   }
+
+  // 9 — order completions (GAME.22E.C): appended LAST so every existing
+  // family keeps its outward position. XP observes the TRANSITION — a
+  // completion key absent before and present after this result — and
+  // never re-runs eligibility. xp is the record's FROZEN xpReward and
+  // earnedAt is the record's completedAt (the sealed timestamp of the
+  // result that completed it). Same-period replays are same-reference
+  // no-ops in the fold, so nothing is new here and nothing grants.
+  const previousOrderCompletions = args.previousOrderCompletions ?? {};
+  const resultingOrderCompletions = args.resultingOrderCompletions ?? {};
+  if (resultingOrderCompletions !== previousOrderCompletions) {
+    for (const [key, record] of Object.entries(resultingOrderCompletions)) {
+      if (key in previousOrderCompletions) continue; // not new here
+      const awardId = orderCompletionAwardId(record);
+      if (awardId in ownedAwards) continue;
+      awards.push({
+        awardId,
+        xp: record.xpReward,
+        earnedAt: record.completedAt,
+        origin: 'result',
+        source: {
+          kind: 'order-completion',
+          orderId: record.orderId,
+          orderVersion: record.orderVersion,
+          periodId: record.periodId,
+        },
+      });
+    }
+  }
   return awards;
 }
 
@@ -456,6 +508,13 @@ export function deriveBackfillAwards(args: {
    *  ONLY inside progression-ledger initialization; a valid versioned
    *  store never synthesizes quest XP from completion state. */
   questCompletions?: Record<string, QuestCompletionRecord>;
+  /** GAME.22E.C — ORDER XP RECOVERY: valid durable order completions
+   *  (enumerated by orders.ts) whose already-earned award records are
+   *  reconstructed here — same award id, frozen xpReward, historical
+   *  completedAt, order source metadata. Recovery of derived XP truth
+   *  only: it runs inside progression-ledger initialization, never during
+   *  normal hydration, and never creates or alters a completion. */
+  orderXpRecovery?: readonly OrderXpRecoveryEntry[];
 }): XpAwardRecord[] {
   const { gameBadges, gameMastery, gameEvents, backfillTimestamp } = args;
   const questCompletions = args.questCompletions ?? {};
@@ -530,6 +589,23 @@ export function deriveBackfillAwards(args: {
   for (const completion of Object.values(questCompletions)) {
     awards.push(questCompletionXpAward(completion));
   }
+  // GAME.22E.C — order XP reconstruction from durable completions (frozen
+  // xpReward, derived award id; registry-independent). See the
+  // orderXpRecovery doc above.
+  for (const entry of args.orderXpRecovery ?? []) {
+    awards.push({
+      awardId: entry.awardId,
+      xp: entry.xpReward,
+      earnedAt: entry.completedAt,
+      origin: 'backfill',
+      source: {
+        kind: 'order-completion',
+        orderId: entry.source.orderId,
+        orderVersion: entry.source.orderVersion,
+        periodId: entry.source.periodId,
+      },
+    });
+  }
   return awards;
 }
 
@@ -567,6 +643,16 @@ function isValidStoredXpSource(raw: unknown): boolean {
       typeof s.questId === 'string' && s.questId.length > 0 &&
       typeof s.questVersion === 'number' &&
       Number.isInteger(s.questVersion) && s.questVersion >= 1
+    );
+  }
+  // GAME.22E.C — order provenance: structural only (plain-string orderId,
+  // integer orderVersion >= 1, YYYY-MM-DD periodId; never a live key).
+  if (s.kind === 'order-completion') {
+    return (
+      typeof s.orderId === 'string' && s.orderId.length > 0 &&
+      typeof s.orderVersion === 'number' &&
+      Number.isInteger(s.orderVersion) && s.orderVersion >= 1 &&
+      typeof s.periodId === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.periodId)
     );
   }
   return true; // unknown future/historical kind — preserve the XP

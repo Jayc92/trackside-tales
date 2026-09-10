@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
-import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES, LS_GAME_EVENTS, LS_ARCADE_PROGRESSION, LS_ARCADE_QUESTS } from './types';
+import { AppState, PageId, Tale, Beer, FoodItem, LS_GAME_RESULTS_BEST, LS_GAME_MASTERY, LS_COLLECTIBLES, LS_GAME_EVENTS, LS_ARCADE_PROGRESSION, LS_ARCADE_QUESTS, LS_ARCADE_ORDERS } from './types';
 import { loadState, saveState, getOrCreateGuestId } from '../services/guestPersistence';
 // GAME.18C2 — ghost-child validation at the PB persistence boundary
 // (the ONLY authority location that may inspect result traces).
@@ -51,6 +51,18 @@ import {
   deriveRetroactiveQuestCompletions,
   sanitizeStoredQuests,
 } from '../games/quests';
+// GAME.22E.C — WEEKLY DISPATCH authority activation: the committed pure
+// foundation (definition, rotation, store, sanitizer, fold) from
+// GAME.22E.B. AppContext owns hydration, persistence, RESET and the
+// reducer seam; orders.ts owns every rule.
+import {
+  OrderStore,
+  OrderXpRecoveryEntry,
+  applyResultToOrderStore,
+  createEmptyOrderStore,
+  enumerateOrderXpRecovery,
+  parseStoredOrdersText,
+} from '../games/orders';
 import { LOCAL_TALES } from '../data/tales';
 import { LOCAL_REGULARS, LOCAL_NON_ALC, LOCAL_FOOD } from '../data/menu';
 import {
@@ -462,6 +474,10 @@ function loadProgression(durable: {
   gameMastery: Record<string, GameMasteryRecord>;
   gameEvents: Record<string, GameEventProgress>;
   questCompletions: Record<string, QuestCompletionRecord>;
+  /** GAME.22E.C — ORDER XP RECOVERY input (valid durable completions
+   *  enumerated by orders.ts). Consumed ONLY on the initialization path
+   *  below; a valid progression store never synthesizes order XP. */
+  orderXpRecovery: readonly OrderXpRecoveryEntry[];
 }): { progression: ArcadeProgression; initialized: boolean } {
   try {
     const raw = localStorage.getItem(LS_ARCADE_PROGRESSION);
@@ -478,11 +494,44 @@ function loadProgression(durable: {
         gameMastery: durable.gameMastery,
         gameEvents: durable.gameEvents,
         questCompletions: durable.questCompletions,
+        orderXpRecovery: durable.orderXpRecovery,
         backfillTimestamp: new Date().toISOString(),
       }),
     ),
     initialized: true,
   };
+}
+
+// ================== GAME.22E.C — order ledger hydration ==================
+
+/** Hydrate tb_arcade_orders through the committed tagged primitive.
+ *
+ *  current      → the sanitized v1 store (malformed children dropped;
+ *                 the reference-gated boot write below re-persists the
+ *                 sanitized envelope, like every other family).
+ *  empty        → the empty v1 store (missing / unparseable / no valid
+ *                 marker); the boot write records the v1 marker.
+ *  unsupported  → ROLLBACK SAFETY (22E.B §17 / 22E.C §§9–10): a FUTURE
+ *                 ordersVersion this runtime cannot interpret. Execution
+ *                 continues on an empty IN-MEMORY v1 store with
+ *                 `suspended: true`: reducer step 6 skips (no completion,
+ *                 no order XP for the whole session), the recovery input
+ *                 is empty, and the orders persistence effect is
+ *                 suppressed so the stored future payload is never
+ *                 overwritten. Only the explicit RESET_DEMO clears it.
+ *
+ *  NORMAL HYDRATION grants nothing: no completion, no XP, no derivation.
+ *  There is no historical order backfill — only a newly processed sealed
+ *  result can ever create a completion. */
+function loadOrders(): { store: OrderStore; suspended: boolean } {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(LS_ARCADE_ORDERS);
+  } catch (_) { /* blocked storage reads as missing */ }
+  const parsed = parseStoredOrdersText(raw);
+  if (parsed.kind === 'current') return { store: parsed.store, suspended: false };
+  if (parsed.kind === 'unsupported') return { store: createEmptyOrderStore(), suspended: true };
+  return { store: createEmptyOrderStore(), suspended: false };
 }
 
 // ================== STATE ==================
@@ -501,11 +550,19 @@ const questBoot = loadQuests({
   gameBadges: hydratedLegacy.gameBadges,
   gameMastery: hydratedMastery,
 });
+// GAME.22E.C — orders hydrate BEFORE the progression store so the
+// ledger's one-time initialization path can reconstruct already-earned
+// order XP from durable completion truth. A suspended (future-version)
+// orders payload contributes NOTHING to recovery.
+const ordersBoot = loadOrders();
 const progressionBoot = loadProgression({
   gameBadges: hydratedLegacy.gameBadges,
   gameMastery: hydratedMastery,
   gameEvents: hydratedGameEvents,
   questCompletions: questBoot.store.completions,
+  orderXpRecovery: ordersBoot.suspended
+    ? []
+    : enumerateOrderXpRecovery(ordersBoot.store.completions),
 });
 const initialProgression =
   !progressionBoot.initialized && questBoot.newlyBackfilled.length > 0
@@ -527,12 +584,18 @@ const initialState: AppState = {
   gameEvents: hydratedGameEvents,
   progression: initialProgression,
   quests: questBoot.store,
+  orders: ordersBoot.store,
+  ordersSuspended: ordersBoot.suspended,
   ...hydratedLegacy,
 };
 
 // ================== ACTIONS ==================
 
-type Action =
+// GAME.22E.C — exported (additive, no behaviour change) so the external
+// authority battery can drive the REAL reducer: authority order, early
+// return, same-period idempotency and suspension are proven on the
+// shipped settlement code, not on a test-side re-composition.
+export type Action =
   | { type: 'NAV'; page: PageId }
   | { type: 'SET_TALE'; tale: Tale | null }
   | { type: 'UNLOCK'; id: string }
@@ -545,7 +608,7 @@ type Action =
   | { type: 'RESET_DEMO' }
   | { type: 'RECORD_GAME_RESULT'; result: GameResult };
 
-function reducer(state: AppState, action: Action): AppState {
+export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'NAV':
       return { ...state, page: action.page };
@@ -634,6 +697,12 @@ function reducer(state: AppState, action: Action): AppState {
         // completions) so the retroactive initializer can never
         // resurrect what reset just cleared.
         quests: createEmptyQuestStore(),
+        // GAME.22E.C — the order ledger resets to the empty v1 envelope
+        // and the rollback-safety suspension is cleared: RESET_DEMO is an
+        // intentional destructive reset, so a preserved FUTURE payload may
+        // now be replaced by the empty v1 store on the next persist.
+        orders: createEmptyOrderStore(),
+        ordersSuspended: false,
       };
 
     // GAME.6 — fold a sealed GameResult into the per-GameId personal
@@ -730,13 +799,31 @@ function reducer(state: AppState, action: Action): AppState {
           ? state.quests
           : { questsVersion: state.quests.questsVersion, completions: nextQuestCompletions };
 
-      // 6 — XP awards (GAME.12/13): the single evaluator reads every
+      // 6 — orders (GAME.22E.C): the SAME single result seam folds the
+      // result into the order completion ledger through the committed
+      // pure fold. Qualification uses THIS RUN's candidate `earnedTier`
+      // from step 2 (never durable mastery), the result's own band and
+      // completedAt, and the period's featured game; one completion per
+      // order per period. Non-qualifying results and same-period replays
+      // keep the store identity. While order authority is SUSPENDED for
+      // the session (a future ordersVersion was found at boot) the store
+      // is left untouched — rollback safety dominates weekly completion.
+      // No XP is granted here.
+      const nextOrders = state.ordersSuspended
+        ? state.orders
+        : applyResultToOrderStore(state.orders, {
+            result: action.result,
+            runTier: earnedTier,
+          });
+
+      // 7 — XP awards (GAME.12/13/22E.C): the single evaluator reads every
       // resulting truth computed above (post-badge completion,
-      // post-upgrade mastery, pre/post event fold, pre/post quest
-      // fold). Every award is once-per-identity; replays and derived
-      // artifacts (collectibles, PBs) earn nothing. Awards only ever
-      // originate here or in the one-time versioned initializers —
-      // never from effects, pages, or ordinary hydration.
+      // post-upgrade mastery, pre/post event fold, pre/post quest fold,
+      // pre/post order fold) and runs EXACTLY ONCE, after orders settle.
+      // Every award is once-per-identity; replays and derived artifacts
+      // (collectibles, PBs) earn nothing. Awards only ever originate here
+      // or in the one-time versioned initializers — never from effects,
+      // pages, or ordinary hydration.
       const xpAwards = evaluateXpAwards({
         result: action.result,
         resultingGameBadges: state.gameBadges,
@@ -745,12 +832,15 @@ function reducer(state: AppState, action: Action): AppState {
         resultingGameEvents: nextGameEvents,
         previousQuestCompletions: state.quests.completions,
         resultingQuestCompletions: nextQuestCompletions,
+        previousOrderCompletions: state.orders.completions,
+        resultingOrderCompletions: nextOrders.completions,
         ownedAwards: state.progression.awards,
       });
 
       if (
         !pbImproved && !masteryUpgraded && grants.length === 0 &&
         nextGameEvents === state.gameEvents && nextQuests === state.quests &&
+        nextOrders === state.orders &&
         xpAwards.length === 0
       ) return state;
       return {
@@ -767,6 +857,7 @@ function reducer(state: AppState, action: Action): AppState {
         ),
         gameEvents: nextGameEvents,
         quests: nextQuests,
+        orders: nextOrders,
         // applyXpAwards returns the same reference when nothing is new.
         progression: applyXpAwards(state.progression, xpAwards),
       };
@@ -919,6 +1010,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(LS_ARCADE_QUESTS, JSON.stringify(state.quests));
     } catch (_) { /* storage full or blocked */ }
   }, [state.quests]);
+
+  // GAME.22E.C — persist the order completion ledger on the same narrow
+  // pattern. Reference-gated: non-completing results keep the store
+  // identity, and the boot write records the v1 marker. ROLLBACK SAFETY:
+  // while `ordersSuspended` is set (a FUTURE ordersVersion was found at
+  // boot) nothing is written, so the stored future payload survives this
+  // runtime untouched; the explicit RESET_DEMO clears the flag and the
+  // very next run of this effect persists the empty v1 store.
+  useEffect(() => {
+    if (state.ordersSuspended) return;
+    try {
+      localStorage.setItem(LS_ARCADE_ORDERS, JSON.stringify(state.orders));
+    } catch (_) { /* storage full or blocked */ }
+  }, [state.orders, state.ordersSuspended]);
 
   const nav = useCallback((page: PageId) => {
     dispatch({ type: 'NAV', page });

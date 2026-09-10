@@ -9,6 +9,7 @@ import type { CollectibleOwnershipRecord } from '../games/collectibles';
 import type { GameEventProgress } from '../games/events';
 import type { ArcadeProgression } from '../games/progression';
 import type { QuestStore } from '../games/quests';
+import type { OrderStore } from '../games/orders';
 
 export interface StoryBlock {
   type: 'p' | 'quote' | 'h2' | 'h3';
@@ -235,6 +236,19 @@ export interface AppState {
    *  its earned xpReward. questsVersion doubles as the one-time
    *  retroactive-initializer marker. */
   quests: QuestStore;
+  /** PUBLIC-v7.4B.GAME.22E.C — the ORDER completion ledger (persisted to
+   *  LS_ARCADE_ORDERS): one durable completion per order per calendar
+   *  period, keyed `<orderId>@<periodId>`; WEEKLY DISPATCH is the only v1
+   *  order. SEPARATE from every other family: the order fold never grants
+   *  XP — the XP evaluator observes the completion TRANSITION once. */
+  orders: OrderStore;
+  /** PUBLIC-v7.4B.GAME.22E.C — transient (non-persisted) ROLLBACK-SAFETY
+   *  flag: true when hydration found a FUTURE ordersVersion this runtime
+   *  cannot interpret. While set, order authority is disabled for the
+   *  session (no completion, no order XP, no recovery input) and the
+   *  orders persistence effect is suppressed so the stored future payload
+   *  is never overwritten. Cleared only by the explicit RESET_DEMO. */
+  ordersSuspended: boolean;
 }
 
 // Badge key constants — must not change (localStorage + Supabase keys)
@@ -264,6 +278,9 @@ export const LS_ARCADE_PROGRESSION = 'tb_arcade_progression';
 // PUBLIC-v7.4B.GAME.13 — the quest completion ledger (a seventh durable
 // key family, QuestId-keyed inside {questsVersion, completions}).
 export const LS_ARCADE_QUESTS = 'tb_arcade_quests';
+// PUBLIC-v7.4B.GAME.22E.C — the order completion ledger (an eighth durable
+// key family, `<orderId>@<periodId>`-keyed inside {ordersVersion, completions}).
+export const LS_ARCADE_ORDERS = 'tb_arcade_orders';
 export const LS_UNLOCKED         = 'tb_unlocked';
 export const LS_SCAN_BADGES      = 'tb_scan_badges';
 export const LS_GAME_BADGES      = 'tb_game_badges';

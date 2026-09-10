@@ -57,6 +57,10 @@ import {
 import type { QuestCompletionRecord, QuestDefinition, QuestStore } from './quests';
 import { countSatisfiedObjectives, getAllQuests } from './quests';
 import type { GameLaunchWorldContext } from './worldState';
+// GAME.22E.C — order (WEEKLY DISPATCH) observation: pure reads of the
+// committed definition + read-only adapters; never the completion fold.
+import type { OrderStore } from './orders';
+import { getAllOrderDefinitions, getCurrentOrderState, orderCompletionKey } from './orders';
 
 // ── Before snapshot (G19B §6) ───────────────────────────────────────────
 /** The minimal per-dispatch baseline: the six authoritative store
@@ -78,6 +82,10 @@ export interface PostRunBeforeSnapshot {
    *  AFTER capture holds the post-run set. The stamp fact and the quest
    *  objective counts read this pair — nothing here awards a badge. */
   readonly gameBadges: ReadonlySet<string>;
+  /** GAME.22E.C — the order completion ledger reference. Optional so
+   *  hand-built pre-22E snapshots (the GAME.19B/22B batteries) stay
+   *  valid; absent reads as "no completions" — nothing is ever inferred. */
+  readonly orders?: OrderStore;
 }
 
 /** Pick the six authoritative references from app state. Shared by both
@@ -91,6 +99,7 @@ export function capturePostRunBeforeSnapshot(state: {
   progression: ArcadeProgression;
   quests: QuestStore;
   gameBadges: ReadonlySet<string>;
+  orders?: OrderStore;
 }): PostRunBeforeSnapshot {
   return {
     gameResultsBest: state.gameResultsBest,
@@ -100,6 +109,7 @@ export function capturePostRunBeforeSnapshot(state: {
     progression: state.progression,
     quests: state.quests,
     gameBadges: state.gameBadges,
+    ...(state.orders !== undefined ? { orders: state.orders } : {}),
   };
 }
 
@@ -297,6 +307,25 @@ export interface PostRunLossFacts {
   readonly progressRemaining?: number;
 }
 
+/** GAME.22E.C — the WEEKLY DISPATCH observation for the period containing
+ *  result.completedAt: pure reads of the committed order definition, the
+ *  read-only period adapter and the BEFORE/AFTER completion maps. Facts
+ *  only — nothing here qualifies, completes, or grants. */
+export interface PostRunDispatchFacts {
+  readonly orderId: string;
+  readonly periodId: string;
+  readonly featuredGameId: GameId;
+  /** A completion for this order + period existed BEFORE this dispatch. */
+  readonly previouslyComplete: boolean;
+  /** Absent before, present after, AND the new record is THIS result's
+   *  (same completedAt and gameId). A replay after a prior completion
+   *  reads false even though AFTER is complete. */
+  readonly completedByThisRun: boolean;
+  /** The completion's frozen xpReward when one exists, else the
+   *  definition's reward (what a completion would be worth). */
+  readonly xpReward: number;
+}
+
 export interface PostRunAuthorityFacts {
   readonly result: PostRunResultFacts;
   readonly pb: PostRunPbFacts;
@@ -311,6 +340,9 @@ export interface PostRunAuthorityFacts {
   readonly questProgress: readonly PostRunQuestProgressFact[];
   readonly eventProgress: readonly PostRunEventProgressFact[];
   readonly loss?: PostRunLossFacts;
+  /** GAME.22E.C — additive; present whenever the weekly order's period
+   *  resolves for result.completedAt. */
+  readonly dispatch?: PostRunDispatchFacts;
 }
 
 /** One page-built observation: authority facts bound to one dispatch. */
@@ -403,6 +435,40 @@ function deriveLossFacts(
     out.progressRemaining = completionTotal - completed;
   }
   return out;
+}
+
+// ── Order observation (GAME.22E.C) ──────────────────────────────────────
+/** Observe the weekly order around one dispatch. The period comes from
+ *  result.completedAt (the same instant the fold used); the completion
+ *  key is the committed `<orderId>@<periodId>`. Undefined when no weekly
+ *  order is registered or the instant does not resolve. A snapshot
+ *  without an order ledger reads as no completions. */
+function deriveDispatchFacts(
+  result: GameResult,
+  before: PostRunBeforeSnapshot,
+  after: PostRunBeforeSnapshot,
+): PostRunDispatchFacts | undefined {
+  const definition = getAllOrderDefinitions().find((def) => def.cadence === 'weekly');
+  if (definition === undefined) return undefined;
+  const beforeCompletions = before.orders?.completions ?? {};
+  const afterCompletions = after.orders?.completions ?? {};
+  const current = getCurrentOrderState(definition, afterCompletions, result.completedAt);
+  if (current === null) return undefined;
+  const key = orderCompletionKey(definition.orderId, current.period.periodId);
+  const beforeRecord = beforeCompletions[key];
+  const afterRecord = afterCompletions[key];
+  return {
+    orderId: definition.orderId,
+    periodId: current.period.periodId,
+    featuredGameId: current.featuredGameId,
+    previouslyComplete: beforeRecord !== undefined,
+    completedByThisRun:
+      beforeRecord === undefined &&
+      afterRecord !== undefined &&
+      afterRecord.completedAt === result.completedAt &&
+      afterRecord.gameId === result.gameId,
+    xpReward: afterRecord?.xpReward ?? definition.xpReward,
+  };
 }
 
 // ── The page-side builder (G19B §§8–13, 18–33) ──────────────────────────
@@ -638,6 +704,9 @@ export function buildPostRunObservation(args: {
   // — loss facts (§§34–36) —
   const loss = deriveLossFacts(definition, result);
 
+  // — GAME.22E.C order observation (additive; facts only, no grant) —
+  const dispatch = deriveDispatchFacts(result, before, after);
+
   return {
     correlation: {
       sessionId: result.sessionId,
@@ -658,6 +727,7 @@ export function buildPostRunObservation(args: {
       questProgress,
       eventProgress,
       ...(loss !== undefined ? { loss } : {}),
+      ...(dispatch !== undefined ? { dispatch } : {}),
     },
   };
 }
