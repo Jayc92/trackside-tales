@@ -897,6 +897,18 @@
   color: #d98a4a;
   text-transform: uppercase;
 }
+/* GAME.22E.E — WEEKLY DISPATCH notice timing line (CLOSES MON SEP 14 /
+   NEXT POSTS MON SEP 14): the only new element on the Train Orders
+   board. Same mono meta scale as the reward line, muted parchment tone
+   so the reward stays the accent. No motion, no new layout. */
+.quest-notice-timing {
+  margin: 0.35rem 0 0;
+  font-family: var(--ar-mono, 'Source Code Pro', ui-monospace, monospace);
+  font-size: 0.54rem;
+  letter-spacing: 0.18em;
+  color: #c9bda4;
+  text-transform: uppercase;
+}
 
 /* Passport endorsement row — one compact line, no bar. */
 .service-record--compact {

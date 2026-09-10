@@ -26,6 +26,10 @@ import {
   QuestObjective,
   getQuestPresentationModels,
 } from '../games/quests';
+// GAME.22E.E — the CURRENT Weekly Dispatch notice for the Train Orders
+// board: a pure model over committed order authority at the render
+// instant. Presentation only; nothing here grants or persists.
+import { buildDispatchBoardModel } from '../games/orderBoard';
 import {
   GameLaunchWorldContext,
   getArcadeWorldState,
@@ -286,6 +290,18 @@ export function ArcadePage() {
     new Date(),
   );
 
+  // GAME.22E.E — WEEKLY DISPATCH notice: the currently actionable order,
+  // derived from the committed order store + this session's suspension
+  // flag at THIS render's shared instant (the board shows what is active
+  // NOW; a rerender or navigation refreshes it — no timer, no persisted
+  // period). null while order authority is suspended, so a payload the
+  // runtime refuses to interpret never shows a misleading order.
+  const dispatchBoard = buildDispatchBoardModel({
+    completions: state.orders.completions,
+    suspended: state.ordersSuspended,
+    now: renderNow,
+  });
+
   // One calm textual objective line, canonical titles only (never raw
   // GameIds; the registry is the single title authority).
   const questObjectiveLabel = (objective: QuestObjective): string => {
@@ -404,8 +420,12 @@ export function ArcadePage() {
         </section>
 
         {/* GAME.13 — TRAIN ORDERS: posted quests (renders nothing with
-            zero posted quests). Text only — no acceptance, no claim. */}
-        {questModels.length > 0 && (
+            zero posted quests). Text only — no acceptance, no claim.
+            GAME.22E.E — the CURRENT Weekly Dispatch is the FIRST item
+            (repeatable/current before durable progression); it shares the
+            quest-notice vocabulary but is never a quest. Informational
+            only, like every item here: play through the cabinets. */}
+        {(dispatchBoard !== null || questModels.length > 0) && (
           <section className="train-orders" aria-labelledby="train-orders-heading">
             <div className="train-orders-head">
               <span className="train-orders-label" id="train-orders-heading">
@@ -413,6 +433,39 @@ export function ArcadePage() {
               </span>
             </div>
             <ul className="train-orders-list">
+              {dispatchBoard !== null && (
+                <li
+                  key={`dispatch:${dispatchBoard.id}`}
+                  className={`quest-notice quest-notice--${dispatchBoard.status} quest-notice--dispatch`}
+                  data-dispatch-period={dispatchBoard.periodId}
+                  data-dispatch-game={dispatchBoard.featuredGameId}
+                >
+                  <article
+                    aria-label={`${dispatchBoard.name} — ${dispatchBoard.status === 'complete' ? 'complete' : dispatchBoard.progressText.toLowerCase()} — ${dispatchBoard.description} — ${dispatchBoard.rewardText}${dispatchBoard.timingText !== null ? ` — ${dispatchBoard.timingText}` : ''}`}
+                  >
+                    <div className="quest-notice-top">
+                      <h3 className="quest-notice-name">{dispatchBoard.name}</h3>
+                      {dispatchBoard.status === 'complete' && (
+                        <span className="quest-notice-status quest-notice-status--complete">
+                          {dispatchBoard.progressText}
+                        </span>
+                      )}
+                    </div>
+                    <p className="quest-notice-desc">{dispatchBoard.description}</p>
+                    {dispatchBoard.status !== 'complete' && (
+                      <p className="quest-notice-progress">{dispatchBoard.progressText}</p>
+                    )}
+                    <p className="quest-notice-reward">
+                      REWARD
+                      <span className="service-record-xp-sep" aria-hidden="true">·</span>
+                      {dispatchBoard.rewardText.replace(/^REWARD · /, '')}
+                    </p>
+                    {dispatchBoard.timingText !== null && (
+                      <p className="quest-notice-timing">{dispatchBoard.timingText}</p>
+                    )}
+                  </article>
+                </li>
+              )}
               {questModels.map((model) => {
                 const total = model.definition.objectives.length;
                 const noun = model.definition.progressNoun ?? 'COMPLETE';
