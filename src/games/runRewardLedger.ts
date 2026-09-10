@@ -6,7 +6,7 @@
 //
 // Anti-noise IS the contract (§§9, 20): a row renders ONLY when the summary
 // says this run changed that thing. Canonical row order:
-//   SCORE · BEST · XP · RANK · ARTIFACT… · TRAIN ORDERS · TIMETABLE
+//   SCORE · BEST · XP · RANK · ARTIFACT… · TRAIN ORDERS · WEEKLY DISPATCH · TIMETABLE
 // Losses have no ledger at all (§7). SCORE is the only row a plain replay
 // shows. BEST renders for an IMPROVED canonical best only — a first PB is
 // already ceremony (§11). The TIMETABLE row is the event-result
@@ -15,6 +15,12 @@
 // Layer discipline (§1): this is the INFORMATION layer. Commentary stays
 // the ceremony and is never fed from here; direction (next objective)
 // is GAME.22D and is deliberately absent.
+//
+// GAME.22E.D — the WEEKLY DISPATCH row is completion/status information
+// for the dispatch THIS run completed (summary.dispatch.result, the E.C
+// PostRun observation); its 150 XP stays in the XP row's source list (reward
+// accounting) and is never counted twice. No row for an incomplete or
+// previously completed dispatch — anti-noise, like every other row.
 
 import { MASTERY_TIER_LABELS } from './mastery';
 import type { RunRewardSummary } from './runRewardSummary';
@@ -33,6 +39,7 @@ export type RunRewardLedgerRowKind =
   | 'rank'
   | 'artifact'
   | 'train-orders'
+  | 'dispatch'
   | 'timetable';
 
 export const LEDGER_ROW_LABELS: Readonly<Record<RunRewardLedgerRowKind, string>> = {
@@ -42,6 +49,7 @@ export const LEDGER_ROW_LABELS: Readonly<Record<RunRewardLedgerRowKind, string>>
   rank: 'RANK',
   artifact: 'ARTIFACT',
   'train-orders': 'TRAIN ORDERS',
+  dispatch: 'WEEKLY DISPATCH',
   timetable: 'TIMETABLE',
 };
 
@@ -56,6 +64,8 @@ export const LEDGER_COPY = {
   xp: 'XP',
   more: (n: number): string => `+${n} MORE`,
   toNext: (remaining: number, rank: string): string => `${formatScoreValue(remaining)} TO ${rank}`,
+  /** GAME.22E.D — "NEXT POSTS MON SEP 21" under the WEEKLY DISPATCH row. */
+  nextPosts: (dateLabel: string): string => `NEXT POSTS ${dateLabel}`,
 } as const;
 
 export interface RunRewardLedgerRow {
@@ -190,7 +200,22 @@ export function buildRunRewardLedger(summary: RunRewardSummary): readonly RunRew
     });
   }
 
-  // 7 — TIMETABLE (credited or completed by this run; replaces the stamp)
+  // 7 — WEEKLY DISPATCH (GAME.22E.D; completed BY THIS RUN only — the
+  // result-period observation, never the current objective state)
+  const dispatchResult = summary.dispatch?.result ?? null;
+  if (dispatchResult !== null && dispatchResult.completedByThisRun) {
+    rows.push({
+      kind: 'dispatch',
+      key: `dispatch:${dispatchResult.orderId}:${dispatchResult.periodId}`,
+      label: LEDGER_ROW_LABELS.dispatch,
+      value: LEDGER_COPY.complete,
+      ...(dispatchResult.nextPostsLabel !== null
+        ? { detail: LEDGER_COPY.nextPosts(dispatchResult.nextPostsLabel) }
+        : {}),
+    });
+  }
+
+  // 8 — TIMETABLE (credited or completed by this run; replaces the stamp)
   const timetable = summary.timetable;
   if (timetable !== null && (timetable.creditedByThisRun || timetable.completedByThisRun)) {
     const state = timetable.completedByThisRun

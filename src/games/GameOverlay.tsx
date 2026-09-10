@@ -60,6 +60,11 @@ import {
 // (onReplay / onArcadeTarget) and nothing here ever auto-launches a game.
 import type { DirectionAction, ResultDirection } from './resultDirection';
 import { buildResultDirection, getReturnLabel } from './resultDirection';
+// GAME.22E.D — the ACTIONABLE weekly-dispatch state for the sealed result:
+// the committed pure adapter over the page's AFTER order store at the
+// result's own instant. Presentation consumes authority; nothing here
+// completes, grants, or persists.
+import { getDispatchObjectiveState } from './orders';
 import {
   GhostTrace,
   GhostTraceDraft,
@@ -394,6 +399,10 @@ interface GameOverlayProps {
    *  state). An absent callback fails closed to the origin return. */
   onReplay?: () => void;
   onArcadeTarget?: (gameId: GameId, sealed: boolean) => void;
+  /** GAME.22E.D — false while order authority is suspended for the session
+   *  (a future ordersVersion was found at boot): the dispatch adapter is
+   *  not consulted, so no P4 and no dispatch copy can render. Default true. */
+  dispatchAuthorityAvailable?: boolean;
 }
 
 export function GameOverlay(props: GameOverlayProps) {
@@ -442,6 +451,7 @@ function GameOverlayInner({
   origin,
   onReplay,
   onArcadeTarget,
+  dispatchAuthorityAvailable,
   rootRef,
 }: GameOverlayProps & {
   config: NonNullable<GameDefinition['legacyConfig']>;
@@ -1413,25 +1423,27 @@ function GameOverlayInner({
   // gate (22D). No summary ⇒ no ledger ⇒ the pre-22C screen; a loss
   // never has one (§7 — the row builder returns nothing for 'lost').
   const sealedForSummary = lastSealedResultRef.current;
-  const freshSummary: RunRewardSummary | null =
-    postRunFacts !== null && sealedForSummary !== null && postRunAfter != null && unlockedTaleIds !== undefined
-      ? buildRunRewardSummary({
-          facts: postRunFacts,
-          after: postRunAfter,
-          origin: origin ?? 'tale',
-          // The correlated sealed result's own instant — the only clock.
-          now: sealedForSummary.completedAt,
-          unlockedTaleIds,
-          dispatch: null,
-          raceAvailable: raceEligibleGhost !== null,
-        })
-      : null;
   // GAME.22D §§35-36 — FREEZE per sealed result. The first render that can
   // build the summary pins it, together with its direction view model, for
   // that result's whole presentation; later renders (clock ticks, focus,
   // unrelated state) reuse the pinned model. A retry / new result carries a
   // new key and resolves afresh; close/reopen remounts the overlay. The
   // freeze covers the RUN RESULTS rows too (same summary object).
+  //
+  // GAME.22E.D1 — TWO frozen instants per sealed result, never conflated:
+  //   resultInstant     = sealedForSummary.completedAt — the summary's `now`;
+  //                       every RESULT fact (PB, event status, quest
+  //                       availability, the WEEKLY DISPATCH row's period)
+  //                       describes what THIS RUN did at its own instant.
+  //   actionableInstant = the wall clock read EXACTLY ONCE, here, when the
+  //                       presentation is created — the weekly-dispatch
+  //                       state for NEXT OBJECTIVE (P4) and the completionist
+  //                       reset date describe what the player can do NOW.
+  // A backdated or future-dated result therefore reports its own completion
+  // truthfully while direction points at the current Trackside week. The
+  // read happens only inside this once-per-result guard: no timer, no
+  // interval, no Date read on later renders; the pure modules stay
+  // explicit-input only.
   const resultKey =
     sealedForSummary !== null
       ? `${sealedForSummary.sessionId}:${sealedForSummary.attempt}:${sealedForSummary.completedAt}`
@@ -1441,16 +1453,40 @@ function GameOverlayInner({
     summary: RunRewardSummary;
     direction: ResultDirection | null;
   } | null>(null);
-  if (resultKey !== null && freshSummary !== null && frozenResultRef.current?.key !== resultKey) {
-    frozenResultRef.current = {
-      key: resultKey,
-      summary: freshSummary,
-      direction: buildResultDirection({
-        objective: freshSummary.nextObjective,
-        origin: origin ?? 'tale',
-        currentGameId: definition.gameId,
-      }),
-    };
+  if (
+    resultKey !== null && sealedForSummary !== null && frozenResultRef.current?.key !== resultKey &&
+    postRunFacts !== null && postRunAfter != null && unlockedTaleIds !== undefined
+  ) {
+    const actionableAt = new Date().toISOString();
+    // GAME.22E.D — P4 goes live: the ACTIONABLE dispatch state, read from the
+    // AFTER order store the page already holds at the actionable instant.
+    // null while the session's order authority is suspended (a preserved
+    // future-version payload) or when the snapshot carries no order ledger.
+    const dispatch =
+      dispatchAuthorityAvailable !== false && postRunAfter.orders !== undefined
+        ? getDispatchObjectiveState(postRunAfter.orders.completions, actionableAt)
+        : null;
+    const summary = buildRunRewardSummary({
+      facts: postRunFacts,
+      after: postRunAfter,
+      origin: origin ?? 'tale',
+      // The correlated sealed result's own instant — the RESULT clock.
+      now: sealedForSummary.completedAt,
+      unlockedTaleIds,
+      dispatch,
+      raceAvailable: raceEligibleGhost !== null,
+    });
+    if (summary !== null) {
+      frozenResultRef.current = {
+        key: resultKey,
+        summary,
+        direction: buildResultDirection({
+          objective: summary.nextObjective,
+          origin: origin ?? 'tale',
+          currentGameId: definition.gameId,
+        }),
+      };
+    }
   }
   const frozenResult =
     resultKey !== null && frozenResultRef.current?.key === resultKey ? frozenResultRef.current : null;

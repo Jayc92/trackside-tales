@@ -718,6 +718,11 @@ export function ArcadePage() {
           postRunAfter={postRunAfter}
           unlockedTaleIds={state.unlocked}
           origin="arcade"
+          // GAME.22E.D — order authority availability for this session (false
+          // only while a future ordersVersion is preserved untouched): the
+          // overlay derives the P4 dispatch state from the AFTER snapshot's
+          // order ledger only when this is true. No presentation state is stored.
+          dispatchAuthorityAvailable={!state.ordersSuspended}
           // GAME.22D — direction actions: replay remounts this overlay at
           // its intro; a cross-game target closes and emphasizes its cabinet.
           onReplay={() => handleReplay(activeGame)}

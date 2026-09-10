@@ -25,7 +25,10 @@ import type { XpAwardId } from './progression';
 import { getRankPath, getRankProgress } from './progression';
 import type { PostRunBeforeSnapshot, PostRunFacts } from './postRunFacts';
 import type { DispatchObjectiveState, NextObjective } from './nextObjective';
-import { getNextMasteryObjectiveLabel, resolveNextObjective } from './nextObjective';
+import { formatDispatchPostDate, getNextMasteryObjectiveLabel, resolveNextObjective } from './nextObjective';
+// GAME.22E.D — the result's own dispatch period end (NEXT POSTS date) comes
+// from the same frozen period helper the authority used; never a clock.
+import { getWeeklyPeriod } from './weeklyPeriod';
 import type { GameDefinition } from './registry';
 
 // Re-exported so presentation code has one import for mastery objective copy.
@@ -84,6 +87,30 @@ export interface RunRewardTimetable {
   readonly rewardGranted: boolean;
 }
 
+/** GAME.22E.D — WEEKLY DISPATCH, two explicit concepts kept apart (§28):
+ *  `objective` is the ACTIONABLE dispatch state at the frozen direction
+ *  instant (the caller's authoritative adapter output — the P4 source);
+ *  `result` is what THIS run did to its own period (the E.C PostRun
+ *  observation — the RUN RESULTS row source). Neither is inferred from
+ *  the other, from award presence, or from text. */
+export interface RunRewardDispatchResult {
+  readonly orderId: string;
+  readonly periodId: string;
+  readonly featuredGameId: GameId;
+  readonly previouslyComplete: boolean;
+  /** True transition only (absent before, present after, this result's record). */
+  readonly completedByThisRun: boolean;
+  readonly xpReward: number;
+  /** "MON SEP 21" — the END of the result's own period in the dispatch
+   *  calendar zone; null when the period could not be resolved. */
+  readonly nextPostsLabel: string | null;
+}
+
+export interface RunRewardDispatch {
+  readonly objective: DispatchObjectiveState | null;
+  readonly result: RunRewardDispatchResult | null;
+}
+
 export interface RunRewardSummary {
   readonly summaryVersion: typeof RUN_REWARD_SUMMARY_VERSION;
   readonly outcome: 'won' | 'lost';
@@ -135,6 +162,9 @@ export interface RunRewardSummary {
     readonly even: boolean;
   };
   readonly nextObjective: NextObjective;
+  /** GAME.22E.D — null only when the caller supplied no dispatch state AND
+   *  the facts carry no dispatch observation (pre-22E callers). */
+  readonly dispatch: RunRewardDispatch | null;
 }
 
 // ── XP award labelling (GAME.22B §13) ──────────────────────────────────
@@ -217,6 +247,11 @@ export interface BuildRunRewardSummaryArgs {
   /** result.completedAt (or an explicit instant) — the only clock. */
   readonly now: string;
   readonly unlockedTaleIds: ReadonlySet<string>;
+  /** GAME.22E.D — the ACTIONABLE weekly-dispatch state resolved by the
+   *  caller's authoritative adapter at `now` (GameOverlay: the sealed
+   *  result's completedAt against the AFTER order store). null when order
+   *  authority is unavailable (suspended future-version session) or for
+   *  pre-22E callers — then P4 never appears and no dispatch copy renders. */
   readonly dispatch: DispatchObjectiveState | null;
   readonly raceAvailable: boolean;
   readonly assistedOffered?: boolean;
@@ -272,6 +307,34 @@ export function buildRunRewardSummary(args: BuildRunRewardSummaryArgs): RunRewar
           completedByThisRun: chosen.completedByThisRun,
           rewardGranted: chosen.rewardGranted,
         };
+
+  // GAME.22E.D — dispatch presentation model. The RESULT observation is the
+  // E.C fact (result-period authority, never recomputed here); its NEXT
+  // POSTS date is the end of the result's own period, read through the
+  // frozen period helper at `now` (= result.completedAt) and only kept
+  // when that period IS the fact's period (fail soft to null otherwise).
+  const dispatchFact = facts.dispatch;
+  let dispatchResult: RunRewardDispatchResult | null = null;
+  if (dispatchFact !== undefined) {
+    const resultPeriod = getWeeklyPeriod(args.now);
+    const nextPostsLabel =
+      resultPeriod !== null && resultPeriod.periodId === dispatchFact.periodId
+        ? formatDispatchPostDate(resultPeriod.endsAt)
+        : null;
+    dispatchResult = {
+      orderId: dispatchFact.orderId,
+      periodId: dispatchFact.periodId,
+      featuredGameId: dispatchFact.featuredGameId,
+      previouslyComplete: dispatchFact.previouslyComplete,
+      completedByThisRun: dispatchFact.completedByThisRun,
+      xpReward: dispatchFact.xpReward,
+      nextPostsLabel,
+    };
+  }
+  const dispatch: RunRewardDispatch | null =
+    args.dispatch === null && dispatchResult === null
+      ? null
+      : { objective: args.dispatch, result: dispatchResult };
 
   const nextObjective = resolveNextObjective({
     facts,
@@ -342,5 +405,6 @@ export function buildRunRewardSummary(args: BuildRunRewardSummaryArgs): RunRewar
       even: facts.race.finishedEven === true,
     },
     nextObjective,
+    dispatch,
   };
 }
