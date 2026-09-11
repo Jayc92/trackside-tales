@@ -26,8 +26,14 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IM+Fell+English:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Source+Code+Pro:wght@300;400;600&display=swap" rel="stylesheet">
 
-<!-- html5-qrcode CDN — loaded before app so scanner is available globally -->
+<!-- html5-qrcode CDN — loaded before app so scanner is available globally.
+     SCAN.1C: integrity/crossorigin pin the exact published 2.3.8 bytes
+     (sha384, computed from the resource itself and cross-checked against
+     unpkg's own Content-Digest response header) so a compromised CDN or
+     MITM response is refused rather than executed. -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
+  integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+"
+  crossorigin="anonymous"
   onerror="try{console.warn('[trackside] html5-qrcode CDN load failed — demo-only mode')}catch(_){}">
 </script>
 
