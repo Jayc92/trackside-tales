@@ -2,8 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { LS_HOW_DISMISSED, LS_PASSPORT_PAGE } from '../app/types';
 import { TsIcon } from '../components/TsIcon';
-import { EventBoard } from '../components/EventBoard';
-import { getEventPresentationModels } from '../games/events';
+// PASS.1F — EventBoard is the Arcade's LIVE event board (its reward line
+// composes "REPLAY/COMPLETE TO EARN" claim copy, exactly the actionable
+// language a historical record must not show — see games/EventBoard.tsx).
+// Passport reads passportModel.specialRuns directly instead and renders
+// its own status-only historical card; EventBoard stays untouched and
+// keeps its other call site (ArcadePage.tsx).
+import { formatEventDateRange, type GameEventDefinition } from '../games/events';
 import { buildPassportModel, type PassportArtifactModel } from '../games/passportModel';
 
 // ================== PASSPORT — personal travel document ==================
@@ -35,6 +40,14 @@ import { buildPassportModel, type PassportArtifactModel } from '../games/passpor
 // computed here.
 
 const REWARDS_TARGET = 12; // taproom rewards goal — visual milestone only
+
+// PASS.1F — Special Runs status vocabulary. 'expired' reads ENDED here
+// (a durable history section), distinct from the Arcade's live board.
+const SPECIAL_RUN_STATUS_LABEL: Record<string, string> = {
+  upcoming: 'UPCOMING',
+  active: 'ACTIVE',
+  expired: 'ENDED',
+};
 
 /* One stamp well — earned wells carry the seal, empty wells stay open. */
 function StampWell({
@@ -91,7 +104,7 @@ export function PassportPage() {
   // PASS.1C — one explicit render instant, shared by the event board and
   // the Passport model (only event status in the model depends on time).
   const renderNow = new Date();
-  const { identity, serviceRecord, taleRecords, challengeMastery, artifacts, summary } =
+  const { identity, serviceRecord, taleRecords, challengeMastery, artifacts, summary, specialRuns, serviceLog } =
     buildPassportModel({ ...state, tales }, renderNow);
   const nickname = identity.displayName ?? 'Trackside Guest';
   const initial  = identity.monogram ?? 'T';
@@ -107,10 +120,6 @@ export function PassportPage() {
   const gameTitleByGameId = Object.fromEntries(
     challengeMastery.map((row) => [row.gameId, row.title]),
   );
-
-  // GAME.10B — special-timetable records (same shared models as the
-  // Arcade board; [] in production ⇒ zero DOM).
-  const eventModels = getEventPresentationModels(state.gameEvents, renderNow);
 
   const talesUnlocked = state.unlocked.size;
   const stampsEarned  = state.scanBadges.size;
@@ -427,8 +436,85 @@ export function PassportPage() {
           </div>
         </section>
 
-        {/* GAME.10B — event records (renders nothing with zero events) */}
-        <EventBoard models={eventModels} ownedCollectibles={state.collectibles} />
+        {/* ── Special Runs — durable event history (passportModel.specialRuns).
+            Status-only: no claim/replay copy, no live task board — that is
+            the Arcade's EventBoard, a different surface entirely. Renders
+            nothing with zero registered events, matching EventBoard's own
+            zero-event contract. */}
+        {specialRuns.length > 0 && (
+          <section className="passport-block">
+            <div className="passport-block-head">
+              <span className="passport-heading">Special Runs</span>
+              <span className="passport-flow" aria-hidden="true">TIMETABLE HISTORY</span>
+            </div>
+            <div className="passport-ledger">
+              {specialRuns.map((run) => {
+                const progress = run.complete
+                  ? 'COMPLETE'
+                  : `${run.completedCount} OF ${run.requiredCount} `
+                    + `${run.requiredCount === 1 ? 'CHALLENGE' : 'CHALLENGES'} `
+                    + (run.status === 'expired' ? 'COMPLETED' : 'COMPLETE');
+                return (
+                  <article
+                    key={run.eventId}
+                    className={`passport-special-run passport-special-run--${run.status}`}
+                    aria-label={
+                      `${run.name} — ${SPECIAL_RUN_STATUS_LABEL[run.status]}, ${progress}`
+                      + (run.reward ? `, ${run.reward.name} ${run.reward.owned ? 'earned' : 'not yet earned'}` : '')
+                    }
+                  >
+                    <div className="passport-special-run-top">
+                      <h3 className="passport-special-run-name">{run.name}</h3>
+                      <span className={`passport-special-run-status passport-special-run-status--${run.status}`}>
+                        {SPECIAL_RUN_STATUS_LABEL[run.status]}
+                      </span>
+                    </div>
+                    <p className="passport-special-run-dates">
+                      {formatEventDateRange({ startsAt: run.startsAt, endsAt: run.endsAt } as GameEventDefinition)}
+                    </p>
+                    <p className="passport-special-run-progress">{progress}</p>
+                    {run.reward && (
+                      <p className="passport-special-run-reward">
+                        {run.reward.name} · {run.reward.owned ? 'EARNED' : 'NOT YET EARNED'}
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Service Log — durable lifetime counts (passportModel.serviceLog).
+            No live objective, no current Weekly Dispatch/quest detail —
+            those stay Arcade-only. weeklyDispatchesCleared is OMITTED
+            entirely (not shown as 0) while order authority is suspended,
+            so a future-version store is never misread as zero history. */}
+        <section className="passport-block">
+          <div className="passport-block-head">
+            <span className="passport-heading">Service Log</span>
+          </div>
+          <dl className="passport-service-log">
+            <div className="passport-service-log-row">
+              <dt>Train Orders Completed</dt>
+              <dd>{serviceLog.questsCompleted}</dd>
+            </div>
+            {serviceLog.weeklyDispatchesCleared !== null && (
+              <div className="passport-service-log-row">
+                <dt>Weekly Dispatches Cleared</dt>
+                <dd>{serviceLog.weeklyDispatchesCleared}</dd>
+              </div>
+            )}
+            <div className="passport-service-log-row">
+              <dt>Special Runs Completed</dt>
+              <dd>{serviceLog.eventsCompleted}</dd>
+            </div>
+            <div className="passport-service-log-row">
+              <dt>Artifacts Collected</dt>
+              <dd>{serviceLog.artifactsOwned}</dd>
+            </div>
+          </dl>
+        </section>
 
         {/* ── Taproom rewards — existing preview program, unexpanded ── */}
         <section className="passport-block">

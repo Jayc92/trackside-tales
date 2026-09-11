@@ -737,6 +737,100 @@
 }
 .passport-ladder-step--earned .passport-ladder-step-state { color: var(--pp-brass-hi); }
 
+/* ── PASS.1F — Special Runs (durable event history). Same document-
+   ledger card shell as .passport-record / .passport-challenge, under
+   its own name since it holds neither a Tale nor a game. Status-only:
+   no claim/reward-action styling exists here by design. */
+.passport-special-run {
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(163, 128, 63, 0.35);
+  border-radius: 4px;
+  background:
+    linear-gradient(170deg, rgba(163, 128, 63, 0.05), transparent 55%),
+    rgba(20, 16, 12, 0.5);
+}
+.passport-special-run--expired { border-color: rgba(163, 128, 63, 0.22); }
+.passport-special-run-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.passport-special-run-name {
+  margin: 0;
+  font-family: var(--pp-serif);
+  font-weight: 600;
+  font-size: 1.02rem;
+  line-height: 1.25;
+  color: var(--pp-ivory);
+}
+.passport-special-run-status {
+  flex: 0 0 auto;
+  padding: 0.14rem 0.5rem;
+  border: 1px solid rgba(163, 128, 63, 0.4);
+  border-radius: 2px;
+  font-family: var(--pp-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.18em;
+  color: var(--pp-muted);
+  text-transform: uppercase;
+}
+.passport-special-run-status--active {
+  border-color: var(--pp-brass-hi);
+  color: var(--pp-brass-hi);
+}
+.passport-special-run-dates {
+  margin: 0.3rem 0 0;
+  font-family: var(--pp-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  color: var(--pp-muted);
+  text-transform: uppercase;
+}
+.passport-special-run-progress {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--pp-body);
+}
+.passport-special-run-reward {
+  margin: 0.5rem 0 0;
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgba(163, 128, 63, 0.28);
+  font-family: var(--pp-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.16em;
+  color: var(--pp-brass-hi);
+  text-transform: uppercase;
+}
+
+/* ── PASS.1F — Service Log (durable lifetime counts). A compact
+   label/value ledger, career-record register — not a KPI dashboard. */
+.passport-service-log { margin: 0; }
+.passport-service-log-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed rgba(163, 128, 63, 0.22);
+}
+.passport-service-log-row:last-child { border-bottom: none; }
+.passport-service-log-row dt {
+  margin: 0;
+  font-family: var(--pp-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  color: var(--pp-muted);
+  text-transform: uppercase;
+}
+.passport-service-log-row dd {
+  margin: 0;
+  font-family: var(--pp-display);
+  font-size: 1.1rem;
+  color: var(--pp-brass-hi);
+}
+
 /* fresh-badge celebration highlight (lastEarnedGame contract) */
 .passport-record--celebrate {
   animation: passport-celebrate 2.4s ease-out 1;
