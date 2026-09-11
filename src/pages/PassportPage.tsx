@@ -4,11 +4,7 @@ import { LS_HOW_DISMISSED, LS_PASSPORT_PAGE } from '../app/types';
 import { TsIcon } from '../components/TsIcon';
 import { EventBoard } from '../components/EventBoard';
 import { getEventPresentationModels } from '../games/events';
-import {
-  COLLECTIBLE_RARITY_LABELS,
-  getGlobalCollectibles,
-} from '../games/collectibles';
-import { buildPassportModel } from '../games/passportModel';
+import { buildPassportModel, type PassportArtifactModel } from '../games/passportModel';
 
 // ================== PASSPORT — personal travel document ==================
 // PUBLIC-v7.4B.P.28g.7 — presentation/structural refinement of the
@@ -64,21 +60,53 @@ function StampWell({
   );
 }
 
+/* PASS.1E — one standalone Artifact Case card (First Ticket, Inaugural
+   Run Pass). shortDescription is the registry's own already-reviewed
+   requirement copy — never invented here. */
+function ArtifactCard({ artifact }: { artifact: PassportArtifactModel }) {
+  const stateWord = artifact.owned ? 'earned' : 'not yet earned';
+  return (
+    <article
+      className={'passport-artifact-card' + (artifact.owned ? ' passport-artifact-card--earned' : '')}
+      aria-label={
+        `${artifact.name} — ${artifact.rarityLabel}, ${stateWord}`
+        + (artifact.owned ? '' : `. ${artifact.shortDescription}`)
+      }
+    >
+      <div className="passport-artifact-card-head">
+        <h3 className="passport-artifact-card-name">{artifact.name}</h3>
+        <span className="passport-artifact-rarity">{artifact.rarityLabel}</span>
+      </div>
+      <p className="passport-artifact-card-desc">{artifact.shortDescription}</p>
+      <span className="passport-artifact-card-state">
+        {artifact.owned ? 'EARNED' : 'NOT YET EARNED'}
+      </span>
+    </article>
+  );
+}
+
 export function PassportPage() {
   const { state, tales, setUser, resetDemo, nav, clearLastEarned } = useApp();
 
   // PASS.1C — one explicit render instant, shared by the event board and
   // the Passport model (only event status in the model depends on time).
   const renderNow = new Date();
-  const { identity, serviceRecord, taleRecords, challengeMastery } =
+  const { identity, serviceRecord, taleRecords, challengeMastery, artifacts, summary } =
     buildPassportModel({ ...state, tales }, renderNow);
   const nickname = identity.displayName ?? 'Trackside Guest';
   const initial  = identity.monogram ?? 'T';
 
-  // GAME.9B/9E — global artifact presentation (ownership truth only):
-  // FIRST TICKET plus the cross-game artifacts, as rows of one strip.
-  const globalArtifacts = getGlobalCollectibles()
-    .filter((def) => state.collectibles[def.collectibleId]);
+  // PASS.1E — Artifact Case grouping (presentation-only; ownership truth
+  // is passportModel.artifacts throughout). Registry order already puts
+  // the three marks together and Full Line → Master → Yardmaster in
+  // ladder order, so filtering by group is enough — no re-sorting.
+  const ticketArtifact = artifacts.find((a) => a.group === 'ticket');
+  const markArtifacts  = artifacts.filter((a) => a.group === 'engineers-mark');
+  const lineArtifacts  = artifacts.filter((a) => a.group === 'line');
+  const eventArtifacts = artifacts.filter((a) => a.group === 'event');
+  const gameTitleByGameId = Object.fromEntries(
+    challengeMastery.map((row) => [row.gameId, row.title]),
+  );
 
   // GAME.10B — special-timetable records (same shared models as the
   // Arcade board; [] in production ⇒ zero DOM).
@@ -174,31 +202,6 @@ export function PassportPage() {
       </header>
 
       <div className="passport-wrap">
-
-        {/* GAME.9B/9E — global artifact strip (FIRST TICKET + cross-
-            game artifacts). Ownership truth only (state.collectibles);
-            global because none of these are game-specific. Quiet
-            absence when unowned. Not stamps, not part of COMPLETE or
-            rewards math. */}
-        {globalArtifacts.length > 0 && (
-          <div className="passport-ticket-strip">
-            <span className="passport-ticket-eyebrow">
-              {globalArtifacts.length > 1 ? 'Archive Artifacts' : 'Archive Artifact'}
-            </span>
-            {globalArtifacts.map((def) => (
-              <span
-                key={def.collectibleId}
-                className="passport-ticket-row"
-                aria-label={`Archive artifact: ${def.name}, ${COLLECTIBLE_RARITY_LABELS[def.rarity]}`}
-              >
-                <span className="passport-ticket-name">{def.name}</span>
-                <span className="passport-ticket-rarity">
-                  {COLLECTIBLE_RARITY_LABELS[def.rarity]}
-                </span>
-              </span>
-            ))}
-          </div>
-        )}
 
         {/* GAME.12 — compact SERVICE RECORD row: rank + XP endorsement
             (no bar, no duplicate plaque; the Arcade owns the full
@@ -336,6 +339,91 @@ export function PassportPage() {
                 )}
               </article>
             ))}
+          </div>
+        </section>
+
+        {/* ── Artifact Case — the complete registry-driven collection
+            (passportModel.artifacts). Replaces the old owned-only
+            Archive Artifact strip: every artifact renders, owned or
+            not, so a fresh player sees the whole case rather than an
+            empty shelf. First Ticket and Inaugural Run Pass are plain
+            cards; the three Engineer's Marks and the Full Line → Master
+            → Yardmaster ladder are grouped for legibility. Ownership
+            truth is read straight from the model — no collectible
+            lookup happens on this page. */}
+        <section className="passport-block">
+          <div className="passport-block-head">
+            <span className="passport-heading">Artifact Case</span>
+            <span className="passport-tally">
+              ARTIFACTS · {summary.artifactsOwned} OF {summary.artifactsTotal}
+            </span>
+          </div>
+
+          <div className="passport-ledger">
+            {ticketArtifact && <ArtifactCard artifact={ticketArtifact} />}
+
+            <div className="passport-artifact-group">
+              <span className="passport-artifact-group-lbl">Engineer's Marks</span>
+              <div className="passport-mark-row">
+                {markArtifacts.map((a) => {
+                  const stateWord = a.owned ? 'earned' : 'not yet earned';
+                  return (
+                    <div
+                      key={a.collectibleId}
+                      className={'passport-mark-slot' + (a.owned ? ' passport-mark-slot--earned' : '')}
+                      role="img"
+                      aria-label={
+                        `${a.name} — ${a.rarityLabel}, for ${gameTitleByGameId[a.gameId ?? ''] ?? 'its Tale'}, ${stateWord}`
+                        + (a.owned ? '' : `. ${a.shortDescription}`)
+                      }
+                    >
+                      <span className="passport-mark-slot-game" aria-hidden="true">
+                        {gameTitleByGameId[a.gameId ?? ''] ?? ''}
+                      </span>
+                      <span className="passport-mark-slot-name" aria-hidden="true">{a.name}</span>
+                      <span className="passport-artifact-rarity" aria-hidden="true">{a.rarityLabel}</span>
+                      <span className="passport-mark-slot-state" aria-hidden="true">
+                        {a.owned ? 'EARNED' : 'NOT YET EARNED'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="passport-artifact-group">
+              <span className="passport-artifact-group-lbl">
+                The Line — Full Line → Master of the Line → Yardmaster's Seal
+              </span>
+              <div className="passport-ladder">
+                {lineArtifacts.map((a, i) => {
+                  const stateWord = a.owned ? 'earned' : 'not yet earned';
+                  return (
+                    <div
+                      key={a.collectibleId}
+                      className={'passport-ladder-step' + (a.owned ? ' passport-ladder-step--earned' : '')}
+                      role="img"
+                      aria-label={
+                        `Step ${i + 1}: ${a.name} — ${a.rarityLabel}, ${stateWord}`
+                        + (a.owned ? '' : `. ${a.shortDescription}`)
+                      }
+                    >
+                      <span className="passport-ladder-step-num" aria-hidden="true">{i + 1}</span>
+                      <span className="passport-ladder-step-body" aria-hidden="true">
+                        <span className="passport-ladder-step-name">{a.name}</span>
+                        <span className="passport-artifact-rarity">{a.rarityLabel}</span>
+                        <p className="passport-ladder-step-desc">{a.shortDescription}</p>
+                      </span>
+                      <span className="passport-ladder-step-state" aria-hidden="true">
+                        {a.owned ? 'EARNED' : 'NOT YET EARNED'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {eventArtifacts.map((a) => <ArtifactCard key={a.collectibleId} artifact={a} />)}
           </div>
         </section>
 
