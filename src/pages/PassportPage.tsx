@@ -11,7 +11,7 @@ import {
   getEngineerCollectibleForGame,
   getGlobalCollectibles,
 } from '../games/collectibles';
-import { getRankProgress, getTotalXp } from '../games/progression';
+import { buildPassportModel } from '../games/passportModel';
 
 // ================== PASSPORT — personal travel document ==================
 // PUBLIC-v7.4B.P.28g.7 — presentation/structural refinement of the
@@ -43,21 +43,6 @@ import { getRankProgress, getTotalXp } from '../games/progression';
 // no placeholder). The Passport shows only EARNED tiers; thresholds
 // and next-target coaching stay on the Arcade by design.
 
-function getPassportId(joined: string | null): string {
-  try {
-    if (!joined) return 'TS-0007';
-    const seed = (new Date(joined).getTime() % 9000) + 1000;
-    // P.28g.7 — pre-existing defect fix: the seed input is a guest NAME,
-    // so new Date(name) is almost always Invalid Date and the original
-    // rendered "TS-0NaN". Non-finite seeds now use the function's own
-    // established fallback instead of displaying NaN.
-    if (!Number.isFinite(seed)) return 'TS-0001';
-    return 'TS-' + String(seed).padStart(4, '0');
-  } catch (_) {
-    return 'TS-0001';
-  }
-}
-
 const REWARDS_TARGET = 12; // taproom rewards goal — visual milestone only
 
 /* One stamp well — earned wells carry the seal, empty wells stay open. */
@@ -87,9 +72,12 @@ function StampWell({
 export function PassportPage() {
   const { state, tales, setUser, resetDemo, nav, clearLastEarned } = useApp();
 
-  const nickname = state.user?.name || 'Trackside Guest';
-  const initial  = nickname.charAt(0).toUpperCase();
-  const passId   = getPassportId(state.user ? state.user.name : null);
+  // PASS.1C — one explicit render instant, shared by the event board and
+  // the Passport model (only event status in the model depends on time).
+  const renderNow = new Date();
+  const { identity, serviceRecord } = buildPassportModel({ ...state, tales }, renderNow);
+  const nickname = identity.displayName ?? 'Trackside Guest';
+  const initial  = identity.monogram ?? 'T';
 
   // GAME.9B/9E — global artifact presentation (ownership truth only):
   // FIRST TICKET plus the cross-game artifacts, as rows of one strip.
@@ -98,11 +86,7 @@ export function PassportPage() {
 
   // GAME.10B — special-timetable records (same shared models as the
   // Arcade board; [] in production ⇒ zero DOM).
-  const eventModels = getEventPresentationModels(state.gameEvents, new Date());
-
-  // GAME.12 — compact rank row (derived from the XP ledger; display
-  // only — Passport COMPLETE/reward math is untouched).
-  const rankProgress = getRankProgress(getTotalXp(state.progression));
+  const eventModels = getEventPresentationModels(state.gameEvents, renderNow);
 
   const talesUnlocked = state.unlocked.size;
   const stampsEarned  = state.scanBadges.size;
@@ -175,7 +159,6 @@ export function PassportPage() {
               <span className="passport-holder-name">{nickname}</span>
               <span className="passport-holder-role">PREVIEW GUEST · TRACKSIDE TALES</span>
             </span>
-            <span className="passport-code">{passId}</span>
           </div>
           <div className="passport-name-row">
             <input
@@ -226,18 +209,16 @@ export function PassportPage() {
             treatment). */}
         <div
           className="service-record service-record--compact"
-          aria-label={`Service record: ${rankProgress.rank.name}, ${rankProgress.totalXp.toLocaleString('en-US')} XP`}
+          aria-label={`Service record: ${serviceRecord.rankName}, ${serviceRecord.totalXp.toLocaleString('en-US')} XP`}
         >
           <span className="service-record-label">Service Record</span>
-          <span className="service-record-rank">{rankProgress.rank.name}</span>
+          <span className="service-record-rank">{serviceRecord.rankName}</span>
           <span className="service-record-xp">
-            {rankProgress.totalXp.toLocaleString('en-US')} XP
-            {rankProgress.next && (
-              <>
-                <span className="service-record-xp-sep" aria-hidden="true">·</span>
-                {`NEXT ${rankProgress.next.name} · ${rankProgress.remaining.toLocaleString('en-US')} XP`}
-              </>
-            )}
+            {serviceRecord.totalXp.toLocaleString('en-US')} XP
+            <span className="service-record-xp-sep" aria-hidden="true">·</span>
+            {serviceRecord.isMaxRank
+              ? 'TERMINAL RANK · LINE COMPLETE'
+              : `NEXT ${serviceRecord.nextRankName} · ${serviceRecord.remainingXp.toLocaleString('en-US')} XP`}
           </span>
         </div>
 
