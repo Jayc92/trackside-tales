@@ -2,13 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/AppContext';
 import { LS_HOW_DISMISSED, LS_PASSPORT_PAGE } from '../app/types';
 import { TsIcon } from '../components/TsIcon';
-import { getGamesForTale } from '../games/registry';
 import { EventBoard } from '../components/EventBoard';
 import { getEventPresentationModels } from '../games/events';
-import { MASTERY_TIER_LABELS, resolveDisplayMasteryTier } from '../games/mastery';
 import {
   COLLECTIBLE_RARITY_LABELS,
-  getEngineerCollectibleForGame,
   getGlobalCollectibles,
 } from '../games/collectibles';
 import { buildPassportModel } from '../games/passportModel';
@@ -31,17 +28,15 @@ import { buildPassportModel } from '../games/passportModel';
 // kept — arriving with a fresh game badge highlights that Tale's
 // ledger entry, then clears the flag exactly as before.
 //
-// PUBLIC-v7.4B.GAME.8 — mastery endorsement. A COMPLETE record (both
-// stamps earned — the SCAN + CHLG hierarchy is unchanged and mastery
-// is NOT a third required stamp) may additionally carry the earned
-// Arcade mastery tier as a travel-document endorsement. Resolution is
-// the shared resolveDisplayMasteryTier rule (persisted tier, else the
-// Bronze compatibility floor from the held challenge stamp; display
-// only — nothing is written to storage). Tale↔game association comes
-// from the registry (getGamesForTale) — never hard-coded — and a Tale
-// with no registered game renders exactly as before (quiet absence,
-// no placeholder). The Passport shows only EARNED tiers; thresholds
-// and next-target coaching stay on the Arcade by design.
+// PUBLIC-v7.4B.PASS.1D — Stamp Ledger vs. Challenge Mastery. The Tale
+// record answers "did I discover/complete this Tale" (SCAN + CHLG
+// only); it no longer carries a mastery or Engineer's Mark endorsement.
+// Arcade skill lives in its own CHALLENGE MASTERY section, one row per
+// registered game from passportModel.challengeMastery — which keys off
+// the CHALLENGE stamp, not Tale completion, so a persisted tier (e.g.
+// a legacy Gold run) stays visible even when that Tale's scan is
+// missing. Both sections read the same reviewed model; no mastery is
+// computed here.
 
 const REWARDS_TARGET = 12; // taproom rewards goal — visual milestone only
 
@@ -75,7 +70,8 @@ export function PassportPage() {
   // PASS.1C — one explicit render instant, shared by the event board and
   // the Passport model (only event status in the model depends on time).
   const renderNow = new Date();
-  const { identity, serviceRecord } = buildPassportModel({ ...state, tales }, renderNow);
+  const { identity, serviceRecord, taleRecords, challengeMastery } =
+    buildPassportModel({ ...state, tales }, renderNow);
   const nickname = identity.displayName ?? 'Trackside Guest';
   const initial  = identity.monogram ?? 'T';
 
@@ -258,85 +254,38 @@ export function PassportPage() {
           )}
 
           <div className="passport-ledger" ref={ledgerRef}>
-            {tales.map((tale) => {
-              const unlocked = state.unlocked.has(tale.id);
-              const scan     = state.scanBadges.has(tale.id);
-              const game     = state.gameBadges.has(tale.id);
-              const complete = scan && game;
-              // GAME.8 — endorsement renders only on COMPLETE records
-              // (mastery sits on top of completion, mirroring the
-              // Arcade's conservative gating).
-              const gameDef = getGamesForTale(tale.id)[0];
-              const masteryTier = gameDef
-                ? resolveDisplayMasteryTier(
-                    state.gameMastery[gameDef.gameId]?.tier,
-                    complete,
-                  )
-                : null;
-              // GAME.9B — mapped Engineer artifact endorsement: shown
-              // on COMPLETE records only, from ownership truth only
-              // (mastery ≠ ownership; an Engineer without the artifact
-              // shows mastery alone, and an owned artifact survives
-              // even without current mastery data). Gameless Tales
-              // stay quiet — no placeholder.
-              const engineerArtifact = gameDef
-                ? getEngineerCollectibleForGame(gameDef.gameId)
-                : undefined;
-              const ownedArtifact =
-                complete && engineerArtifact && state.collectibles[engineerArtifact.collectibleId]
-                  ? engineerArtifact
-                  : null;
-              const status = !unlocked
+            {taleRecords.map((record) => {
+              const status = !record.unlocked
                 ? 'Sealed — scan a Trackside can to open this page.'
-                : complete
+                : record.complete
                   ? 'Both stamps earned. This Tale is fully collected.'
-                  : scan && !game
+                  : record.scanComplete && !record.challengeComplete
                     ? 'Challenge stamp remaining — play the mini-game.'
                     : 'Unlocked. Earn the Scan and Challenge stamps to complete the page.';
               return (
                 <article
-                  key={tale.id}
-                  data-tale-entry={tale.id}
+                  key={record.taleId}
+                  data-tale-entry={record.taleId}
                   className={
                     'passport-record'
-                    + (complete ? ' passport-record--complete' : '')
-                    + (!unlocked ? ' passport-record--sealed' : '')
-                    + (celebrateId === tale.id ? ' passport-record--celebrate' : '')
+                    + (record.complete ? ' passport-record--complete' : '')
+                    + (!record.unlocked ? ' passport-record--sealed' : '')
+                    + (celebrateId === record.taleId ? ' passport-record--celebrate' : '')
                   }
                 >
                   <div className="passport-record-year" aria-hidden="true">
-                    {tale.year || '—'}
+                    {record.year || '—'}
                   </div>
                   <div className="passport-record-main">
-                    <span className="passport-record-chapter">{tale.chapter}</span>
-                    <h3 className="passport-record-title">{tale.name}</h3>
+                    <span className="passport-record-chapter">{record.chapter}</span>
+                    <h3 className="passport-record-title">{record.name}</h3>
                     <p className="passport-record-status">{status}</p>
                   </div>
                   <div className="passport-record-wells">
-                    <StampWell label="SCAN" earned={scan} icon="station-seal" />
-                    <StampWell label="CHLG" earned={game} icon="town-seal" />
+                    <StampWell label="SCAN" earned={record.scanComplete} icon="station-seal" />
+                    <StampWell label="CHLG" earned={record.challengeComplete} icon="town-seal" />
                   </div>
-                  {masteryTier && (
-                    <span className={`passport-mastery passport-mastery--${masteryTier}`}>
-                      <span className="passport-mastery-lbl">Mastery</span>
-                      <span className="passport-mastery-seal">
-                        {MASTERY_TIER_LABELS[masteryTier]}
-                      </span>
-                    </span>
-                  )}
-                  {ownedArtifact && (
-                    <span
-                      className="passport-artifact"
-                      aria-label={`Archive artifact: ${ownedArtifact.name}, ${COLLECTIBLE_RARITY_LABELS[ownedArtifact.rarity]}`}
-                    >
-                      <span className="passport-artifact-lbl">Archive Artifact</span>
-                      <span className="passport-artifact-name">{ownedArtifact.name}</span>
-                      <span className="passport-artifact-rarity">
-                        {COLLECTIBLE_RARITY_LABELS[ownedArtifact.rarity]}
-                      </span>
-                    </span>
-                  )}
-                  {complete && (
+                  {record.complete && (
                     <span className="passport-record-collected" aria-label="Fully collected">
                       COLLECTED
                     </span>
@@ -344,6 +293,49 @@ export function PassportPage() {
                 </article>
               );
             })}
+          </div>
+        </section>
+
+        {/* ── Challenge Mastery — Arcade performance, one row per
+            registered game (passportModel.challengeMastery). Separate
+            from Tale completion above: keyed off the CHALLENGE stamp,
+            so a persisted tier stays visible even without the Tale's
+            scan. The tier/mark pills reuse the .passport-mastery /
+            .passport-artifact treatment verbatim. */}
+        <section className="passport-block">
+          <div className="passport-block-head">
+            <span className="passport-heading">Challenge Mastery</span>
+            <span className="passport-flow" aria-hidden="true">ARCADE PERFORMANCE</span>
+          </div>
+          <div className="passport-ledger">
+            {challengeMastery.map((row) => (
+              <article
+                key={row.gameId}
+                className="passport-challenge"
+                aria-label={
+                  `${row.title} — mastery ${row.displayTierLabel ?? 'not yet ranked'}`
+                  + (row.engineersMark
+                    ? `, Engineer's Mark ${row.engineersMark.owned ? 'earned' : 'not yet earned'}`
+                    : '')
+                }
+              >
+                <h3 className="passport-challenge-title">{row.title}</h3>
+                <span className={`passport-mastery passport-mastery--${row.displayTier ?? 'none'}`}>
+                  <span className="passport-mastery-lbl">Mastery</span>
+                  <span className="passport-mastery-seal">
+                    {row.displayTierLabel ?? 'NOT YET RANKED'}
+                  </span>
+                </span>
+                {row.engineersMark && (
+                  <span className={'passport-artifact' + (row.engineersMark.owned ? '' : ' passport-artifact--locked')}>
+                    <span className="passport-artifact-lbl">Engineer's Mark</span>
+                    <span className="passport-artifact-name">
+                      {row.engineersMark.owned ? 'EARNED' : 'NOT YET EARNED'}
+                    </span>
+                  </span>
+                )}
+              </article>
+            ))}
           </div>
         </section>
 

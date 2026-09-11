@@ -514,6 +514,45 @@
   text-transform: uppercase;
 }
 
+/* the "not yet earned" mark state — dims the same treatment rather
+   than a new pill (matches the sealed/empty-well muted convention). */
+.passport-artifact--locked .passport-artifact-name { color: var(--pp-muted); }
+
+/* ── PASS.1D — Challenge Mastery card (one per registered game). Same
+   document-ledger shell as .passport-record, under its own name since
+   it holds a game, not a Tale. The tier/mark pills above are the
+   existing .passport-mastery / .passport-artifact treatment, unchanged. */
+.passport-challenge {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(163, 128, 63, 0.35);
+  border-radius: 4px;
+  background:
+    linear-gradient(170deg, rgba(163, 128, 63, 0.05), transparent 55%),
+    rgba(20, 16, 12, 0.5);
+}
+.passport-challenge-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--pp-serif);
+  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1.25;
+  color: var(--pp-ivory);
+}
+/* the "not yet ranked" tier state — dashed border matches the app's
+   existing unearned convention (sealed records, empty stamp wells). */
+.passport-mastery--none .passport-mastery-seal {
+  border-style: dashed;
+  border-color: rgba(163, 128, 63, 0.28);
+  color: var(--pp-muted);
+}
+
 /* fresh-badge celebration highlight (lastEarnedGame contract) */
 .passport-record--celebrate {
   animation: passport-celebrate 2.4s ease-out 1;
