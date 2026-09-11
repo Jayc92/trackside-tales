@@ -39,8 +39,6 @@ import { buildPassportModel, type PassportArtifactModel } from '../games/passpor
 // missing. Both sections read the same reviewed model; no mastery is
 // computed here.
 
-const REWARDS_TARGET = 12; // taproom rewards goal — visual milestone only
-
 // PASS.1F — Special Runs status vocabulary. 'expired' reads ENDED here
 // (a durable history section), distinct from the Arcade's live board.
 const SPECIAL_RUN_STATUS_LABEL: Record<string, string> = {
@@ -127,16 +125,13 @@ export function PassportPage() {
   const completedTales = tales.filter(
     (t) => state.scanBadges.has(t.id) && state.gameBadges.has(t.id),
   ).length;
-  const totalStamps   = stampsEarned + gamesDone;          // taproom counter
-  const rewardsProgress = Math.min(100, Math.round((totalStamps / REWARDS_TARGET) * 100));
-
   // ---- Identity inputs ----------------------------------------------------
   const [nicknameInput, setNicknameInput] = useState(
     nickname === 'Trackside Guest' ? '' : nickname,
   );
-  // ---- Personalize panel inputs (separate from header save) ---------------
-  const [signupName, setSignupName]   = useState(state.user?.name  || '');
-  const [signupEmail, setSignupEmail] = useState(state.user?.email || '');
+  // ---- Personalize panel's own name buffer (separate from the header's,
+  // same underlying save action) ---------------------------------------------
+  const [personalizeName, setPersonalizeName] = useState(state.user?.name || '');
 
   // ---- lastEarnedGame celebration (contract preserved) ---------------------
   // A fresh game badge highlights that Tale's ledger entry and scrolls it
@@ -158,17 +153,15 @@ export function PassportPage() {
   }, [state.lastEarnedGame, tales, clearLastEarned]);
 
   // ---- Handlers -----------------------------------------------------------
-  const handleSaveNickname = () => {
-    const value = nicknameInput.trim();
+  // PASS.1G — the header's SAVE and Personalize's SAVE performed the exact
+  // same action under two names (setUser, preserving any existing email);
+  // one shared helper makes that explicit instead of two near-duplicates.
+  const saveDisplayName = (rawName: string) => {
+    const value = rawName.trim();
     if (!value) return;
     setUser({ name: value, email: state.user?.email });
   };
-  const handleJoin = () => {
-    const name = signupName.trim();
-    if (!name) return;
-    setUser({ name, email: signupEmail.trim() || undefined });
-  };
-  const handleMaybeLater = () => nav('home');
+  const handleSaveNickname = () => saveDisplayName(nicknameInput);
   const handleReset = () => {
     if (!confirm('Reset Passport? This clears all unlocked Tales and earned Marks.')) return;
     resetDemo();
@@ -516,38 +509,6 @@ export function PassportPage() {
           </dl>
         </section>
 
-        {/* ── Taproom rewards — existing preview program, unexpanded ── */}
-        <section className="passport-block">
-          <div className="passport-block-head">
-            <span className="passport-heading">Taproom Rewards</span>
-            <span className="passport-tally">{totalStamps} / {REWARDS_TARGET} STAMPS</span>
-          </div>
-          <div className="passport-rewards">
-            <div className="passport-rewards-headline">
-              {totalStamps === 0
-                ? 'NO STAMPS YET'
-                : `${totalStamps} ${totalStamps === 1 ? 'STAMP' : 'STAMPS'} COLLECTED`}
-            </div>
-            {/* rewards rail — the same derived milestone, drawn as a route */}
-            <div
-              className="passport-rewards-rail"
-              role="img"
-              aria-label={`Rewards progress: ${rewardsProgress} percent`}
-            >
-              <span className="passport-rewards-rail-fill" style={{ width: `${rewardsProgress}%` }} />
-            </div>
-            <p className="passport-rewards-copy">
-              {totalStamps === 0
-                ? 'Unlock a Tale to begin reward progress. Each scan and mini-game adds a stamp toward taproom rewards.'
-                : 'Each scan and mini-game adds a stamp toward taproom rewards. Keep collecting to unlock the founders tier.'}
-            </p>
-            <p className="passport-rewards-foot">
-              Collect Tale stamps to move toward taproom rewards.
-              Redemption is part of the partnership preview — no live redemption yet.
-            </p>
-          </div>
-        </section>
-
         {/* ── Core actions ── */}
         <section className="passport-block">
           <div className="passport-block-head">
@@ -583,14 +544,16 @@ export function PassportPage() {
           </div>
         </section>
 
-        {/* ── Personalize — same preview identity behavior ── */}
+        {/* ── Personalize — local display-name only; no signup, no account
+            promise. JOIN TRACKSIDE/email/"Maybe later" removed in PASS.1G:
+            they wrote the same setUser({name}) the header SAVE already
+            performs, and email had zero live consumer anywhere in the app. */}
         <section className="passport-block">
           <div className="passport-block-head">
             <span className="passport-heading">Personalize Your Passport</span>
           </div>
           <p className="passport-personalize-copy">
-            Enter your name above to customize your Trackside Passport for this preview.
-            Full accounts are coming with the live product.
+            Your preview progress is saved on this device.
           </p>
           <div className="passport-personalize-inputs">
             <div className="passport-input-wrap">
@@ -598,27 +561,18 @@ export function PassportPage() {
               <input
                 className="passport-input passport-input--with-icon"
                 type="text"
-                value={signupName}
-                onChange={(e) => setSignupName(e.target.value)}
+                value={personalizeName}
+                onChange={(e) => setPersonalizeName(e.target.value)}
                 placeholder="Your name"
               />
             </div>
-            <div className="passport-input-wrap">
-              <span className="passport-input-icon" aria-hidden="true"><TsIcon icon="post-envelope" /></span>
-              <input
-                className="passport-input passport-input--with-icon"
-                type="email"
-                value={signupEmail}
-                onChange={(e) => setSignupEmail(e.target.value)}
-                placeholder="Email address"
-              />
-            </div>
           </div>
-          <button type="button" className="passport-action passport-action--primary passport-join" onClick={handleJoin}>
-            JOIN TRACKSIDE
-          </button>
-          <button type="button" className="passport-maybe" onClick={handleMaybeLater}>
-            Maybe later — keep browsing
+          <button
+            type="button"
+            className="passport-action passport-action--primary"
+            onClick={() => saveDisplayName(personalizeName)}
+          >
+            SAVE
           </button>
           <button type="button" className="passport-reset" onClick={handleReset}>
             RESET PREVIEW
