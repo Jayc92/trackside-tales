@@ -135,6 +135,14 @@ export function HomePage() {
             <button
               type="button"
               className="home-link"
+              onClick={() => nav('arcade')}
+              aria-label="Play the Trackside Arcade"
+            >
+              PLAY THE ARCADE <span aria-hidden="true">→</span>
+            </button>
+            <button
+              type="button"
+              className="home-link"
               onClick={() => nav('passport')}
             >
               VIEW PASSPORT <span aria-hidden="true">→</span>
