@@ -166,8 +166,14 @@ function RecordHeader({
 }
 
 export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailPageProps = {}) {
-  const { state, awardGameBadge, nav, guestId, liveTapSlugs, recordGameResult } = useApp();
-  const tale = previewTale ?? state.currentTale;
+  const { state, tales, talesReady, awardGameBadge, nav, guestId, liveTapSlugs, recordGameResult } = useApp();
+  // ROUTE.1B — derived fresh from the CURRENT tales collection on every
+  // render, never a stored object. A cold/deep-linked visit may find the
+  // local-fallback row before remote hydration completes; once `tales`
+  // updates (or the id was never local and only exists remotely), this
+  // naturally re-derives the correct object on the very next render —
+  // no explicit re-navigation or sync effect required.
+  const tale = previewTale ?? tales.find((t) => t.id === state.currentTaleId) ?? null;
   const [showGame, setShowGame] = useState(false);
   // GAME.22D — remount nonce for the overlay (objective-aware REPLAY) and
   // the play control ref so a replay's fresh overlay captures the same
@@ -224,7 +230,38 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
     }
   }, [tale?.id, updateTimelineEdges]);
 
-  if (!tale) return null;
+  // ROUTE.1B — a resolvable id with no matching Tale yet: either the
+  // tales fetch hasn't reached a terminal outcome (talesReady false —
+  // e.g. a remote-only Tale before hydration completes) or it has and
+  // this id genuinely doesn't exist (talesReady true). Route ownership
+  // stays on this page either way — never a silent fall-through to
+  // Home with a mismatched URL. Reuses the existing sealed-state
+  // classes; no new CSS.
+  if (!tale) {
+    return (
+      <div className="page active px-screen tale-detail-page" id="page-story">
+        <div className="tale-detail-wrap">
+          <div className="tale-detail-sealed">
+            <h2 className="tale-detail-sealed-title" role="status">
+              {talesReady ? "THIS TALE ISN'T AVAILABLE." : 'LOADING THIS TALE…'}
+            </h2>
+            <p className="tale-detail-sealed-copy">
+              {talesReady
+                ? "This Tale couldn't be found. It may have moved or is no longer published."
+                : 'Fetching the latest version of this Tale.'}
+            </p>
+            <button
+              type="button"
+              className="tale-detail-action"
+              onClick={() => nav('tales')}
+            >
+              BACK TO TALES
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Preview renders the unlocked layout without persisting anything.
   const isUnlocked   = previewMode || state.unlocked.has(tale.id);

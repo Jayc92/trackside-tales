@@ -574,7 +574,7 @@ const initialProgression =
 
 const initialState: AppState = {
   page: 'home',
-  currentTale: null,
+  currentTaleId: null,
   currentGame: null,
   lastEarnedGame: null,
   lastUnlocked: null,
@@ -597,7 +597,7 @@ const initialState: AppState = {
 // shipped settlement code, not on a test-side re-composition.
 export type Action =
   | { type: 'NAV'; page: PageId }
-  | { type: 'SET_TALE'; tale: Tale | null }
+  | { type: 'SET_TALE_ID'; id: string | null }
   | { type: 'UNLOCK'; id: string }
   | { type: 'AWARD_SCAN_BADGE'; id: string }
   | { type: 'AWARD_GAME_BADGE'; id: string }
@@ -613,8 +613,8 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'NAV':
       return { ...state, page: action.page };
 
-    case 'SET_TALE':
-      return { ...state, currentTale: action.tale };
+    case 'SET_TALE_ID':
+      return { ...state, currentTaleId: action.id };
 
     case 'UNLOCK': {
       const wasUnlocked = state.unlocked.has(action.id);
@@ -875,6 +875,10 @@ interface AppContextValue {
   guestId: string;
   nav: (page: PageId) => void;
   navToTale: (tale: Tale) => void;
+  // ROUTE.1B — navigate to a story route by id alone, for callers (the
+  // deep-link resolver) that don't have a resolved Tale object yet.
+  // navToTale is a thin wrapper over this.
+  navToTaleId: (id: string) => void;
   unlockTale: (id: string) => void;
   awardScanBadge: (id: string) => void;
   awardGameBadge: (id: string) => void;
@@ -896,6 +900,10 @@ interface AppContextValue {
   // local arrays. Consumers should treat these as the only source
   // of truth.
   tales: Tale[];
+  // ROUTE.1B — true once the tales fetch reaches a terminal outcome
+  // (remote success, remote failure, or the flag is off). See the
+  // effect in AppProvider for exactly what sets this.
+  talesReady: boolean;
   regulars: Beer[];
   nonAlc: Beer[];
   food: FoodItem[];
@@ -929,13 +937,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // P.18: empty set until the live tap fetch resolves — no badge is
   // ever shown from stale/static data.
   const [liveTapSlugs, setLiveTapSlugs] = useState<Set<string>>(new Set());
+  // ROUTE.1B — Tales-specific readiness: false until the tales fetch
+  // reaches a terminal outcome (remote success, remote failure, or the
+  // flag is off), regardless of whether `tales` itself changed. Lets a
+  // direct/deep-linked Tale route distinguish "still loading" from
+  // "genuinely not found" instead of silently falling back to Home.
+  const [talesReady, setTalesReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     // Fire all five in parallel; each one is independent — a
     // failure in one section never affects the others.
     void fetchRemoteTales().then((rows) => {
-      if (!cancelled && rows) setTales(rows);
+      if (cancelled) return;
+      if (rows) setTales(rows);
+      setTalesReady(true);
     });
     void fetchRemoteRegulars().then((rows) => {
       if (!cancelled && rows) setRegulars(rows);
@@ -1050,11 +1066,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (location.hash !== hash) history.replaceState(null, '', hash);
   }, []);
 
-  const navToTale = useCallback((tale: Tale) => {
-    dispatch({ type: 'SET_TALE', tale });
+  const navToTaleId = useCallback((id: string) => {
+    dispatch({ type: 'SET_TALE_ID', id });
     dispatch({ type: 'NAV', page: 'story' });
-    history.replaceState(null, '', `#/story/${tale.id}`);
+    history.replaceState(null, '', `#/story/${id}`);
   }, []);
+
+  const navToTale = useCallback((tale: Tale) => navToTaleId(tale.id), [navToTaleId]);
 
   const unlockTale = useCallback((id: string) => {
     dispatch({ type: 'UNLOCK', id });
@@ -1076,6 +1094,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       guestId,
       nav,
       navToTale,
+      navToTaleId,
       unlockTale,
       awardScanBadge,
       awardGameBadge,
@@ -1086,6 +1105,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       resetDemo,
       recordGameResult,
       tales,
+      talesReady,
       regulars,
       nonAlc,
       food,

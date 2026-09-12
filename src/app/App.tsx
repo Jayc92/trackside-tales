@@ -13,7 +13,7 @@ import { ScanPage } from '../pages/ScanPage';
 import { PassportPage } from '../pages/PassportPage';
 import { OurStoryPage, AboutPage, WoodenMatchPage, TracksPage } from '../pages/SecondaryPages';
 import { ArcadePage } from '../pages/ArcadePage';
-import { PageId, Tale } from './types';
+import { PageId } from './types';
 
 // ── Route parser ─────────────────────────────────────────────────────────────
 // Accepts both #/scan and #scan (with or without leading slash).
@@ -48,8 +48,7 @@ function hashToPage(hash: string): PageId | 'story-deeplink' | null {
 function applyRoute(
   hash: string,
   nav: (p: PageId) => void,
-  navToTale: (t: Tale) => void,
-  tales: Tale[],
+  navToTaleId: (id: string) => void,
 ) {
   // Story deep link: #/story/wa-lager  or  #story/wa-lager
   //
@@ -59,14 +58,20 @@ function applyRoute(
   // unlock + scan badge, which made server-side QR validation moot.
   // Tales already unlocked on this device render normally; locked
   // Tales render the existing sealed page with its scan CTA.
+  //
+  // ROUTE.1B — this establishes route ownership by ID alone, WITHOUT
+  // requiring the id to already exist in the current `tales` array.
+  // The Tale object itself is derived fresh (by TaleDetailPage) from
+  // whatever `tales` currently is, every render — never captured here.
+  // That is what makes this resolver correct regardless of whether
+  // remote Tales have hydrated yet, and removes `tales` from this
+  // function (and from the mount-only effect below) entirely, so
+  // there is no stale-closure risk for hashchange-driven navigation
+  // (manual hash edits, browser back/forward) either.
   const storyMatch = hash.match(/^#\/?story\/([a-z0-9\-]+)/i);
   if (storyMatch) {
-    const id = storyMatch[1].toLowerCase();
-    const tale = tales.find((t) => t.id === id);
-    if (tale) {
-      navToTale(tale);
-      return;
-    }
+    navToTaleId(storyMatch[1].toLowerCase());
+    return;
   }
 
   const page = hashToPage(hash);
@@ -95,7 +100,7 @@ function ActivePage({ page }: { page: PageId }) {
 
 // ── App shell ─────────────────────────────────────────────────────────────────
 export function App() {
-  const { state, nav, navToTale, tales } = useApp();
+  const { state, nav, navToTaleId } = useApp();
   // PUBLIC-v7.4B.P.15c — admin draft preview. A story hash carrying a
   // ?preview=<token> renders the standalone TalePreviewPage INSTEAD of
   // the normal shell; server-side token validation is authoritative.
@@ -110,14 +115,16 @@ export function App() {
         return; // never applyRoute a preview hash — no nav/unlock side effects
       }
       setPreview(null);
-      applyRoute(location.hash || '', nav, navToTale, tales);
+      applyRoute(location.hash || '', nav, navToTaleId);
     };
 
     handle(); // run once on mount
     window.addEventListener('hashchange', handle);
     return () => window.removeEventListener('hashchange', handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run only on mount — nav/navToTale are stable refs from useCallback
+  }, []); // run only on mount — nav/navToTaleId are stable refs from useCallback,
+          // and applyRoute no longer reads `tales`, so there is nothing here
+          // that can go stale (ROUTE.1B).
 
   if (preview) {
     return <TalePreviewPage request={preview} />;

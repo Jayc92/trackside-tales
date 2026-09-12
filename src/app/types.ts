@@ -187,7 +187,7 @@ export interface AppState {
   scanBadges: Set<string>;
   gameBadges: Set<string>;
   collectedDates: Record<string, string>;
-  currentTale: Tale | null;
+  currentTaleId: string | null;
   currentGame: GameConfig | null;
   /** v5.3 — transient (non-persisted) signal: id of the most recently
    *  awarded game badge in this session, so the Passport can surface a
