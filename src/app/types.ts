@@ -96,9 +96,12 @@ export interface Tale {
   /**
    * Optional admin-managed intro media (PUBLIC-v7.4B.P.12a), surfaced
    * from production tales.intro_asset_url / tales.intro_type by the
-   * remote adapter. Exposed on the model only — no intro playback
-   * surface exists yet, so nothing renders these today. `introType`
-   * mirrors the production CHECK constraint values.
+   * remote adapter and consumed by the public Tale intro surface.
+   * `css_animation` renders the asset (or the Tale's existing artwork)
+   * as an inline image treatment; `video` is supported defensively as
+   * a non-autoplay, click-to-play media path; `none` renders no intro
+   * surface. `introType` mirrors the production CHECK constraint
+   * values.
    */
   introAssetUrl?: string;
   introType?: 'css_animation' | 'video' | 'none';

@@ -849,7 +849,8 @@ const BEER_SELECT =
 //                    today. MenuPage's FOOD_VISUAL_META lookup
 //                    keys on `name`, not category, so the public
 //                    Food tab continues rendering one flat list.
-//   * is_featured  — read for future use; not exposed today.
+//   * is_featured  — mapped to public FoodItem.isFeatured (P.9);
+//                    renders the public Chef's Pick treatment.
 //   * sort_order   — query-only (ORDER BY); not surfaced.
 //   * updated_at   — query-only; not surfaced.
 // Production-only columns deliberately omitted from the SELECT:
