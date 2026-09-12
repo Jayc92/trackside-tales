@@ -21,6 +21,7 @@ import {
 import { formatDate } from '../services/badgeService';
 import { prodSlugFromAppSlug } from '../services/talePresentationPack';
 import { TsIcon } from '../components/TsIcon';
+import { TaleIntro } from '../components/TaleIntro';
 
 // ================== TALE DETAIL — the opened archive record ==================
 // PUBLIC-v7.4B.P.28g.6 — presentation/structure refinement of the Tale
@@ -378,6 +379,14 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
       />
 
       <div className="tale-detail-wrap">
+
+        {/* ── Intro — the admin-authored opening flourish (INTRO.1B) ── */}
+        <TaleIntro
+          introType={tale.introType}
+          introAssetUrl={tale.introAssetUrl}
+          fallbackImageUrl={tale.image}
+          taleTitle={tale.title.replace('\n', ' ')}
+        />
 
         {/* ── Dossier folio — the identity evidence ── */}
         {hasSummaryContent && (

@@ -186,6 +186,63 @@
   color: var(--td-muted);
 }
 
+/* ── Tale Intro (INTRO.1B) — the archive's opening flourish. A bounded
+   framed image (css_animation) or a click-to-watch video affordance.
+   No heading: it reads as a hero, not a labeled document section. ── */
+.tale-intro {
+  margin: 1.1rem 1.35rem 0;
+  max-width: 680px;
+  margin-inline: auto;
+  padding: 0;
+}
+.tale-intro-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: 480px;
+  object-fit: contain;
+  background: #14100c;
+  border: 1px solid rgba(163, 128, 63, 0.45);
+  outline: 1px solid rgba(163, 128, 63, 0.18);
+  outline-offset: 3px;
+  border-radius: 3px;
+  animation: tale-intro-reveal 0.5s ease-out both;
+}
+@keyframes tale-intro-reveal {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+.tale-intro-watch,
+.tale-intro-video {
+  display: block;
+  width: 100%;
+}
+.tale-intro-watch {
+  padding: 1.6rem 1rem;
+  border: 1px dashed rgba(163, 128, 63, 0.5);
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(163, 128, 63, 0.1), transparent 65%);
+  font-family: var(--td-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  color: var(--td-brass-hi);
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.tale-intro-watch:hover,
+.tale-intro-watch:focus-visible {
+  border-color: var(--td-brass-hi);
+  color: var(--td-ivory);
+}
+.tale-intro-video {
+  max-height: 380px;
+  border: 1px solid rgba(163, 128, 63, 0.45);
+  border-radius: 3px;
+  background: #000;
+}
+
 /* ── Section scaffolding ─────────────────────────────────────────────── */
 .tale-detail-wrap {
   max-width: 680px;
@@ -757,6 +814,12 @@
   .tale-detail-chip-dot { animation: none; }
   .tale-detail-action, .tale-detail-next-link, .tale-detail-next-arrow,
   .tale-detail-timeline::before, .tale-detail-timeline::after { transition: none; }
+  /* INTRO.1B — the image appears immediately in its final state; no
+     entrance transform. Video is unaffected: it never autoplays
+     regardless of motion preference (a deliberate, user-initiated
+     watch, not decorative UI motion). */
+  .tale-intro-image { animation: none; }
+  .tale-intro-watch { transition: none; }
 }
 
 .tale-detail-foot-space { height: 2.4rem; }
