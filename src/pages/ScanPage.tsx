@@ -171,17 +171,16 @@ export function ScanPage() {
     // these calls are completely inert in default builds.
     if (!opts.logScanEvent) return;
 
-    logEvent({
-      type:     'tale_unlocked',
-      taleSlug: taleId,
-      source:   'scan',
-    });
-
-    // Award badge_awarded only when the scan badge actually granted
-    // for the first time on this device. Mirrors the awardScanBadge
-    // gate above so we don't double-count on re-scans of an already
-    // unlocked tale.
+    // PUBLIC-v7.4B.ANALYTICS.1: tale_unlocked and badge_awarded both
+    // fire only on the first unlock of this Tale on this device —
+    // mirrors the awardScanBadge gate above so neither event
+    // double-counts on re-scans of an already unlocked tale.
     if (!wasUnlocked) {
+      logEvent({
+        type:     'tale_unlocked',
+        taleSlug: taleId,
+        source:   'scan',
+      });
       logEvent({
         type:     'badge_awarded',
         taleSlug: taleId,
