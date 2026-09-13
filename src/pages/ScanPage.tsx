@@ -45,6 +45,34 @@ declare const Html5Qrcode: unknown;
 
 const QR_READER_ID = 'qr-reader';
 
+// PUBLIC-v7.4B.SCAN.2: html5-qrcode's getUserMedia failure path rejects
+// with a formatted STRING (Html5QrcodeStrings.errorGettingUserMedia),
+// not the raw DOMException — confirmed by reading the library source.
+// The original error's name survives inside that string (browsers
+// stringify a DOMException as "<name>: <message>"), so classification
+// is substring matching, not a clean `.name` property read. Only the
+// three getUserMedia error names that are actually reachable from this
+// call site's constraints get their own copy — see SCAN.2A: production
+// is always HTTPS (SecurityError unreachable), the constraint is an
+// ideal (not exact) facingMode (OverconstrainedError unreachable), and
+// AbortError is rare/ambiguous enough to fold into the generic case.
+type CameraErrorKind = 'permission' | 'not-found' | 'busy' | 'unknown';
+
+function classifyCameraError(e: unknown): CameraErrorKind {
+  const s = String(e);
+  if (s.includes('NotAllowedError')) return 'permission';
+  if (s.includes('NotFoundError')) return 'not-found';
+  if (s.includes('NotReadableError')) return 'busy';
+  return 'unknown';
+}
+
+const CAMERA_ERROR_COPY: Record<CameraErrorKind, string> = {
+  permission: 'Camera access is blocked. Allow camera access for this site, then try again. Or open a Featured Tale below.',
+  'not-found': 'No camera was found on this device. Or open a Featured Tale below.',
+  busy: 'The camera may be in use by another app or tab. Close it and try again. Or open a Featured Tale below.',
+  unknown: "We couldn't start the camera. Try again, or open a Featured Tale below.",
+};
+
 // ---- The validation window (camera area, reticle, plates) ------------------
 interface ScannerGateProps {
   scanning: boolean;
@@ -138,7 +166,7 @@ function FeaturedTaleRow({ tale, index, unlocked, onSelect }: FeaturedTaleRowPro
 export function ScanPage() {
   const { state, tales, guestId, unlockTale, awardScanBadge, navToTale, nav } = useApp();
   const [scanning, setScanning]     = useState(false);
-  const [scannerError, setScanErr]  = useState(false);
+  const [scanError, setScanError]   = useState<CameraErrorKind | null>(null);
   const [scanTitle, setScanTitle]   = useState('POINT AT A TRACKSIDE CAN');
   const [scanSub, setScanSub]       = useState(
     "Center the QR code on the can in the frame — we'll unlock its Tale and stamp your Passport.",
@@ -272,7 +300,7 @@ export function ScanPage() {
 
   const startScanner = useCallback(async () => {
     if (typeof Html5Qrcode === 'undefined') {
-      setScanErr(true);
+      setScanError('unknown');
       return;
     }
     try {
@@ -288,7 +316,7 @@ export function ScanPage() {
       );
       setScanning(true);
     } catch (e) {
-      setScanErr(true);
+      setScanError(classifyCameraError(e));
       console.warn('[trackside] Scanner start failed:', e);
     }
   }, [processCode]);
@@ -332,7 +360,7 @@ export function ScanPage() {
       <div className="scan-wrap">
 
         {/* ── The validation window ── */}
-        <ScannerGate scanning={scanning} scannerError={scannerError} />
+        <ScannerGate scanning={scanning} scannerError={scanError !== null} />
 
         {/* ── Live readout — same state-driven messages as before ── */}
         <div className="scan-readout" role="status">
@@ -346,17 +374,16 @@ export function ScanPage() {
         </div>
 
         {/* ── Camera error (conditional) ── */}
-        {scannerError && (
+        {scanError !== null && (
           <div className="scan-error" role="alert">
             <div className="scan-error-title">CAMERA UNAVAILABLE</div>
             <div className="scan-error-copy">
-              Camera access is unavailable. Choose a Featured Tale above to continue,
-              or grant camera access and retry.
+              {CAMERA_ERROR_COPY[scanError]}
             </div>
             <button
               type="button"
               className="scan-error-retry"
-              onClick={() => { setScanErr(false); startScanner(); }}
+              onClick={() => { setScanError(null); startScanner(); }}
             >
               TRY CAMERA AGAIN
             </button>
