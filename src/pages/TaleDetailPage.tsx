@@ -37,8 +37,10 @@ import { TaleIntro } from '../components/TaleIntro';
 // implementation: preview injection (P.15c), unlock/badge/collected
 // state reads, live-tap availability precedence (P.19/P.19a), timeline
 // scroll reset + edge fades (P.28e.3), GameOverlay wiring, and the
-// locked-branch behavior. The dormant `stillHere` Tale data remains
-// intentionally unrendered (P.28g.6 §12 — content decision pending).
+// locked-branch behavior. STILL.1 renders the curated `stillHere`
+// present-day-continuity data as a coda between Timeline and the
+// Interactive Challenge; non-curated Tales carry an empty array and
+// render nothing there.
 
 // PUBLIC-v7.4B.P.12a — build the hero meta line from only the
 // non-blank fragments so a Tale without pack style/ABV/IBU renders
@@ -547,6 +549,23 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
               <p className="tale-detail-timeline-hint" aria-hidden="true">
                 Swipe to continue the timeline →
               </p>
+            </div>
+          </section>
+        )}
+
+        {/* ── Still Here — present-day coda (PUBLIC-v7.4B.STILL.1) ── */}
+        {tale.stillHere && tale.stillHere.length > 0 && (
+          <section className="tale-detail-section">
+            <div className="tale-detail-section-head">
+              <span className="tale-detail-label">Still Here</span>
+            </div>
+            <div className="still-here">
+              {tale.stillHere.map((entry) => (
+                <div key={entry.place} className="still-here-item">
+                  <div className="still-here-place">{entry.place}</div>
+                  <div className="still-here-detail">{entry.detail}</div>
+                </div>
+              ))}
             </div>
           </section>
         )}
