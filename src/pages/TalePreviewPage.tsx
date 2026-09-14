@@ -20,7 +20,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { TaleDetailPage } from './TaleDetailPage';
-import { mapTaleRow } from '../services/contentService';
+import { fetchBeerMetaById, mapTaleRow } from '../services/contentService';
 import {
   fetchTalePreview,
   type TalePreviewRequest,
@@ -70,10 +70,18 @@ export function TalePreviewPage({ request }: { request: TalePreviewRequest }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const result = await fetchTalePreview(request.token);
+      // PARITY.1C.1: fetch the preview row and the Beer metadata lookup
+      // CONCURRENTLY (never serially) — same pattern fetchRemoteTales
+      // uses. fetchBeerMetaById shares the module's existing memoized
+      // beer fetch, so this never becomes a second/duplicate request
+      // when something else on the page has already triggered it.
+      const [result, beerMetaById] = await Promise.all([
+        fetchTalePreview(request.token),
+        fetchBeerMetaById(),
+      ]);
       if (cancelled) return;
       if (result.status === 'ok') {
-        const tale = mapTaleRow(result.row);
+        const tale = mapTaleRow(result.row, beerMetaById);
         if (!tale) {
           // Row exists but fails the minimum contract (slug/title) —
           // surface as unavailable rather than rendering garbage.

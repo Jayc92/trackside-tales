@@ -76,6 +76,7 @@ import {
   StoryBlock,
   MapPin,
   TimelineEvent,
+  StillHere,
 } from '../app/types';
 import {
   supabaseFetch,
@@ -224,6 +225,27 @@ function mapTimeline(v: unknown): TimelineEvent[] {
 }
 
 /**
+ * ADMIN-v7.4B.PARITY.1C — validate production `still_here` jsonb
+ * against the canonical StillHere shape. Same defensive posture as
+ * mapPins/mapTimeline: non-array input, non-object entries, and
+ * entries missing a non-blank `place` or `detail` are dropped
+ * individually; array order is preserved for surviving entries.
+ * Used only for non-curated Tales — curated Tales keep their
+ * presentation-pack stillHere unconditionally (see mapTaleRow).
+ */
+function mapStillHere(v: unknown): StillHere[] {
+  const rows = asArrayOfObj(v) ?? [];
+  const out: StillHere[] = [];
+  for (const r of rows) {
+    const place = asString(r.place);
+    const detail = asString(r.detail);
+    if (!place || !detail) continue;
+    out.push({ place, detail });
+  }
+  return out;
+}
+
+/**
  * Wrap the production `story_body` text column into a single
  * StoryBlock paragraph. Production schema stores story prose as
  * one TEXT column; the public app renders an array of typed
@@ -250,10 +272,21 @@ function wrapStoryBody(v: unknown): StoryBlock[] {
  * presentation fields (subtitle, person_or_place, intro_type,
  * intro_asset_url, stamp_image_url) — consumed for NON-curated
  * Tales only; curated Tales keep their local pack values. Remaining
- * unread columns: id, beer_id, venue_id, created_at.
+ * unread columns: id, venue_id, created_at.
  *
- * The presentation pack supplies: abbr, style, abv, ibu, tagline,
- * icon, unlockSeal, person, personBio, mapTitle, scanBadge,
+ * ADMIN-v7.4B.PARITY.1C additions (also NON-curated-only, same
+ * curated-precedence rule as P.12a): person_bio → personBio,
+ * bar_summary_who/why/beer → barSummary, still_here → stillHere
+ * (validated via mapStillHere), game_title → game.title (data-model
+ * placement only — see file-level PARITY.1C note below on why this
+ * has no visible effect yet), and beer_id → a lookup against
+ * `beerMetaById` (built once per fetch from the already-fetched
+ * remote Beer collection — see fetchRemoteBeersPartitioned) to
+ * derive style/abv/ibu WITHOUT duplicating Beer data onto the row.
+ *
+ * The presentation pack supplies, for curated Tales unconditionally
+ * and as the NON-curated default/fallback: abbr, style, abv, ibu,
+ * tagline, icon, unlockSeal, person, personBio, mapTitle, scanBadge,
  * gameBadge, barSummary, stillHere, image, full game-config copy.
  *
  * Drop conditions:
@@ -280,7 +313,19 @@ function wrapStoryBody(v: unknown): StoryBlock[] {
 // single server-authorized preview row through THIS exact adapter so
 // preview rendering is bit-identical to production rendering (curated
 // pack layering, generic fallbacks, slug renames — everything).
-export function mapTaleRow(row: Record<string, unknown>): Tale | null {
+//
+// ADMIN-v7.4B.PARITY.1C.1 note on `beerMetaById`: TalePreviewPage.tsx
+// now also calls fetchBeerMetaById() (below) alongside the preview
+// fetch and passes the result through, so a previewed NON-curated
+// Tale's linked-Beer style/ABV/IBU renders identically to the live
+// path. The parameter still defaults to null so any other caller (or
+// a future one) that genuinely has no Beer collection degrades the
+// same way a missing Beer does — never a crash, never invented
+// values. Curated Tales are entirely unaffected either way.
+export function mapTaleRow(
+  row: Record<string, unknown>,
+  beerMetaById: Map<string, { style: string; abv: string; ibu: string }> | null = null,
+): Tale | null {
   // P.12c minimum contract, aligned with the admin form: slug and
   // title are required; `name` is OPTIONAL (the admin labels it
   // "Name (optional)"). A published+active Tale must not silently
@@ -325,6 +370,22 @@ export function mapTaleRow(row: Record<string, unknown>): Tale | null {
     miniGameType === 'match'
   ) {
     game = { ...pack.game, type: miniGameType };
+  }
+
+  // ADMIN-v7.4B.PARITY.1C: game_title → game.title, non-curated only.
+  // Data-model placement only — the "Interactive Challenge" heading
+  // TaleDetailPage actually renders comes from the closed, hardcoded
+  // 3-entry game registry (games/registry.ts's getGamesForTale), which
+  // has no entry for any non-curated Tale id. This mapping is still
+  // the correct contract (matches PARITY.1B's admin field, costs
+  // nothing, is forward-compatible with a future registry gate) but
+  // has no visible effect today — disclosed, not silently implied.
+  // instructions/successTitle/successMsg (Tier-2) are untouched.
+  if (!knownPack) {
+    const remoteGameTitle = asNonBlankString(row.game_title);
+    if (remoteGameTitle !== null) {
+      game = { ...game, title: remoteGameTitle };
+    }
   }
 
   // Tap status: production CHECK constraint already restricts the
@@ -382,19 +443,56 @@ export function mapTaleRow(row: Record<string, unknown>): Tale | null {
     ? pack.person
     : { name: remotePersonOrPlace ?? '', dates: '', role: '', initials: '' };
 
+  // ADMIN-v7.4B.PARITY.1C: Tier-1 fields, non-curated only. Curated
+  // Tales (wa-lager / packer-pils / wooden-match) keep every one of
+  // these slots from the presentation pack unconditionally — the same
+  // curated-precedence rule P.12a already established for
+  // subtitle/person_or_place/stamp_image_url above. A DB Tier-1 value
+  // never overrides curated content, even though the 3 curated Tales
+  // now carry a real beer_id and could technically resolve one.
+  const personBio = knownPack
+    ? pack.personBio
+    : (asNonBlankString(row.person_bio) ?? pack.personBio);
+
+  const barSummary: Tale['barSummary'] = knownPack
+    ? pack.barSummary
+    : {
+        who:  asNonBlankString(row.bar_summary_who)  ?? '',
+        why:  asNonBlankString(row.bar_summary_why)  ?? '',
+        beer: asNonBlankString(row.bar_summary_beer) ?? '',
+      };
+
+  const stillHere: Tale['stillHere'] = knownPack
+    ? pack.stillHere
+    : mapStillHere(row.still_here);
+
+  // beer_id → linked Beer style/abv/ibu, derived from the already-
+  // fetched remote Beer collection (beerMetaById, built once per
+  // fetch in fetchRemoteBeersPartitioned — see that function). Never
+  // a new per-Tale request; never fabricated when the id is null, the
+  // Beer wasn't found, or the collection itself is unavailable (e.g.
+  // USE_REMOTE_BEERS is off, or this row came through TalePreviewPage,
+  // which has no Beer collection to pass — see the file-level note on
+  // mapTaleRow above).
+  const remoteBeerId = asNonBlankString(row.beer_id);
+  const linkedBeerMeta =
+    !knownPack && remoteBeerId && beerMetaById
+      ? beerMetaById.get(remoteBeerId) ?? null
+      : null;
+
   return {
     id:          appSlug,
     name:        displayName,
     abbr,
     image,
-    style:       pack.style,
-    abv:         pack.abv,
-    ibu:         pack.ibu,
+    style:       knownPack ? pack.style : (linkedBeerMeta?.style ?? ''),
+    abv:         knownPack ? pack.abv   : (linkedBeerMeta?.abv   ?? ''),
+    ibu:         knownPack ? pack.ibu   : (linkedBeerMeta?.ibu   ?? ''),
     tagline,
     icon:        pack.icon,
     unlockSeal:  pack.unlockSeal,
     person,
-    personBio:   pack.personBio,
+    personBio,
     chapter:     asStringOr(row.chapter_label, ''),
     year:        asStringOr(row.year, ''),
     title,
@@ -409,8 +507,8 @@ export function mapTaleRow(row: Record<string, unknown>): Tale | null {
     // Production has no `retired_date` column today; the Tale type
     // allows null and the detail page renders it conditionally.
     retiredDate: null,
-    barSummary:  pack.barSummary,
-    stillHere:   pack.stillHere,
+    barSummary,
+    stillHere,
     ...(remoteIntroAssetUrl !== null ? { introAssetUrl: remoteIntroAssetUrl } : {}),
     ...(remoteIntroType !== undefined ? { introType: remoteIntroType } : {}),
     ...(remoteStampImageUrl !== null ? { stampImageUrl: remoteStampImageUrl } : {}),
@@ -564,6 +662,16 @@ function formatProdIbu(raw: unknown): string | null {
  * rows. The variant for skipped tale rows simply has no `beer`
  * field, and the partition loop discriminates on `kind` before
  * touching beer data — no unsafe type assertion is required.
+ *
+ * ADMIN-v7.4B.PARITY.1C: both variants now also carry `id` (raw
+ * production uuid, or null if missing) so fetchRemoteBeersPartitioned
+ * can build an id-keyed style/abv/ibu lookup for tales.beer_id
+ * resolution. The `'handled-by-tales'` variant additionally carries
+ * its own `style`/`abv`/`ibu` (computed but otherwise unused for that
+ * variant — no Beer object, no presentation pack, no image
+ * resolution happens for it) purely so the lookup can be built without
+ * re-parsing the row a second time. The `'beer'` variant's values live
+ * on `beer.style`/`beer.abv`/`beer.ibu` already; no duplication there.
  */
 type MappedBeerRow =
   | {
@@ -572,11 +680,16 @@ type MappedBeerRow =
       beer:        Beer;
       category:    'resident' | 'non-alc';
       sort_order:  number;
+      id:          string | null;
     }
   | {
       kind:        'handled-by-tales';
       slug:        string;
       sort_order:  number;
+      id:          string | null;
+      style:       string;
+      abv:         string;
+      ibu:         string;
     };
 
 /**
@@ -628,6 +741,11 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
     return null;
   }
 
+  // ADMIN-v7.4B.PARITY.1C: raw production uuid, kept alongside the
+  // slug so the id-keyed style/abv/ibu lookup (for tales.beer_id
+  // resolution) can be built regardless of category.
+  const id = asString(row.id);
+
   // PUBLIC-v7.4B.P.6: category is now total (unknown/blank → resident).
   const category = mapProdBeerCategory(row.category);
 
@@ -636,15 +754,27 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
   const sortOrderNum = asNumber(row.sort_order);
   const sort_order = sortOrderNum !== null ? sortOrderNum : 9_999_999;
 
+  // ADMIN-v7.4B.PARITY.1C: computed for EVERY row, ahead of the
+  // category branch — the 'handled-by-tales' variant needs these for
+  // the Tale-side lookup even though it builds no Beer object, image,
+  // or presentation-pack fields. Moving this earlier changes nothing
+  // for the 'resident'/'non-alc' path below (same computation, same
+  // position relative to the knownPack warning check).
+  const styleRaw = asString(row.style);
+  const style = styleRaw ? styleRaw.trim() : '';
+  const abv = formatProdAbv(row.abv) ?? '';
+  const ibu = formatProdIbu(row.ibu) ?? '';
+
   // Tale-linked beers are valid production rows but the Menu's
   // Tales tab renders them through Tale[] (with unlock state and
   // story navigation), not as Beer cards. Return the
   // 'handled-by-tales' variant — no Beer object, no presentation
-  // pack lookup, no abv/ibu formatting, no image resolution.
-  // The partition loop discriminates on `kind` and skips this
-  // variant entirely.
+  // pack lookup, no image resolution. The partition loop
+  // discriminates on `kind` and skips this variant for Beer-card
+  // purposes; style/abv/ibu are still carried for the id-keyed
+  // lookup (PARITY.1C).
   if (category === 'handled-by-tales') {
-    return { kind: 'handled-by-tales', slug, sort_order };
+    return { kind: 'handled-by-tales', slug, sort_order, id, style, abv, ibu };
   }
 
   // PUBLIC-v7.4B.P.6: curated beers keep their rich pack; admin-created
@@ -663,10 +793,8 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
   // fragment; see ResidentBeerCard), with a console.warn preserved so
   // developers still see the data problem. Name and slug remain the
   // only drop conditions — those the admin genuinely requires.
-  const styleRaw = asString(row.style);
-  const style = styleRaw ? styleRaw.trim() : '';
-  const abv = formatProdAbv(row.abv) ?? '';
-  const ibu = formatProdIbu(row.ibu) ?? '';
+  // (style/abv/ibu themselves are computed earlier, ahead of the
+  // category branch — PARITY.1C.)
   if (knownPack && (style === '' || abv === '' || ibu === '')) {
     console.warn(
       `[trackside] Remote beer "${slug}" has missing/malformed style, abv, or ibu — rendering with blanks (row no longer dropped as of P.17).`,
@@ -706,7 +834,7 @@ function mapProdBeerRow(row: Record<string, unknown>): MappedBeerRow | null {
   if (tasting) beer.tasting = tasting;
   if (pack.tapStatus) beer.tapStatus = pack.tapStatus;
 
-  return { kind: 'beer', slug, beer, category, sort_order };
+  return { kind: 'beer', slug, beer, category, sort_order, id };
 }
 
 /**
@@ -816,10 +944,22 @@ function mapFoodRow(row: Record<string, unknown>): FoodItem | null {
 //   * intro_type       — model exposure only (no intro surface yet)
 //   * intro_asset_url  — model exposure only (no intro surface yet)
 //   * stamp_image_url  — generic card/hero art for non-curated Tales
+// ADMIN-v7.4B.PARITY.1C additions (Tier-1 parity fields added to
+// production by PUBLIC-v7.4B.PARITY.1A; non-curated-only, same
+// curated-precedence rule as the P.12a fields above):
+//   * beer_id          — resolved against the remote Beer collection
+//                        for style/abv/ibu (see beerMetaById)
+//   * person_bio       — Dossier bio paragraph
+//   * bar_summary_who/why/beer — Dossier fact rows
+//   * game_title       — game.title data-model slot (see mapTaleRow
+//                        for why this has no visible effect yet)
+//   * still_here       — present-day coda entries
 const TALE_SELECT =
   'slug,name,title,year,chapter_label,story_body,' +
   'timeline,map_points,tap_status,mini_game_type,sort_order,updated_at,' +
-  'subtitle,person_or_place,intro_type,intro_asset_url,stamp_image_url';
+  'subtitle,person_or_place,intro_type,intro_asset_url,stamp_image_url,' +
+  'beer_id,person_bio,bar_summary_who,bar_summary_why,bar_summary_beer,' +
+  'game_title,still_here';
 
 // ADMIN-v7.4B.N.1: production-aligned beer column subset only. The
 // earlier canonical SELECT (abbr, tasting, display_order) referenced
@@ -833,8 +973,13 @@ const TALE_SELECT =
 // public.beers actually carries (id and is_active/status are also
 // present but used only as query filters; created_at and
 // updated_at are present but read-only).
+// ADMIN-v7.4B.PARITY.1C: `id` added so mapProdBeerRow can build an
+// id-keyed style/abv/ibu lookup for tales.beer_id resolution (see
+// PartitionedBeers.byId) — the same already-fetched rows, no new
+// request. Still used only as a lookup key, never rendered on a
+// Beer card.
 const BEER_SELECT =
-  'slug,name,style,abv,ibu,category,short_description,description,can_image_url,sort_order,updated_at';
+  'id,slug,name,style,abv,ibu,category,short_description,description,can_image_url,sort_order,updated_at';
 
 // ADMIN-v7.4B.O.1: production-aligned food column subset.
 // The earlier SELECT referenced `display_order` (canonical) which
@@ -901,15 +1046,27 @@ export async function fetchRemoteTales(): Promise<Tale[] | null> {
   // independently of beers, food, or reward tiers.
   if (!USE_REMOTE_TALES) return null;
   try {
-    const rows = (await supabaseFetch(
-      'tales',
-      // M.5.1: order by `sort_order` (production column) instead of
-      // canonical `display_order` (which doesn't exist on prod).
-      `select=${TALE_SELECT}&${PUBLISHED_FILTER}&order=sort_order.asc`,
-    )) as unknown;
+    // ADMIN-v7.4B.PARITY.1C: fetch tales and beers CONCURRENTLY (not
+    // sequentially) so deriving linked-Beer style/abv/ibu never adds a
+    // serial round-trip. fetchRemoteBeersPartitioned() is the SAME
+    // memoized fetch fetchRemoteRegulars/fetchRemoteNonAlc already
+    // share — if USE_REMOTE_BEERS is off it resolves to null with no
+    // HTTP request; if another caller already triggered it, this
+    // reuses that in-flight promise. Never a new/duplicate/per-Tale
+    // request.
+    const [rows, partitioned] = await Promise.all([
+      supabaseFetch(
+        'tales',
+        // M.5.1: order by `sort_order` (production column) instead of
+        // canonical `display_order` (which doesn't exist on prod).
+        `select=${TALE_SELECT}&${PUBLISHED_FILTER}&order=sort_order.asc`,
+      ) as Promise<unknown>,
+      fetchRemoteBeersPartitioned(),
+    ]);
     if (!Array.isArray(rows)) return null;
+    const beerMetaById = partitioned?.byId ?? null;
     const mapped = rows
-      .map((r) => (isObj(r) ? mapTaleRow(r) : null))
+      .map((r) => (isObj(r) ? mapTaleRow(r, beerMetaById) : null))
       .filter((t): t is Tale => t !== null);
     return mapped.length > 0 ? mapped : null;
   } catch (err) {
@@ -935,6 +1092,16 @@ export async function fetchRemoteTales(): Promise<Tale[] | null> {
 interface PartitionedBeers {
   regulars: Beer[];
   nonAlc:   Beer[];
+  /**
+   * ADMIN-v7.4B.PARITY.1C: every mapped beer row (any category,
+   * including 'handled-by-tales' rows the Menu never shows as Beer
+   * cards), keyed by production uuid, projecting only style/abv/ibu.
+   * Built from these SAME rows — never a second/duplicate fetch.
+   * Consumed by mapTaleRow via fetchRemoteTales to derive a
+   * non-curated Tale's hero style/ABV/IBU from its beer_id, without
+   * duplicating Beer data onto the Tale row.
+   */
+  byId: Map<string, { style: string; abv: string; ibu: string }>;
 }
 
 let beersInflight: Promise<PartitionedBeers | null> | null = null;
@@ -955,9 +1122,14 @@ let beersInflight: Promise<PartitionedBeers | null> | null = null;
  *   * Fetch failure → return null (caller falls back to local).
  *   * Zero valid rows after mapping → return null.
  *   * One partition empty but the other has rows → caller sees the
- *     populated array and gets null for the empty one (we return
- *     null only if BOTH partitions are empty, matching the
- *     "fail-safe to local" contract for each section).
+ *     populated array and gets null for the empty one — each of
+ *     fetchRemoteRegulars/fetchRemoteNonAlc independently re-checks
+ *     its own array's length and returns null on empty regardless of
+ *     what this function returns (see those two functions below), so
+ *     removing the old "return null if BOTH are empty" short-circuit
+ *     here (PARITY.1C) changes nothing observable for either of them
+ *     — it only stops discarding `byId` in the edge case where every
+ *     published beer happens to be tale-linked.
  */
 function fetchRemoteBeersPartitioned(): Promise<PartitionedBeers | null> {
   if (!USE_REMOTE_BEERS) return Promise.resolve(null);
@@ -992,29 +1164,38 @@ function fetchRemoteBeersPartitioned(): Promise<PartitionedBeers | null> {
       });
 
       // Partition by discriminated `kind`. `'handled-by-tales'`
-      // rows are intentionally skipped — they're valid production
-      // rows but the public Menu's Tales tab renders these beers
-      // as Tale cards via the separate fetchRemoteTales pipeline,
-      // not as Beer cards. Exposing them as Beer[] in the Resident
-      // tab would render each tale-linked beer twice in the menu.
-      // The discriminated union means we never touch a Beer field
-      // on a tale-category row.
+      // rows are intentionally skipped for Beer-card purposes —
+      // they're valid production rows but the public Menu's Tales
+      // tab renders these beers as Tale cards via the separate
+      // fetchRemoteTales pipeline, not as Beer cards. Exposing them
+      // as Beer[] in the Resident tab would render each tale-linked
+      // beer twice in the menu. The discriminated union means we
+      // never touch a Beer field on a tale-category row.
+      //
+      // ADMIN-v7.4B.PARITY.1C: byId is built from EVERY mapped row
+      // regardless of kind — it serves a different consumer
+      // (mapTaleRow's beer_id resolution), not the Menu's Beer cards.
       const regulars: Beer[] = [];
       const nonAlc:   Beer[] = [];
+      const byId = new Map<string, { style: string; abv: string; ibu: string }>();
       for (const r of mapped) {
+        if (r.id) {
+          byId.set(
+            r.id,
+            r.kind === 'beer'
+              ? { style: r.beer.style, abv: r.beer.abv, ibu: r.beer.ibu }
+              : { style: r.style, abv: r.abv, ibu: r.ibu },
+          );
+        }
         if (r.kind === 'beer') {
           if (r.category === 'resident')     regulars.push(r.beer);
           else if (r.category === 'non-alc') nonAlc.push(r.beer);
         }
-        // else r.kind === 'handled-by-tales' → intentionally skip.
+        // else r.kind === 'handled-by-tales' → skip for Beer-card
+        // purposes; already captured in byId above.
       }
 
-      // If EVERY row dropped out of a partition the caller will
-      // see [] for that section and fall back to local. We only
-      // return null if BOTH are empty (no signal worth surfacing).
-      if (regulars.length === 0 && nonAlc.length === 0) return null;
-
-      return { regulars, nonAlc };
+      return { regulars, nonAlc, byId };
     } catch (err) {
       console.warn('[trackside] Remote beers unavailable — using local fallback', err);
       return null;
@@ -1036,6 +1217,24 @@ export async function fetchRemoteNonAlc(): Promise<Beer[] | null> {
   const partitioned = await fetchRemoteBeersPartitioned();
   if (!partitioned) return null;
   return partitioned.nonAlc.length > 0 ? partitioned.nonAlc : null;
+}
+
+/**
+ * ADMIN-v7.4B.PARITY.1C.1 — expose the same id-keyed style/abv/ibu
+ * lookup mapTaleRow's live callers already use, for callers OUTSIDE
+ * this module that map a single Tale row through mapTaleRow without
+ * going through fetchRemoteTales (currently: TalePreviewPage, which
+ * has no other Beer collection access point — the preview-tale Edge
+ * Function returns only the one authorized Tale row). Shares the
+ * exact same memoized fetchRemoteBeersPartitioned() every other beer
+ * caller uses: USE_REMOTE_BEERS off, a fetch failure, or zero valid
+ * rows all resolve to null (never a throw), and a concurrent call
+ * from another caller reuses the same in-flight/resolved promise
+ * rather than issuing a second request.
+ */
+export async function fetchBeerMetaById(): Promise<Map<string, { style: string; abv: string; ibu: string }> | null> {
+  const partitioned = await fetchRemoteBeersPartitioned();
+  return partitioned?.byId ?? null;
 }
 
 /**
