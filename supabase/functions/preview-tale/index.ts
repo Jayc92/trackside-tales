@@ -176,7 +176,9 @@ async function handle(req: Request): Promise<Response> {
   const columns =
     'slug,name,title,year,chapter_label,story_body,timeline,map_points,' +
     'tap_status,mini_game_type,sort_order,updated_at,' +
-    'subtitle,person_or_place,intro_type,intro_asset_url,stamp_image_url';
+    'subtitle,person_or_place,intro_type,intro_asset_url,stamp_image_url,' +
+    'beer_id,person_bio,bar_summary_who,bar_summary_why,bar_summary_beer,' +
+    'game_title,still_here';
   let rows: any[] | null = null;
   try {
     const res = await fetch(
