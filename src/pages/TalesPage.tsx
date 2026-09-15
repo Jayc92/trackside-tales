@@ -284,8 +284,8 @@ export function TalesPage() {
             </button>
             <button type="button" className="tales-index-link" onClick={() => nav('woodenmatch')}>
               <span className="tales-index-glyph" aria-hidden="true" />
-              <span className="tales-index-title">OUR HOME</span>
-              <span className="tales-index-desc">Alburtis Tavern, where the stories pour.</span>
+              <span className="tales-index-title">THE TAVERN</span>
+              <span className="tales-index-desc">Alburtis, where the tracks still tell stories.</span>
               <span className="tales-index-arrow" aria-hidden="true">→</span>
             </button>
           </div>

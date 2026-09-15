@@ -41,12 +41,12 @@ export function HomePage() {
           />
         </div>
         <div className="home-lead-inner">
-          <span className="home-eyebrow">Trackside Brewing · Alburtis Tavern</span>
+          <span className="home-eyebrow">Trackside Brewing · Lehigh Valley, PA</span>
           <h1 className="home-title">BEER.<br />HISTORY.<br />PLACE.</h1>
           <hr className="home-rule" aria-hidden="true" />
           <p className="home-statement">
-            Local beer with Lehigh Valley rail stories inside — poured at
-            Alburtis Tavern, unlocked by a scan, kept in your Passport.
+            Local beer with Lehigh Valley rail stories inside — unlocked
+            by a scan, kept in your Passport.
           </p>
           <div className="home-actions">
             <button
@@ -74,7 +74,7 @@ export function HomePage() {
         {/* ── 2. Our Home — preview of place ── */}
         <section className="home-section" aria-label="Alburtis Tavern">
           <div className="home-section-head">
-            <span className="home-label">Our Home</span>
+            <span className="home-label">The Tavern</span>
           </div>
           <div className="home-place">
             <div className="home-place-sign" aria-hidden="true">
@@ -86,16 +86,16 @@ export function HomePage() {
                 A tavern, a table, and <em>the stories of the Valley.</em>
               </h2>
               <p className="home-copy">
-                Alburtis Tavern is where Trackside Brewing lives — order a
-                Tale at the bar, and the story of the Lehigh Valley comes
-                to the table with it.
+                Alburtis Tavern is the kind of place Trackside Brewing was
+                built to celebrate — a table where beer, history, and the
+                Lehigh Valley belong together.
               </p>
               <button
                 type="button"
                 className="home-link"
                 onClick={() => nav('woodenmatch')}
               >
-                VISIT OUR HOME <span aria-hidden="true">→</span>
+                VISIT THE TAVERN <span aria-hidden="true">→</span>
               </button>
             </div>
           </div>

@@ -285,7 +285,7 @@ export function TapBoard({
     <section className="menu-tapboard" aria-label="Now pouring">
       <div className="menu-tapboard-head">
         <span className="menu-chip-dot" aria-hidden="true" />
-        NOW POURING · ALBURTIS TAVERN
+        NOW POURING
       </div>
       <div role="list">
         {pouring.map((beer) => (
@@ -314,13 +314,13 @@ export function MenuPage() {
 
       {/* ── Head — the venue board ── */}
       <header className="menu-head">
-        <span className="menu-eyebrow">Alburtis Tavern · Alburtis, PA</span>
+        <span className="menu-eyebrow">Alburtis, Pennsylvania</span>
         <h1 className="menu-heading">{isFood ? 'THE KITCHEN' : 'THE TAP LIST'}</h1>
         <div className="menu-brand">TRACKSIDE BREWING</div>
         <hr className="menu-rule" aria-hidden="true" />
         <p className="menu-sub">
           {isFood
-            ? 'From the Alburtis Tavern kitchen — the companion to the taps.'
+            ? 'Kitchen fare built to pair with the taps.'
             : 'Tale pours, resident beers, zero-proof options — and the story behind each can.'}
         </p>
       </header>
@@ -394,8 +394,7 @@ export function MenuPage() {
               <span className="menu-label">From the Kitchen</span>
             </div>
             <p className="menu-kitchen-note">
-              Food from the <strong>Alburtis Tavern</strong> kitchen —
-              built to pair with the Trackside pours.
+              Food built to pair with the Trackside pours.
             </p>
             <div className="menu-dish-list" role="list" aria-label="Kitchen menu">
               {food.map((item) => (
@@ -409,8 +408,8 @@ export function MenuPage() {
         <section className="menu-next">
           <button type="button" className="menu-next-link" onClick={() => nav('woodenmatch')}>
             <span className="menu-next-glyph" aria-hidden="true" />
-            <span className="menu-next-title">OUR HOME</span>
-            <span className="menu-next-desc">Alburtis Tavern, where the stories pour.</span>
+            <span className="menu-next-title">THE TAVERN</span>
+            <span className="menu-next-desc">Alburtis, where the tracks still tell stories.</span>
             <span className="menu-next-arrow" aria-hidden="true">→</span>
           </button>
           <button type="button" className="menu-next-link" onClick={() => nav('tracks')}>

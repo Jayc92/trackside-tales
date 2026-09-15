@@ -212,9 +212,9 @@ export function OurStoryPage() {
               onClick={() => nav('woodenmatch')}
             >
               <span className="story-next-glyph" aria-hidden="true" />
-              <span className="story-next-title">OUR HOME</span>
+              <span className="story-next-title">THE TAVERN</span>
               <span className="story-next-desc">
-                The station that stayed — our rail-side gathering place.
+                Alburtis Tavern — the kind of place Trackside was built to celebrate.
               </span>
               <span className="story-next-arrow" aria-hidden="true">→</span>
             </button>
@@ -265,7 +265,7 @@ export function WoodenMatchPage() {
           <span className="venue-sign-eyebrow">Alburtis, Pennsylvania</span>
           <h1 className="venue-sign-title">ALBURTIS<br />TAVERN</h1>
           <hr className="venue-sign-rule" aria-hidden="true" />
-          <div className="venue-sign-brand">Home of Trackside Brewing</div>
+          <div className="venue-sign-brand">The inspiration behind Trackside Brewing</div>
           <p className="venue-sign-statement">
             A tavern, a table, and the stories of the Lehigh Valley.
           </p>
@@ -273,25 +273,27 @@ export function WoodenMatchPage() {
       </header>
 
       {/* ── Our Home ── */}
-      <section className="venue-section venue-section--split" aria-label="Our home">
+      <section className="venue-section venue-section--split" aria-label="The tavern">
         <div>
           <div className="venue-lintel" aria-hidden="true" />
-          <span className="venue-label">Our Home</span>
-          <h2 className="venue-headline">The room where the <em>concept</em> lives.</h2>
+          <span className="venue-label">The Tavern</span>
+          <h2 className="venue-headline">The room the <em>concept</em> was built around.</h2>
         </div>
         <div className="venue-wrap">
           <div className="venue-copy">
             <p>
               Trackside Brewing is built around a real place. Alburtis
-              Tavern is where the concept comes off the page — a gathering
-              place in Alburtis, Pennsylvania where the beer is brewed
-              with a story, the food belongs on the same table, and the
-              history of the Lehigh Valley is part of the room.
+              Tavern is the kind of gathering place the concept was built
+              for — in Alburtis, Pennsylvania, the sort of room where beer
+              gets brewed with a story, food belongs on the same table,
+              and the history of the Lehigh Valley is part of the
+              furniture.
             </p>
             <p>
               The tavern is the anchor. Everything else — the Tales, the
               Passport, the roster of beers named for real people and
-              places — exists to make an evening here mean a little more.
+              places — exists to make an evening at the tavern mean a
+              little more.
             </p>
           </div>
         </div>
@@ -358,9 +360,10 @@ export function WoodenMatchPage() {
             <p>
               Trackside isn't here to rename the tavern or paper over what
               makes it itself. The venue keeps its own name and its own
-              identity — Trackside Brewing lives alongside Alburtis
-              Tavern, adding the beer, the Tales, and the Passport to a
-              place that already knows how to gather people.
+              identity — Trackside Brewing is meant to sit alongside
+              Alburtis Tavern one day, adding the beer, the Tales, and
+              the Passport to a place that already knows how to gather
+              people.
             </p>
           </div>
           <div className="venue-creed">
