@@ -5199,6 +5199,21 @@ body.is-navigating .nav-btn:active {
   opacity: 1;
 }
 
+/* ================== GRAPHICS.1B — nav icon promotion ==================
+   .nav-icon-img / .nav-icon-fallback above styled the now-removed
+   raster <img>; BottomNav.tsx no longer renders one, so those rules
+   are inert. TsIcon is the primary icon: sized here, otherwise
+   unstyled — no filter, no bevel, no rim-light, no background circle.
+   .ts-icon already sets color:inherit, so active/inactive state comes
+   for free from .nav-btn's existing color rules (var(--aged) idle,
+   var(--gold) active) — the same mechanism the text label already
+   uses, not a new one. */
+.gx1-nav-icon {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.6;
+}
+
 /* TOAST */
 .toast {
   position: fixed; bottom: 5.5rem; left: 50%;

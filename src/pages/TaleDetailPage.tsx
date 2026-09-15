@@ -127,7 +127,7 @@ function RecordHeader({
       </div>
       <div className="tale-detail-record-inner">
         {tale.year && (
-          <div className="tale-detail-year-ghost" aria-hidden="true">{tale.year}</div>
+          <div className="tale-detail-year-ghost gx1-year-plate" aria-hidden="true">{tale.year}</div>
         )}
         <div className="tale-detail-topline">
           {onBack ? (
@@ -436,7 +436,7 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
             <div className="tale-detail-folio">
               <div className="tale-detail-folio-head">
                 {tale.image && (
-                  <div className="tale-detail-portrait" aria-hidden="true">
+                  <div className="tale-detail-portrait gx1-portrait-mount" aria-hidden="true">
                     <img src={tale.image} alt="" />
                   </div>
                 )}
@@ -453,9 +453,9 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
                 </div>
               </div>
               {factRows.length > 0 && (
-                <dl className="tale-detail-facts">
+                <dl className="tale-detail-facts gx1-facts-plate">
                   {factRows.map((fact) => (
-                    <div key={fact.label} className="tale-detail-fact">
+                    <div key={fact.label} className="tale-detail-fact gx1-fact-row">
                       <dt className="tale-detail-fact-lbl">{fact.label}</dt>
                       <dd className="tale-detail-fact-txt">{fact.value}</dd>
                     </div>
@@ -465,6 +465,10 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
             </div>
           </section>
         )}
+
+        <div className="gx1-chapter-break" aria-hidden="true">
+          <span className="gx1-chapter-break-node" />
+        </div>
 
         {/* ── Story — the editorial reading column ── */}
         <section className="tale-detail-section">

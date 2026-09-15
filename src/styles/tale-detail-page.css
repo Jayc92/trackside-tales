@@ -850,3 +850,85 @@
   .tale-detail-climax { padding: 1.6rem 1.7rem 1.7rem; }
   .tale-detail-route { max-width: 560px; }
 }
+
+/* ================== GRAPHICS.1 PROTOTYPE — hero / Dossier / Story
+   transition depth pass, refined in GRAPHICS.1B ==================
+   GRAPHICS.1A review rejected the circular portrait treatment outright
+   — brass-ringed and beveled is medallion language, exactly what this
+   whole effort exists to remove, regardless of how small or well-
+   composed. It's gone; no replacement badge. The Dossier image is a
+   plain rectangular mount again (reusing the archive corner-mount
+   brackets tale-detail-page.css already draws for it), sized and
+   toned so the same slot can hold a real photograph later without
+   looking like a product badge. The fact-plate lost its border/shadow
+   so it reads as one tinted editorial block, not a card. The EST plate
+   and rail-node Story divider were approved as-is and are untouched
+   below. Prototype-scoped (gx1-*), additive, reversible. Uses only
+   existing tokens.css variables — no new palette. */
+
+.gx1-year-plate {
+  position: static;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--text-brass);
+  border: 1px solid var(--border-brass-subtle);
+  border-radius: 2px;
+  background: var(--surface-panel-bronze);
+  box-shadow: var(--shadow-panel);
+}
+.gx1-year-plate::before {
+  content: 'EST.';
+  font-family: var(--font-numeric);
+  font-size: 0.5rem;
+  letter-spacing: 0.22em;
+  color: var(--text-bronze-muted);
+}
+
+.gx1-portrait-mount {
+  flex: 0 0 84px;
+  padding: 9px;
+  background: var(--surface-canvas-deep);
+  box-shadow: var(--panel-inset-shadow);
+}
+.gx1-portrait-mount img { filter: saturate(0.8); }
+
+.gx1-facts-plate {
+  padding: 0.3rem 0.85rem;
+  background: var(--surface-panel-raised);
+}
+.gx1-fact-row { border-top-color: var(--border-brass-subtle); }
+.gx1-fact-row:first-child { border-top: none; }
+.gx1-facts-plate .tale-detail-fact:last-child { border-bottom: none; }
+
+.gx1-chapter-break {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1.8rem 0;
+}
+.gx1-chapter-break::before, .gx1-chapter-break::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-brass-subtle));
+}
+.gx1-chapter-break::after { background: linear-gradient(90deg, var(--border-brass-subtle), transparent); }
+.gx1-chapter-break-node {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin: 0 0.7rem;
+  border-radius: 50%;
+  border: 1px solid var(--brass);
+  background: var(--surface-canvas-deep);
+}
+
+@media (min-width: 768px) {
+  .gx1-year-plate { font-size: 1.05rem; padding: 0.4rem 0.7rem 0.45rem; }
+  .gx1-portrait-mount { flex-basis: 96px; }
+}

@@ -2,7 +2,6 @@ import React from 'react';
 import { useApp } from '../app/AppContext';
 import { Tale } from '../app/types';
 import { prodSlugFromAppSlug } from '../services/talePresentationPack';
-import { TsIcon } from '../components/TsIcon';
 
 // ================== TALES HUB — the railway archive ==================
 // PUBLIC-v7.4B.P.28g.5 — presentation polish only. The archive is the
@@ -100,13 +99,12 @@ function SealedRegistryBand({
   return (
     <button
       type="button"
-      className="tales-sealed"
+      className="tales-sealed gx1-sealed-plate"
       onClick={onOpen}
       aria-label={`${tale.title.replace('\n', ' ')} — sealed, scan to unlock`}
     >
-      <span className="tales-sealed-lock" aria-hidden="true">
-        <TsIcon icon="locked-seal" />
-      </span>
+      <span className="gx1-sealed-plate-year" aria-hidden="true">{tale.year || '—'}</span>
+      <span className="gx1-sealed-status" aria-hidden="true">Locked</span>
       <span className="tales-sealed-body">
         <span className="tales-sealed-title" role="heading" aria-level={3}>
           {tale.title.replace('\n', ' ')}

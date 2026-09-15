@@ -51,7 +51,7 @@ export function HomePage() {
           <div className="home-actions">
             <button
               type="button"
-              className="home-action home-action--primary"
+              className="home-action home-action--primary gx1-action-l3"
               onClick={() => nav('menu')}
               aria-label="View the tap list"
             >
@@ -59,7 +59,7 @@ export function HomePage() {
             </button>
             <button
               type="button"
-              className="home-action"
+              className="home-action gx1-action-l3"
               onClick={() => nav('tales')}
               aria-label="Explore the Tales"
             >
@@ -69,7 +69,9 @@ export function HomePage() {
         </div>
       </header>
 
-      <div className="home-wrap">
+      <div className="gx1-hero-edge" aria-hidden="true" />
+
+      <div className="home-wrap gx1-panel-l1">
 
         {/* ── 2. Our Home — preview of place ── */}
         <section className="home-section" aria-label="Alburtis Tavern">
@@ -77,7 +79,7 @@ export function HomePage() {
             <span className="home-label">The Tavern</span>
           </div>
           <div className="home-place">
-            <div className="home-place-sign" aria-hidden="true">
+            <div className="home-place-sign gx1-sign-l4" aria-hidden="true">
               <span className="home-place-sign-title">ALBURTIS<br />TAVERN</span>
               <span className="home-place-sign-sub">ALBURTIS, PA</span>
             </div>

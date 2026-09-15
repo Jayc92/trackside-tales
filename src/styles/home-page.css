@@ -378,3 +378,69 @@
   .home-statement { max-width: 40ch; font-size: 1.3rem; }
   .home-copy { max-width: 62ch; }
 }
+
+/* ================== GRAPHICS.1B — Home refinement ==================
+   GRAPHICS.1A review found: the ticket-perforation transition read as
+   coupon decoration, and the recessed body panel was one giant framed
+   rectangle — hierarchy between hero and body, none between the
+   sections inside it. This pass removes both. Prototype-scoped
+   (gx1-*), additive, reversible. Uses only existing tokens.css
+   variables — no new palette. */
+
+/* Quiet transition: a soft light falloff (surface depth, not an
+   applied pattern) with a single hairline rail rule at its center —
+   the same --rail-divider gradient the rest of the app already uses
+   for section dividers. No repeating pattern, no perforation. */
+.gx1-hero-edge {
+  position: relative;
+  height: 26px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent);
+}
+.gx1-hero-edge::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--rail-divider);
+}
+
+/* Body stays the page's own continuous canvas — no distinct fill, no
+   frame. Section-to-section hierarchy now comes from spacing and a
+   small brass tick on each section head instead of one shared panel. */
+.gx1-panel-l1 { background: none; box-shadow: none; }
+.gx1-panel-l1 .home-section { padding-top: 2.9rem; }
+.gx1-panel-l1 .home-section:first-child { padding-top: 2.3rem; }
+.gx1-panel-l1 .home-section-head { position: relative; padding-left: 0.9rem; }
+.gx1-panel-l1 .home-section-head::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.15rem;
+  bottom: 0.75rem;
+  width: 2px;
+  background: var(--brass);
+  opacity: 0.55;
+}
+
+/* Level 4 — hero artifact: the place-sign was a flat 1px outline; give
+   it the raised/lit treatment tokens.css reserves for hero artifacts. */
+.gx1-sign-l4 {
+  border-color: var(--border-brass-strong);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(201, 130, 63, 0.1), transparent 60%),
+    linear-gradient(180deg, rgba(245, 236, 221, 0.05), transparent 45%),
+    var(--surface-panel-bronze);
+  box-shadow: var(--shadow-raised), inset 0 1px 0 rgba(245, 236, 221, 0.08);
+}
+
+/* Level 3 — control, restrained further per review: the outer shadow
+   should be nearly unnoticed, doing its work through the top highlight
+   (light catching an edge) rather than a shadow that announces itself. */
+.gx1-action-l3 {
+  box-shadow: inset 0 1px 0 rgba(245, 236, 221, 0.07), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.gx1-action-l3.home-action--primary {
+  box-shadow: inset 0 1px 0 rgba(245, 236, 221, 0.12), 0 2px 4px rgba(0, 0, 0, 0.25);
+}

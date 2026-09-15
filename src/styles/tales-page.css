@@ -586,3 +586,48 @@
   .tales-sealed-stack, .tales-helper { max-width: 760px; }
   .tales-actions { max-width: 640px; }
 }
+
+/* ================== GRAPHICS.1B — sealed registry refinement ==================
+   GRAPHICS.1A review found the vertical year tag gimmicky and the lock
+   treatment ("a dark circle with a padlock glyph in a brass ring")
+   indistinguishable from a mobile-game locked-level badge — the single
+   weakest element of the first prototype. This pass keeps the plate
+   separation (the genuine structural win) and replaces both: the year
+   becomes a small horizontal archival corner-label instead of forced
+   vertical type, and the lock becomes a plain stamped wordmark instead
+   of an icon-in-a-circle. Prototype-scoped (gx1-*), additive,
+   reversible. */
+.gx1-sealed-plate {
+  position: relative;
+  margin: 0.55rem 0;
+  padding: 1.25rem 0.9rem 0.95rem;
+  border: 1px solid var(--border-brass-subtle);
+  border-radius: 2px;
+  background: var(--surface-panel-raised);
+  box-shadow: var(--shadow-panel);
+}
+.gx1-sealed-plate:hover,
+.gx1-sealed-plate:focus-visible {
+  border-color: var(--border-brass-strong);
+}
+.gx1-sealed-plate-year {
+  position: absolute;
+  left: 0.9rem;
+  top: 0.4rem;
+  font-family: var(--font-numeric);
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  color: var(--text-bronze-muted);
+  opacity: 0.8;
+}
+.gx1-sealed-status {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border-brass-subtle);
+  font-family: var(--font-numeric);
+  font-size: 0.52rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-bronze-muted);
+}
