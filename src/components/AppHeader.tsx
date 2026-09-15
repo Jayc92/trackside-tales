@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../app/AppContext';
+import { TsIcon } from './TsIcon';
 
 // ================== APP HEADER ==================
 // Three-column layout: Now Pouring | Logo | Profile icon
@@ -19,6 +20,18 @@ import { useApp } from '../app/AppContext';
 //   * Visible terminology: the neutral chip reads TAP LIST (was BEER
 //     MENU), matching the Menu page's THE TAP LIST identity. The live
 //     NOW POURING state is unchanged.
+//
+// GRAPHICS.3 — header identity prototype (uncommitted): the center
+// logo and right profile control no longer render the raster
+// trackside-header-logo.png (2.6MB, 1536×1024, shown at ~100-124px)
+// or profile-icon.png (2.0MB, 1024×1024, shown at 40×40) — both were
+// the last glossy/medallion assets left after GRAPHICS.1B's nav-icon
+// pass. HEADER_CONCEPT swaps between the three reviewed replacement
+// marks below; it is a review toggle, not a shipped feature flag, and
+// is expected to collapse to one branch (or be removed) once the
+// operator picks a concept.
+type HeaderConcept = 'a' | 'b' | 'c';
+const HEADER_CONCEPT: HeaderConcept = 'b';
 
 export function AppHeader() {
   const { state, nav, liveTapSlugs } = useApp();
@@ -57,33 +70,31 @@ export function AppHeader() {
           </button>
         </div>
 
-        {/* Center: Logo */}
+        {/* Center: Logo — GRAPHICS.3 header-mark (see HEADER_CONCEPT above) */}
         <button
           type="button"
-          className="app-bar-center"
+          className={`app-bar-center header-mark header-mark--${HEADER_CONCEPT}`}
           onClick={handleLogoClick}
           aria-label="Trackside Brewing — view Tales"
         >
-          <img
-            src="assets/brand/trackside-header-logo.png"
-            alt="Trackside Brewing"
-            className="header-logo-img"
-            onError={(e) => {
-              const img = e.currentTarget;
-              img.style.display = 'none';
-              const next = img.nextElementSibling as HTMLElement | null;
-              if (next) next.style.display = 'flex';
-            }}
-          />
-          {/* P.28e.3 — fallback follows the approved company hierarchy:
-              the company wordmark, never the venue. */}
-          <div className="header-logo-text" aria-hidden="true" style={{ display: 'none' }}>
-            <div className="logo-main">TRACKSIDE</div>
-            <div className="logo-sub"><span>BREWING</span></div>
-          </div>
+          {HEADER_CONCEPT === 'a' && (
+            <TsIcon icon="rail-track" className="header-mark-glyph" />
+          )}
+          {HEADER_CONCEPT === 'b' && (
+            <span className="header-mark-mono" aria-hidden="true">TS</span>
+          )}
+          {HEADER_CONCEPT === 'c' && (
+            <TsIcon icon="rail-switch" className="header-mark-glyph" />
+          )}
+          <span className="header-mark-word">
+            <span className="header-mark-title">TRACKSIDE</span>
+            <span className="header-mark-sub">BREWING CO.</span>
+          </span>
         </button>
 
-        {/* Right: Profile */}
+        {/* Right: Profile — GRAPHICS.3: bordered plate holding either the
+            existing guest-profile line icon or the signed-in initial,
+            replacing the raster profile-icon.png medallion. */}
         <div className="app-bar-right">
           <button
             type="button"
@@ -92,22 +103,10 @@ export function AppHeader() {
             onClick={handleProfileClick}
             aria-label="Passport"
           >
-            <img
-              src="assets/brand/profile-icon.png"
-              alt=""
-              className="profile-icon-img"
-              onError={(e) => {
-                const img = e.currentTarget;
-                img.style.display = 'none';
-                const next = img.nextElementSibling as HTMLElement | null;
-                if (next) next.style.display = 'flex';
-              }}
-            />
-            <span
-              id="avatar-initial"
-              style={{ display: state.user ? 'flex' : 'none' }}
-            >
-              {state.user?.name?.charAt(0).toUpperCase() || 'G'}
+            <span className="header-profile-mark" aria-hidden="true">
+              {state.user
+                ? state.user.name?.charAt(0).toUpperCase() || 'G'
+                : <TsIcon icon="guest-profile" />}
             </span>
           </button>
         </div>

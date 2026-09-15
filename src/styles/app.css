@@ -188,6 +188,102 @@ body::before {
   display: block;
 }
 
+/* ================== GRAPHICS.3 — header identity prototype ==================
+   Replaces the raster header logo/profile PNGs (see AppHeader.tsx) with
+   a flat vector mark built from the same TsIcon system BottomNav uses,
+   plus the app's own --font-wordmark — no new palette, no new font.
+   .header-logo-img/.header-logo-text/.profile-icon-img above are now
+   unused (no <img> renders in their place) and left as-is rather than
+   deleted. Prototype-scoped, additive, reversible. */
+.header-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.header-mark-glyph {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.5;
+  color: var(--text-brass);
+  flex-shrink: 0;
+}
+.header-mark--c .header-mark-glyph { color: var(--text-bronze-muted); }
+.header-mark-word {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+.header-mark-title {
+  font-family: var(--font-wordmark);
+  font-size: 1.3rem;
+  letter-spacing: 0.14em;
+  color: var(--text-brass);
+}
+.header-mark--c .header-mark-title { font-size: 1.15rem; letter-spacing: 0.22em; }
+.header-mark-sub {
+  margin-top: 0.2rem;
+  font-family: var(--font-numeric);
+  font-size: 0.44rem;
+  letter-spacing: 0.28em;
+  color: var(--text-bronze-muted);
+  text-transform: uppercase;
+}
+/* Concept B — monogram plate leads; wordmark stays secondary */
+.header-mark-mono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-brass-strong);
+  border-radius: 2px;
+  background: var(--surface-panel-bronze);
+  font-family: var(--font-numeric);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--text-brass);
+  flex-shrink: 0;
+}
+@media (max-width: 390px) {
+  .header-mark-title { font-size: 1.05rem; letter-spacing: 0.1em; }
+  .header-mark-sub { display: none; }
+  .header-mark-glyph { width: 22px; height: 22px; }
+  .header-mark-mono { width: 26px; height: 26px; font-size: 0.68rem; }
+}
+@media (min-width: 768px) {
+  .header-mark-title { font-size: 1.55rem; }
+  .header-mark-glyph { width: 30px; height: 30px; }
+  .header-mark-mono { width: 34px; height: 34px; font-size: 0.9rem; }
+}
+
+/* Profile — small bordered plate instead of a glossy circular medallion.
+   .profile-btn keeps its existing 44px touch-target rules untouched;
+   this inner mark is the smaller visible control. */
+.header-profile-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-brass-subtle);
+  border-radius: 2px;
+  background: var(--surface-panel-bronze);
+  color: var(--text-bronze-muted);
+  font-family: var(--font-numeric);
+  font-size: 0.85rem;
+}
+.header-profile-mark .ts-icon { width: 18px; height: 18px; }
+.profile-btn:hover .header-profile-mark,
+.profile-btn:focus-visible .header-profile-mark {
+  border-color: var(--border-brass-strong);
+  color: var(--text-brass);
+}
+@media (max-width: 390px) {
+  .header-profile-mark { width: 28px; height: 28px; }
+}
+
 /* PAGES */
 .page { display: none; min-height: 100dvh; padding-bottom: 7.5rem; }
 .page.active {

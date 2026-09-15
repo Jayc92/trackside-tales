@@ -86,6 +86,17 @@ const ICON_BODIES: Record<string, string> = {
     '<rect x="9" y="11.5" width="6" height="5" rx="0.6"/>' +
     '<path d="M10.2 11.5v-1.6c0-1 0.8-1.8 1.8-1.8s1.8 0.8 1.8 1.8v1.6"/>' +
     '<line x1="12" y1="13.4" x2="12" y2="14.8"/>',
+
+  'rail-track':
+    '<line x1="2" y1="7.5" x2="22" y2="7.5"/>' +
+    '<line x1="2" y1="16.5" x2="22" y2="16.5"/>' +
+    '<line x1="6" y1="4.5" x2="6" y2="19.5"/>' +
+    '<line x1="12" y1="4.5" x2="12" y2="19.5"/>' +
+    '<line x1="18" y1="4.5" x2="18" y2="19.5"/>',
+
+  'rail-switch':
+    '<line x1="9" y1="2.5" x2="9" y2="21.5"/>' +
+    '<line x1="9" y1="12" x2="18" y2="19"/>',
 };
 
 interface TsIconProps {
