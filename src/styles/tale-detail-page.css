@@ -932,3 +932,117 @@
   .gx1-year-plate { font-size: 1.05rem; padding: 0.4rem 0.7rem 0.45rem; }
   .gx1-portrait-mount { flex-basis: 96px; }
 }
+
+/* ================== GRAPHICS.4A — Timeline / Still Here content-surface
+   pass ==================
+   Audit finding: .tale-detail-medallion is a genuine circular badge
+   (border-radius:50%, radial-gradient bevel, glow box-shadow on major
+   nodes) — the last medallion language in Tale Detail. It's gone; no
+   replacement badge, per the same rule GRAPHICS.1B applied to the
+   Dossier portrait. The two-line "running rail" background behind the
+   nodes was already abstract/technical and is untouched. Still Here
+   was previously a plain hairline-divided list with no image slot and
+   no hierarchy beyond typography — reworked into a field-guide/museum-
+   label composition (numbered field-tag or photo mount + place + detail)
+   so a future real photograph can slot in without restructuring.
+   Prototype-scoped (gx4-*), additive, reversible. Uses only existing
+   tokens.css variables — no new palette, no new font.
+
+   GRAPHICS.4A.2 — the per-event icon (guessed from event-title keywords
+   via a now-removed timelineIcon() helper) is gone too: fine for the 3
+   curated biographical Tales, but not a durable semantic system, and
+   likely to collapse to one repeated default icon for Lock Ridge's
+   industrial-site vocabulary. The rail tick + year/event/detail text
+   carry the chronology on their own; icons may return only if driven
+   by an explicit authored field, never inferred from prose. */
+
+/* ── Timeline: rail-stop tick replaces the circular medallion ────────── */
+.gx4-timeline-node {
+  position: relative;
+  padding-top: 2.3rem;
+}
+.gx4-timeline-tick {
+  position: absolute;
+  top: 1.3rem;
+  left: 0;
+  width: 2px;
+  height: 0.7rem;
+  background: var(--border-brass-strong);
+}
+.tale-detail-timeline-node--major .gx4-timeline-tick {
+  top: 1.2rem;
+  width: 3px;
+  height: 0.9rem;
+  background: var(--brass);
+}
+.gx4-timeline-year {
+  margin-top: 0;
+  font-size: 1.5rem;
+}
+
+/* ── Still Here: field-guide entries, image-ready with a graceful
+   text-only fallback ─────────────────────────────────────────────────── */
+.gx4-still-here {
+  display: flex;
+  flex-direction: column;
+}
+.gx4-still-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--border-brass-subtle);
+}
+.gx4-still-item:first-child {
+  border-top: none;
+  padding-top: 0.15rem;
+}
+.gx4-still-mount {
+  position: relative;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-canvas-deep);
+}
+.gx4-still-mount::before,
+.gx4-still-mount::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--border-brass-subtle);
+}
+.gx4-still-mount::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+.gx4-still-mount::after  { bottom: 0; right: 0; border-left: none; border-top: none; }
+.gx4-still-mount--photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.8);
+}
+.gx4-still-index {
+  font-family: var(--font-numeric);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: var(--text-bronze-muted);
+}
+.gx4-still-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 0.1rem;
+}
+.gx4-still-place {
+  font-family: var(--font-wordmark);
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  color: var(--text-brass);
+}
+
+@media (min-width: 768px) {
+  .gx4-timeline-year { font-size: 1.65rem; }
+  .gx4-still-mount { flex-basis: 54px; width: 54px; height: 54px; }
+  .gx4-still-place { font-size: 1.02rem; }
+}

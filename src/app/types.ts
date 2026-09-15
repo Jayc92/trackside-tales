@@ -56,6 +56,9 @@ export interface BarSummary {
 export interface StillHere {
   place: string;
   detail: string;
+  /** GRAPHICS.4A — optional present-day photo; falls back to a plain
+      field-tag when absent. No current Tale data sets this. */
+  image?: string;
 }
 
 export interface PersonInfo {

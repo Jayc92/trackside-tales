@@ -54,19 +54,6 @@ function buildHeroMeta(tale: { name: string; style: string; abv: string; ibu: st
   return fragments.join(' · ');
 }
 
-// CP2 correction §2 — timeline medallions use the Trackside icon
-// system (platform-consistent SVG) instead of Unicode pictographs.
-function timelineIcon(title: string): string {
-  const t = title.toLowerCase();
-  if (t.includes('born'))         return 'station-lantern';
-  if (t.includes('purchase'))     return 'survey-grid';
-  if (t.includes('chief'))        return 'town-seal';
-  if (t.includes('found'))        return 'map-grid';
-  if (t.includes('liberty'))      return 'station-seal';
-  if (t.includes('died') || t.includes('dies')) return 'crossed-spikes';
-  return 'town-seal';
-}
-
 // PUBLIC-v7.4B.P.19 — Tale availability label. The LIVE tap list is the
 // sole source of the operational "ON TAP" claim; tales.tap_status is
 // EDITORIAL lifecycle messaging only. Precedence preserved verbatim.
@@ -539,12 +526,10 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
                 {tale.timeline.map((ev, i) => (
                   <div
                     key={i}
-                    className={`tale-detail-timeline-node${ev.major ? ' tale-detail-timeline-node--major' : ''}`}
+                    className={`tale-detail-timeline-node gx4-timeline-node${ev.major ? ' tale-detail-timeline-node--major' : ''}`}
                   >
-                    <div className="tale-detail-medallion" aria-hidden="true">
-                      <TsIcon icon={timelineIcon(ev.event)} />
-                    </div>
-                    <div className="tale-detail-timeline-year">{ev.year}</div>
+                    <div className="gx4-timeline-tick" aria-hidden="true" />
+                    <div className="tale-detail-timeline-year gx4-timeline-year">{ev.year}</div>
                     <div className="tale-detail-timeline-event">{ev.event}</div>
                     {ev.detail && <div className="tale-detail-timeline-detail">{ev.detail}</div>}
                   </div>
@@ -563,11 +548,23 @@ export function TaleDetailPage({ previewTale, previewMode = false }: TaleDetailP
             <div className="tale-detail-section-head">
               <span className="tale-detail-label">Still Here</span>
             </div>
-            <div className="still-here">
-              {tale.stillHere.map((entry) => (
-                <div key={entry.place} className="still-here-item">
-                  <div className="still-here-place">{entry.place}</div>
-                  <div className="still-here-detail">{entry.detail}</div>
+            <div className="still-here gx4-still-here">
+              {tale.stillHere.map((entry, i) => (
+                <div key={entry.place} className="still-here-item gx4-still-item">
+                  <div
+                    className={`gx4-still-mount${entry.image ? ' gx4-still-mount--photo' : ''}`}
+                    aria-hidden="true"
+                  >
+                    {entry.image ? (
+                      <img src={entry.image} alt="" />
+                    ) : (
+                      <span className="gx4-still-index">{String(i + 1).padStart(2, '0')}</span>
+                    )}
+                  </div>
+                  <div className="gx4-still-body">
+                    <div className="still-here-place gx4-still-place">{entry.place}</div>
+                    <div className="still-here-detail">{entry.detail}</div>
+                  </div>
                 </div>
               ))}
             </div>
