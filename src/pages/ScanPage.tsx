@@ -118,7 +118,7 @@ function ScannerGate({ scanning, scannerError }: ScannerGateProps) {
         </div>
 
         {/* sweep line */}
-        <div className={`scan-sweep${scanning ? ' scan-sweep--live' : ''}`} aria-hidden="true" />
+        <div className={`scan-sweep gx4c-sweep${scanning ? ' scan-sweep--live' : ''}`} aria-hidden="true" />
       </div>
 
       {/* bottom plate */}
@@ -151,7 +151,7 @@ function FeaturedTaleRow({ tale, index, unlocked, onSelect }: FeaturedTaleRowPro
           : `${actionWord} ${tale.name}`
       }
     >
-      <span className="scan-row-num" aria-hidden="true">{index + 1}</span>
+      <span className="scan-row-num gx4c-row-num" aria-hidden="true">{index + 1}</span>
       <span className="scan-row-name">
         <strong>{tale.name}</strong>
         <span className="scan-row-sub"> — {tale.person.name}</span>

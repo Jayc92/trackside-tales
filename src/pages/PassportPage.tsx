@@ -63,7 +63,7 @@ function StampWell({
       role="img"
       aria-label={`${label} stamp — ${earned ? 'earned' : 'not yet earned'}`}
     >
-      <span className="passport-well-ring" aria-hidden="true">
+      <span className="passport-well-ring gx4c-well-ring" aria-hidden="true">
         {earned ? <TsIcon icon={icon} /> : null}
       </span>
       <span className="passport-well-lbl" aria-hidden="true">{label}</span>
@@ -78,7 +78,7 @@ function ArtifactCard({ artifact }: { artifact: PassportArtifactModel }) {
   const stateWord = artifact.owned ? 'earned' : 'not yet earned';
   return (
     <article
-      className={'passport-artifact-card' + (artifact.owned ? ' passport-artifact-card--earned' : '')}
+      className={'passport-artifact-card gx4c-artifact-card' + (artifact.owned ? ' passport-artifact-card--earned' : '')}
       aria-label={
         `${artifact.name} — ${artifact.rarityLabel}, ${stateWord}`
         + (artifact.owned ? '' : `. ${artifact.shortDescription}`)
@@ -180,7 +180,7 @@ export function PassportPage() {
           <h1 className="passport-title">TRACKSIDE<br />PASSPORT</h1>
           <hr className="passport-rule" aria-hidden="true" />
           <div className="passport-holder">
-            <span className="passport-monogram" aria-hidden="true">{initial}</span>
+            <span className="passport-monogram gx4c-monogram" aria-hidden="true">{initial}</span>
             <span className="passport-holder-id">
               <span className="passport-holder-name">{nickname}</span>
               <span className="passport-holder-role">PREVIEW GUEST · TRACKSIDE TALES</span>
@@ -272,7 +272,7 @@ export function PassportPage() {
                   key={record.taleId}
                   data-tale-entry={record.taleId}
                   className={
-                    'passport-record'
+                    'passport-record gx4c-record'
                     + (record.complete ? ' passport-record--complete' : '')
                     + (!record.unlocked ? ' passport-record--sealed' : '')
                     + (celebrateId === record.taleId ? ' passport-record--celebrate' : '')
@@ -316,7 +316,7 @@ export function PassportPage() {
             {challengeMastery.map((row) => (
               <article
                 key={row.gameId}
-                className="passport-challenge"
+                className="passport-challenge gx4c-challenge"
                 aria-label={
                   `${row.title} — mastery ${row.displayTierLabel ?? 'not yet ranked'}`
                   + (row.engineersMark
@@ -410,7 +410,7 @@ export function PassportPage() {
                         + (a.owned ? '' : `. ${a.shortDescription}`)
                       }
                     >
-                      <span className="passport-ladder-step-num" aria-hidden="true">{i + 1}</span>
+                      <span className="passport-ladder-step-num gx4c-ladder-num" aria-hidden="true">{i + 1}</span>
                       <span className="passport-ladder-step-body" aria-hidden="true">
                         <span className="passport-ladder-step-name">{a.name}</span>
                         <span className="passport-artifact-rarity">{a.rarityLabel}</span>
@@ -450,7 +450,7 @@ export function PassportPage() {
                 return (
                   <article
                     key={run.eventId}
-                    className={`passport-special-run passport-special-run--${run.status}`}
+                    className={`passport-special-run gx4c-special-run passport-special-run--${run.status}`}
                     aria-label={
                       `${run.name} — ${SPECIAL_RUN_STATUS_LABEL[run.status]}, ${progress}`
                       + (run.reward ? `, ${run.reward.name} ${run.reward.owned ? 'earned' : 'not yet earned'}` : '')

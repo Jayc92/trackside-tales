@@ -940,3 +940,108 @@
   .passport-record-wells { margin-top: 0.2rem; }
   .passport-actions { max-width: 760px; }
 }
+
+/* ================== GRAPHICS.4C — Passport surface pass ==================
+   Audit findings: the holder monogram and the two stamp wells (SCAN /
+   CHLG) were true circular badges — the wells' earned state added a
+   glowing box-shadow ring, the single most game-like moment on the
+   page (a lit "achievement medal"). The Stamp Ledger, Challenge
+   Mastery, Artifact Case, and Special Runs sections each wrapped every
+   item in its own fully-bordered, rounded-corner box — four near-
+   identical card shells repeated down the page, the same nested-card
+   pattern already reduced on Menu (GRAPHICS.4B). The Line ladder's
+   step numbers were also circular. The fresh-badge celebration and the
+   Engineer mastery tier both used a soft glow box-shadow.
+   Prototype-scoped (gx4c-*), additive, reversible. Uses only this
+   file's own existing --pp-* variables — no new palette, no new font.
+   Left deliberately unchanged, already consistent with precedent or
+   out of this pass's presentation-only scope: the document-frame
+   double border, the rail-node rule motif, the Service Log's flat
+   label/value rows, the Engineer's-Marks/Line-step bordered slots
+   (compact plates, not nested boxes), the summary strip's separator
+   ticks, and the "rarity" tier vocabulary itself (a content/data
+   question, not a visual one — see the session report). */
+
+/* ── Holder monogram: a bordered plate, not a circular avatar ────────── */
+.gx4c-monogram {
+  border-radius: 3px;
+  background: none;
+}
+
+/* ── Stamp wells: a plate-mounted stamp mark, not a glowing medal ─────── */
+.gx4c-well-ring {
+  border-radius: 3px;
+  background: rgba(13, 11, 9, 0.4);
+}
+.passport-well--earned .gx4c-well-ring {
+  border: 1.5px solid var(--pp-brass-hi);
+  background: rgba(216, 180, 107, 0.1);
+  box-shadow: none;
+}
+
+/* ── Stamp Ledger / Challenge Mastery / Artifact Case / Special Runs —
+   hairline-divided rows instead of four repeated boxed-card shells ──── */
+.gx4c-record,
+.gx4c-challenge,
+.gx4c-artifact-card,
+.gx4c-special-run {
+  border: none;
+  border-radius: 0;
+  background: none;
+  border-top: 1px solid rgba(163, 128, 63, 0.25);
+  padding: 1.05rem 0.15rem;
+}
+.passport-ledger > .gx4c-record:first-child,
+.passport-ledger > .gx4c-challenge:first-child,
+.passport-ledger > .gx4c-artifact-card:first-child,
+.passport-ledger > .gx4c-special-run:first-child {
+  border-top: none;
+  padding-top: 0.2rem;
+}
+.passport-record--sealed.gx4c-record {
+  background: repeating-linear-gradient(-45deg, rgba(163, 128, 63, 0.1) 0 3px, transparent 3px 7px) left / 10px 100% no-repeat;
+  padding-left: 0.85rem;
+}
+.passport-record--complete.gx4c-record {
+  border-top-color: rgba(216, 180, 107, 0.6);
+  box-shadow: none;
+}
+.gx4c-record .passport-record-collected {
+  top: 6px;
+  right: -30px;
+}
+.passport-artifact-card--earned.gx4c-artifact-card {
+  border-top-color: rgba(216, 180, 107, 0.6);
+}
+.passport-ledger:has(> .gx4c-record),
+.passport-ledger:has(> .gx4c-challenge),
+.passport-ledger:has(> .gx4c-special-run) {
+  gap: 0;
+}
+@media (min-width: 1024px) {
+  .passport-ledger:has(> .gx4c-record),
+  .passport-ledger:has(> .gx4c-challenge),
+  .passport-ledger:has(> .gx4c-special-run),
+  .passport-ledger:has(> .gx4c-artifact-card) {
+    display: block;
+  }
+}
+
+/* ── The Line ladder: a numbered tab, not a circular step badge ──────── */
+.gx4c-ladder-num {
+  border-radius: 2px;
+}
+
+/* ── Fresh-badge celebration — a quiet border/tint flash, no glow bloom ─ */
+@keyframes passport-celebrate {
+  0%   { border-top-color: var(--pp-brass-hi); background-color: rgba(216, 180, 107, 0.08); }
+  100% { border-top-color: rgba(216, 180, 107, 0.6); background-color: transparent; }
+}
+
+/* ── Engineer mastery tier — a double rule, not a glow ring ───────────── */
+.passport-mastery--engineer .passport-mastery-seal {
+  box-shadow: none;
+  border: 1px solid var(--pp-brass-hi);
+  outline: 1px solid rgba(216, 180, 107, 0.4);
+  outline-offset: 2px;
+}

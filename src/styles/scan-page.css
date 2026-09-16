@@ -512,3 +512,27 @@
   .scan-next { grid-column: 2; }
   .scan-foot-space { grid-column: 1 / -1; }
 }
+
+/* ================== GRAPHICS.4C — Scan surface pass ==================
+   Audit finding: the idle sweep line looped continuously (3.6s,
+   infinite) — a "radar sweep" effect the gate explicitly calls out to
+   avoid. Kept as a live-scan cue only: hidden and still at idle, and
+   only animating while the camera is actually live — functional
+   feedback tied to a real state, not decorative idle motion. The
+   status-plate live-pulse-dot is left untouched; it is the same
+   already-approved motif used on Menu's live tap-list chips. Featured
+   Tale row numbers were circular; changed to a small numbered tab,
+   consistent with Passport's ladder-step fix in this same pass.
+   Prototype-scoped (gx4c-*), additive, reversible. */
+.gx4c-sweep {
+  animation: none;
+  opacity: 0;
+}
+.gx4c-sweep.scan-sweep--live {
+  opacity: 1;
+  animation: scan-sweep-move 2.2s ease-in-out infinite;
+  box-shadow: none;
+}
+.gx4c-row-num {
+  border-radius: 2px;
+}
