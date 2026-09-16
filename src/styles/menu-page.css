@@ -553,3 +553,100 @@
   .menu-house-list, .menu-dish-list, .menu-kitchen-note { max-width: 760px; }
   .menu-tapboard { max-width: 760px; }
 }
+
+/* ================== GRAPHICS.4B — Menu / Beer surface pass ==================
+   Audit findings: the tab rail was a connected-segment button group
+   (shared borders forming one pill, filled gradient on the active
+   segment, plus a circular "station tick" dot) — exactly the filled-
+   pill / medallion language the rest of the app has been removing.
+   Tale-pour rows were each a fully bordered, background-filled box —
+   the literal rectangle-in-rectangle pattern flagged for reduction.
+   House rows (the pure Beer presentation, already shared across
+   Resident/N-A) were already close to the target — open, no card —
+   just under-designed: a tiny thumb and metadata trailing off as
+   plain text with no distinct block. Can art itself was already
+   good (drop-shadow, no crop, no medallion) and is untouched here.
+   Prototype-scoped (gx4b-*), additive, reversible. Uses only existing
+   tokens.css variables — no new palette, no new font. */
+
+/* ── Tabs: flat index tabs with a brass underline, not a filled pill ─── */
+.menu-tabs {
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-brass-subtle);
+}
+.menu-tab {
+  flex: 0 0 auto;
+  padding: 1rem 0.05rem 1rem;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+.menu-tab--active { background: none; }
+.menu-tab--active::after {
+  content: '';
+  position: absolute;
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  transform: none;
+  width: auto;
+  height: 2px;
+  border-radius: 0;
+  border: none;
+  background: var(--brass);
+}
+
+/* ── Tale pour rows: hairline-divided editorial rows, not boxed cards ── */
+.gx4b-pour {
+  border: none;
+  border-radius: 0;
+  background: none;
+  border-top: 1px solid var(--border-brass-subtle);
+  padding: 1.1rem 0.15rem;
+}
+.gx4b-pour-list { gap: 0; }
+.gx4b-pour-list .gx4b-pour:first-child {
+  border-top: none;
+  padding-top: 0.2rem;
+}
+.gx4b-pour.menu-pour--unlocked { border-top-color: var(--border-brass-strong); }
+.gx4b-pour.menu-pour--live {
+  box-shadow: none;
+  border-left: 2px solid var(--brass);
+  padding-left: 0.85rem;
+}
+@media (min-width: 1024px) {
+  .gx4b-pour-list { display: block; }
+}
+
+/* ── House rows: same corner-mount language as the Dossier/Still Here
+   photo mounts, plus a small bordered metadata plate instead of plain
+   trailing text ──────────────────────────────────────────────────── */
+.gx4b-house { align-items: flex-start; }
+.gx4b-house-mount {
+  position: relative;
+  flex-basis: 56px;
+  height: 72px;
+  background: var(--surface-canvas-deep);
+}
+.gx4b-house-mount::before,
+.gx4b-house-mount::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--border-brass-subtle);
+}
+.gx4b-house-mount::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+.gx4b-house-mount::after  { bottom: 0; right: 0; border-left: none; border-top: none; }
+.gx4b-house-mount img { filter: saturate(0.85) drop-shadow(0 4px 7px rgba(0, 0, 0, 0.4)); }
+.gx4b-house-stats {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border-brass-subtle);
+  color: var(--text-bronze-muted);
+}
+
+@media (min-width: 768px) {
+  .gx4b-house-mount { flex-basis: 64px; height: 82px; }
+}

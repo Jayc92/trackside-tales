@@ -100,7 +100,7 @@ function TalePourRow({
   return (
     <article
       className={
-        'menu-pour'
+        'menu-pour gx4b-pour'
         + (unlocked ? ' menu-pour--unlocked' : '')
         + (onTap ? ' menu-pour--live' : '')
       }
@@ -181,11 +181,11 @@ function HouseRow({
   ].filter(Boolean).join(' · ');
   return (
     <div
-      className="menu-house"
+      className="menu-house gx4b-house"
       role="listitem"
       aria-label={beer.style ? `${beer.name} — ${beer.style}` : beer.name}
     >
-      <div className="menu-house-thumb" aria-hidden="true">
+      <div className="menu-house-thumb gx4b-house-mount" aria-hidden="true">
         {beer.image ? (
           <img
             src={beer.image}
@@ -210,7 +210,7 @@ function HouseRow({
           </div>
         )}
       </div>
-      {stats && <span className="menu-house-stats">{stats}</span>}
+      {stats && <span className="menu-house-stats gx4b-house-stats">{stats}</span>}
     </div>
   );
 }
@@ -336,7 +336,7 @@ export function MenuPage() {
             <div className="menu-pane-head">
               <span className="menu-label">Trackside Tales · The Roster</span>
             </div>
-            <div className="menu-pour-list">
+            <div className="menu-pour-list gx4b-pour-list">
               {tales.map((tale) => (
                 <TalePourRow
                   key={tale.id}
